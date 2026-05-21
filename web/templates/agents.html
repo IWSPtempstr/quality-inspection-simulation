@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Agent 执行轨迹</h1>
+  <p>调用 LangGraph Orchestrator，并查看 visited_agents 与 handoffs。</p>
+</section>
+<section class="panel">
+  <button onclick="runAgent()">查询队列 Agent</button>
+  <pre id="agent-output">等待操作...</pre>
+</section>
+<script>
+async function runAgent() {
+  const response = await fetch('/api/agent/run', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({task_type: 'query_queue', payload: {}})
+  });
+  document.getElementById('agent-output').textContent = JSON.stringify(await response.json(), null, 2);
+}
+</script>
+{% endblock %}
+

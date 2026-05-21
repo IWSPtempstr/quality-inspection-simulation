@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>订单管理</h1>
+  <p>创建普通、加急或 VIP 检测订单，并触发后续队列重建。</p>
+</section>
+<section class="panel grid">
+  <form id="order-form">
+    <label>订单类型
+      <select name="order_type">
+        <option value="normal">普通订单</option>
+        <option value="urgent">加急订单</option>
+        <option value="vip">VIP订单</option>
+      </select>
+    </label>
+    <label>样品名称 <input name="sample_name" value="家用电器样品"></label>
+    <label>样品数量 <input name="sample_quantity" type="number" min="1" value="2"></label>
+    <label>认证类型
+      <select name="certification_type">
+        <option value="ccc">CCC认证</option>
+        <option value="cvc">CVC认证</option>
+        <option value="international">国际认证</option>
+      </select>
+    </label>
+    <button type="submit">创建订单</button>
+  </form>
+  <pre id="orders-output">等待操作...</pre>
+</section>
+<script>
+document.getElementById('order-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const payload = {
+    order_type: form.get('order_type'),
+    sample_name: form.get('sample_name'),
+    sample_quantity: Number(form.get('sample_quantity')),
+    certification_type: form.get('certification_type')
+  };
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  document.getElementById('orders-output').textContent = JSON.stringify(await response.json(), null, 2);
+});
+</script>
+{% endblock %}
+

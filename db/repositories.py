@@ -6,7 +6,14 @@ from typing import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.models import DetectionProjectModel, EquipmentModel, OrderModel, QueueEventModel
+from db.models import (
+    DetectionProjectModel,
+    EquipmentModel,
+    OrderModel,
+    QueueEventModel,
+    ScheduleRunModel,
+    ScheduleStepModel,
+)
 from domain.schemas import (
     CertificationType,
     EquipmentStatus,
@@ -174,3 +181,130 @@ class QueueEventRepository:
             )
         )
         self.session.commit()
+
+
+class ScheduleRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create_from_schedule(self, schedule: dict) -> dict:
+        run_id = new_id("schedule")
+        scheduled_orders = schedule.get("scheduled_orders", [])
+        blocked_orders = schedule.get("blocked_orders", [])
+        position = 0
+        self.session.add(
+            ScheduleRunModel(
+                id=run_id,
+                scheduled_count=len(scheduled_orders),
+                blocked_count=len(blocked_orders),
+            )
+        )
+        for order in scheduled_orders:
+            self.session.add(
+                ScheduleStepModel(
+                    id=new_id("step"),
+                    run_id=run_id,
+                    position=position,
+                    order_id=order["id"],
+                    order_type=self._enum_value(order["order_type"]),
+                    sample_name=order["sample_name"],
+                    certification_type=self._enum_value(order["certification_type"]),
+                    status=self._enum_value(order["status"]),
+                )
+            )
+            position += 1
+            for step in order.get("steps", []):
+                self.session.add(
+                    ScheduleStepModel(
+                        id=new_id("step"),
+                        run_id=run_id,
+                        position=position,
+                        order_id=order["id"],
+                        order_type=self._enum_value(order["order_type"]),
+                        sample_name=order["sample_name"],
+                        certification_type=self._enum_value(order["certification_type"]),
+                        status=self._enum_value(order["status"]),
+                        project_id=step.get("project_id"),
+                        project_type=step.get("project_type"),
+                        equipment_type=step.get("equipment_type"),
+                        sequence=step.get("sequence"),
+                        start_minute=step.get("start_minute"),
+                        duration_minutes=step.get("duration_minutes"),
+                        end_minute=step.get("end_minute"),
+                        batch_count=step.get("batch_count"),
+                        required_batches=step.get("required_batches"),
+                    )
+                )
+                position += 1
+        for order in blocked_orders:
+            self.session.add(
+                ScheduleStepModel(
+                    id=new_id("step"),
+                    run_id=run_id,
+                    position=position,
+                    order_id=order["id"],
+                    order_type=self._enum_value(order["order_type"]),
+                    sample_name=order["sample_name"],
+                    certification_type=self._enum_value(order["certification_type"]),
+                    status=self._enum_value(order["status"]),
+                    blocked_reason=order.get("reason"),
+                )
+            )
+            position += 1
+        self.session.commit()
+        return self.get(run_id)
+
+    def list_runs(self) -> list[dict]:
+        runs = self.session.scalars(select(ScheduleRunModel).order_by(ScheduleRunModel.created_at.desc())).all()
+        return [self._run_to_dict(run) for run in runs]
+
+    def latest(self) -> dict | None:
+        run = self.session.scalars(select(ScheduleRunModel).order_by(ScheduleRunModel.created_at.desc())).first()
+        return self._run_to_dict(run) if run else None
+
+    def get(self, run_id: str) -> dict | None:
+        run = self.session.get(ScheduleRunModel, run_id)
+        if run is None:
+            return None
+        steps = self.session.scalars(
+            select(ScheduleStepModel)
+            .where(ScheduleStepModel.run_id == run_id)
+            .order_by(ScheduleStepModel.position.asc())
+        ).all()
+        return {
+            **self._run_to_dict(run),
+            "steps": [self._step_to_dict(step) for step in steps],
+        }
+
+    def _run_to_dict(self, run: ScheduleRunModel) -> dict:
+        return {
+            "id": run.id,
+            "scheduled_count": run.scheduled_count,
+            "blocked_count": run.blocked_count,
+            "created_at": run.created_at,
+        }
+
+    def _step_to_dict(self, step: ScheduleStepModel) -> dict:
+        return {
+            "id": step.id,
+            "run_id": step.run_id,
+            "position": step.position,
+            "order_id": step.order_id,
+            "order_type": step.order_type,
+            "sample_name": step.sample_name,
+            "certification_type": step.certification_type,
+            "status": step.status,
+            "project_id": step.project_id,
+            "project_type": step.project_type,
+            "equipment_type": step.equipment_type,
+            "sequence": step.sequence,
+            "start_minute": step.start_minute,
+            "duration_minutes": step.duration_minutes,
+            "end_minute": step.end_minute,
+            "batch_count": step.batch_count,
+            "required_batches": step.required_batches,
+            "blocked_reason": step.blocked_reason,
+        }
+
+    def _enum_value(self, value):
+        return value.value if hasattr(value, "value") else value

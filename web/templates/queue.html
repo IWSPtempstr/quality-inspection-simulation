@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>队列与排程</h1>
+  <p>查看最新持久化排程批次，或按当前订单重新生成队列。</p>
+</section>
+<section class="panel">
+  <button onclick="rebuildQueue()">重建队列</button>
+  <button onclick="loadQueue()">查看最新队列</button>
+  <pre id="queue-output">等待加载...</pre>
+</section>
+<script>
+async function rebuildQueue() {
+  const response = await fetch('/api/queue/rebuild', {method: 'POST'});
+  document.getElementById('queue-output').textContent = JSON.stringify(await response.json(), null, 2);
+}
+async function loadQueue() {
+  const response = await fetch('/api/queue');
+  document.getElementById('queue-output').textContent = JSON.stringify(await response.json(), null, 2);
+}
+loadQueue();
+</script>
+{% endblock %}
+

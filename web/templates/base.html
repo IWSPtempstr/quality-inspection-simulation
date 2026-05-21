@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} - 电器产品质量检测多Agent仿真系统</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">电器产品质量检测多Agent仿真系统</div>
+    <nav>
+      <a href="/">仪表盘</a>
+      <a href="/orders">订单</a>
+      <a href="/queue">队列</a>
+      <a href="/knowledge">知识库</a>
+      <a href="/agents">Agent</a>
+      <a href="/docs">API</a>
+    </nav>
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
+

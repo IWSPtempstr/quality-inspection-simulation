@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>检测队列仪表盘</h1>
+  <p>查看当前队列长度、阻塞数量、设备负载和最新排程状态。</p>
+</section>
+<section class="panel">
+  <button onclick="loadSnapshot()">刷新监测快照</button>
+  <pre id="snapshot">等待加载...</pre>
+</section>
+<script>
+async function loadSnapshot() {
+  const response = await fetch('/api/monitor/snapshot');
+  document.getElementById('snapshot').textContent = JSON.stringify(await response.json(), null, 2);
+}
+loadSnapshot();
+</script>
+{% endblock %}
+

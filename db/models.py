@@ -57,3 +57,34 @@ class QueueEventModel(Base):
     detail: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
+
+class ScheduleRunModel(Base):
+    __tablename__ = "schedule_runs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    scheduled_count: Mapped[int] = mapped_column(Integer, default=0)
+    blocked_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+
+class ScheduleStepModel(Base):
+    __tablename__ = "schedule_steps"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(40), index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    order_id: Mapped[str] = mapped_column(String(40), index=True)
+    order_type: Mapped[str] = mapped_column(String(20), index=True)
+    sample_name: Mapped[str] = mapped_column(String(120))
+    certification_type: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    project_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    project_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    equipment_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    start_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    batch_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    required_batches: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    blocked_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
