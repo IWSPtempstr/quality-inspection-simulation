@@ -1,0 +1,58 @@
+{
+  "dataset_name": "scenario_synthetic_center",
+  "dataset_version": "0.3.0-large",
+  "synthetic": true,
+  "seed": 20260522,
+  "period": {
+    "start_date": "2026-06-01",
+    "end_date": "2026-11-30"
+  },
+  "order_count": 5000,
+  "usage_boundary": "合成数据，仅用于机制验证、压力测试和项目展示，不代表真实机构参数。",
+  "files": [
+    {
+      "path": "generation_config.json",
+      "sha256": "47975d5c98b764e720331c28d4d8f6406b09d19c7de496eb21ea60f020cfa7a2"
+    },
+    {
+      "path": "equipment_catalog.json",
+      "sha256": "b11c1f1b9e782673c3589abd4d60ba610721d3380aae2fc54c073cadd41c0c2a"
+    },
+    {
+      "path": "project_catalog.json",
+      "sha256": "099443e88e53c18cea99aa52936cc358d99513ca4f0d4f8d3cfc852f61ce4256"
+    },
+    {
+      "path": "order_arrivals.json",
+      "sha256": "4104f375370fda02f202b0731e4f413e9c318115aabfbaffbb4809e09806bf2b"
+    },
+    {
+      "path": "priority_rules.json",
+      "sha256": "c42414ffa35612eef0ca427b8c3ef59faa708f1f0d0623198dcf742b839624ba"
+    },
+    {
+      "path": "operations_constraints.json",
+      "sha256": "e72707f0610a592e68cf135e29e14f18b608cdadcfbe850f4ec6d1d694192843"
+    },
+    {
+      "path": "knowledge_base/certification_flows.md",
+      "sha256": "78d565d5f18adac7dca6523b2c03114cafee02f97c23fa51e3b8b2f8ff68de37"
+    },
+    {
+      "path": "knowledge_base/equipment_constraints.md",
+      "sha256": "aa879d76d2b81b24be611c66b517fdfccc2ba1af84bd86de462be0a3fa7235be"
+    },
+    {
+      "path": "knowledge_base/priority_rules.md",
+      "sha256": "761e55b71ba876064200bdb90c8420566460f83bf3cbdad859138fe6205f7b21"
+    },
+    {
+      "path": "knowledge_base/operations_constraints.md",
+      "sha256": "de9155c328bfa75c9f55396a6f464b40393185afbc46dfe61e67a90a92d9d99c"
+    },
+    {
+      "path": "README.md",
+      "sha256": "910a7800aea70393b5c4e6dd35521b64f9118be278b19cd4e5e306645b3784e2"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "calendar": {
+    "timezone": "Asia/Shanghai",
+    "working_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+    ],
+    "closed_days": [
+      "saturday",
+      "sunday"
+    ]
+  },
+  "shifts": [
+    {
+      "shift_id": "intake_morning",
+      "start": "09:00",
+      "end": "12:00",
+      "available_for": [
+        "sample_intake",
+        "preparation"
+      ]
+    },
+    {
+      "shift_id": "lab_day",
+      "start": "09:00",
+      "end": "18:00",
+      "available_for": [
+        "safety_check",
+        "emc_check",
+        "performance_check",
+        "cb_review"
+      ]
+    },
+    {
+      "shift_id": "environment_continuous",
+      "start": "09:00",
+      "end": "18:00",
+      "available_for": [
+        "environmental_check"
+      ],
+      "can_continue_during_lunch": true
+    }
+  ],
+  "breaks": [
+    {
+      "name": "lunch",
+      "start": "12:00",
+      "end": "13:00",
+      "staff_available": false
+    }
+  ],
+  "staff_roles": [
+    {
+      "role": "safety_engineer",
+      "staff_count": 4,
+      "skills": [
+        "safety_check"
+      ]
+    },
+    {
+      "role": "emc_engineer",
+      "staff_count": 2,
+      "skills": [
+        "emc_check"
+      ]
+    },
+    {
+      "role": "performance_engineer",
+      "staff_count": 3,
+      "skills": [
+        "performance_check"
+      ]
+    },
+    {
+      "role": "environmental_engineer",
+      "staff_count": 2,
+      "skills": [
+        "environmental_check"
+      ]
+    },
+    {
+      "role": "certification_reviewer",
+      "staff_count": 2,
+      "skills": [
+        "cb_review"
+      ]
+    }
+  ],
+  "maintenance_windows": [
+    {
+      "event_id": "maint-emc-001",
+      "equipment_id": "emc_tester-1",
+      "start": "2026-06-10T14:00:00+08:00",
+      "end": "2026-06-10T17:00:00+08:00",
+      "event_type": "planned_maintenance"
+    },
+    {
+      "event_id": "maint-env-001",
+      "equipment_id": "environmental_chamber-2",
+      "start": "2026-06-17T09:00:00+08:00",
+      "end": "2026-06-17T12:00:00+08:00",
+      "event_type": "planned_maintenance"
+    },
+    {
+      "event_id": "maint-safety-001",
+      "equipment_id": "safety_tester-3",
+      "start": "2026-06-24T15:00:00+08:00",
+      "end": "2026-06-24T18:00:00+08:00",
+      "event_type": "planned_maintenance"
+    }
+  ],
+  "failure_events": [
+    {
+      "event_id": "fail-cb-001",
+      "equipment_id": "international_protocol_bench-1",
+      "start": "2026-06-19T10:00:00+08:00",
+      "end": "2026-06-19T12:00:00+08:00",
+      "event_type": "simulated_failure"
+    }
+  ]
+}

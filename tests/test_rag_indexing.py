@@ -8,6 +8,7 @@ def test_reindex_persists_vector_index_and_status(tmp_path, monkeypatch):
     index_dir = tmp_path / "index"
     knowledge_dir.mkdir()
     (knowledge_dir / "ccc.txt").write_text("CCC 强制性认证包含安全检测和电磁兼容检测。", encoding="utf-8")
+    monkeypatch.setenv("ENV_FILE", str(tmp_path / "missing.env"))
     monkeypatch.delenv("EMBEDDING_API_KEY", raising=False)
 
     retriever = KnowledgeRetriever(knowledge_dir, index_dir=index_dir)
@@ -32,6 +33,7 @@ def test_knowledge_api_reindex_and_status(tmp_path, monkeypatch):
     knowledge_dir.mkdir()
     (knowledge_dir / "international.txt").write_text("国际认证包含 CB 资料评审。", encoding="utf-8")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("ENV_FILE", str(tmp_path / "missing.env"))
     monkeypatch.setenv("KNOWLEDGE_BASE_DIR", str(knowledge_dir))
     monkeypatch.setenv("RAG_INDEX_DIR", str(index_dir))
     monkeypatch.delenv("EMBEDDING_API_KEY", raising=False)
@@ -50,4 +52,3 @@ def test_knowledge_api_reindex_and_status(tmp_path, monkeypatch):
     assert reindex_response.status_code == 200
     assert status_response.json()["data"]["index_exists"] is True
     assert search_response.json()["data"][0]["source"] == "international.txt"
-

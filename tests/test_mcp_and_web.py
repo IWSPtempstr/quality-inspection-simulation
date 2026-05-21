@@ -33,6 +33,31 @@ def test_mcp_status_api_exposes_tool_mode(tmp_path, monkeypatch):
     assert response.json()["data"]["mode"] == "fallback"
 
 
+def test_mcp_queue_snapshot_uses_application_schedule_state(tmp_path, monkeypatch):
+    db_path = tmp_path / "mcp-shared.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+
+    app = create_app()
+    client = TestClient(app)
+    create_response = client.post(
+        "/api/orders",
+        json={
+            "order_type": "vip",
+            "sample_name": "共享状态样品",
+            "sample_quantity": 1,
+            "certification_type": "ccc",
+        },
+    )
+    rebuild_response = client.post("/api/queue/rebuild")
+
+    snapshot = app.state.tool_client.get_queue_snapshot()
+
+    assert create_response.status_code == 201
+    assert rebuild_response.status_code == 200
+    assert snapshot["queue_length"] == 1
+    assert snapshot["scheduled_orders"][0]["sample_name"] == "共享状态样品"
+
+
 def test_jinja_management_pages_render(tmp_path, monkeypatch):
     db_path = tmp_path / "web.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")

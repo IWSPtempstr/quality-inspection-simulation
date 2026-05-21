@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Iterable
 
 from sqlalchemy import select
@@ -47,6 +48,8 @@ def order_to_dict(order: OrderModel) -> dict:
         "certification_type": CertificationType(order.certification_type),
         "requested_projects": _json_list(order.requested_projects),
         "status": QueueStatus(order.status),
+        "arrival_time": order.arrival_time,
+        "promised_finish_time": order.promised_finish_time,
         "created_at": order.created_at,
         "updated_at": order.updated_at,
     }
@@ -65,6 +68,8 @@ class OrderRepository:
             certification_type=payload.certification_type.value,
             requested_projects=_json_dump(payload.requested_projects),
             status=QueueStatus.PENDING.value,
+            arrival_time=payload.arrival_time,
+            promised_finish_time=payload.promised_finish_time,
         )
         self.session.add(model)
         self.session.commit()
@@ -193,11 +198,12 @@ class ScheduleRepository:
         blocked_orders = schedule.get("blocked_orders", [])
         position = 0
         self.session.add(
-            ScheduleRunModel(
-                id=run_id,
-                scheduled_count=len(scheduled_orders),
-                blocked_count=len(blocked_orders),
-            )
+                ScheduleRunModel(
+                    id=run_id,
+                    scheduled_count=len(scheduled_orders),
+                    blocked_count=len(blocked_orders),
+                    metrics=_json_dump(schedule.get("metrics", {})),
+                )
         )
         for order in scheduled_orders:
             self.session.add(
@@ -210,6 +216,10 @@ class ScheduleRepository:
                     sample_name=order["sample_name"],
                     certification_type=self._enum_value(order["certification_type"]),
                     status=self._enum_value(order["status"]),
+                    arrival_time=self._parse_datetime(order.get("arrival_time")),
+                    promised_finish_time=self._parse_datetime(order.get("promised_finish_time")),
+                    sla_status=order.get("sla_status"),
+                    delay_minutes=order.get("delay_minutes"),
                 )
             )
             position += 1
@@ -227,12 +237,19 @@ class ScheduleRepository:
                         project_id=step.get("project_id"),
                         project_type=step.get("project_type"),
                         equipment_type=step.get("equipment_type"),
+                        equipment_id=step.get("equipment_id"),
                         sequence=step.get("sequence"),
                         start_minute=step.get("start_minute"),
+                        start_time=self._parse_datetime(step.get("start_time")),
                         duration_minutes=step.get("duration_minutes"),
                         end_minute=step.get("end_minute"),
+                        end_time=self._parse_datetime(step.get("end_time")),
                         batch_count=step.get("batch_count"),
                         required_batches=step.get("required_batches"),
+                        arrival_time=self._parse_datetime(order.get("arrival_time")),
+                        promised_finish_time=self._parse_datetime(order.get("promised_finish_time")),
+                        sla_status=order.get("sla_status"),
+                        delay_minutes=order.get("delay_minutes"),
                     )
                 )
                 position += 1
@@ -248,6 +265,8 @@ class ScheduleRepository:
                     certification_type=self._enum_value(order["certification_type"]),
                     status=self._enum_value(order["status"]),
                     blocked_reason=order.get("reason"),
+                    arrival_time=self._parse_datetime(order.get("arrival_time")),
+                    promised_finish_time=self._parse_datetime(order.get("promised_finish_time")),
                 )
             )
             position += 1
@@ -282,6 +301,7 @@ class ScheduleRepository:
             "scheduled_count": run.scheduled_count,
             "blocked_count": run.blocked_count,
             "created_at": run.created_at,
+            "metrics": json.loads(run.metrics or "{}"),
         }
 
     def _step_to_dict(self, step: ScheduleStepModel) -> dict:
@@ -297,14 +317,28 @@ class ScheduleRepository:
             "project_id": step.project_id,
             "project_type": step.project_type,
             "equipment_type": step.equipment_type,
+            "equipment_id": step.equipment_id,
             "sequence": step.sequence,
             "start_minute": step.start_minute,
+            "start_time": step.start_time,
             "duration_minutes": step.duration_minutes,
             "end_minute": step.end_minute,
+            "end_time": step.end_time,
             "batch_count": step.batch_count,
             "required_batches": step.required_batches,
+            "arrival_time": step.arrival_time,
+            "promised_finish_time": step.promised_finish_time,
+            "sla_status": step.sla_status,
+            "delay_minutes": step.delay_minutes,
             "blocked_reason": step.blocked_reason,
         }
 
     def _enum_value(self, value):
         return value.value if hasattr(value, "value") else value
+
+    def _parse_datetime(self, value):
+        if not value:
+            return None
+        if hasattr(value, "isoformat"):
+            return value
+        return datetime.fromisoformat(value)

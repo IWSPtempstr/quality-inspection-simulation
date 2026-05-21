@@ -1,0 +1,1 @@
+CVC 认证在仿真系统中对应性能检测和环境适应性检测两个步骤。性能检测使用 performance_bench，环境适应性检测使用 environmental_chamber。

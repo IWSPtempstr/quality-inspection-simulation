@@ -2,5 +2,8 @@ __pycache__/
 .pytest_cache/
 *.pyc
 data/*.db
+data/_validation_tmp/
+data/_synthetic_validation_tmp/
+data/_synthetic_large_validation_tmp/
 rag/index/
 .env

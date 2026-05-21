@@ -6,8 +6,8 @@ from services.simulation_service import SimulationService
 from services.tool_client import LocalSimulationToolClient
 
 
-def test_rag_retriever_returns_relevant_certification_context():
-    retriever = KnowledgeRetriever(Path("rag/knowledge_base"))
+def test_rag_retriever_returns_relevant_certification_context(tmp_path):
+    retriever = KnowledgeRetriever(Path("rag/knowledge_base"), index_dir=tmp_path / "index")
 
     results = retriever.search("CCC 强制性认证 安全检测", top_k=2)
 

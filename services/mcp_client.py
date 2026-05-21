@@ -21,11 +21,13 @@ class McpToolClient:
         command: str,
         args: list[str],
         fallback_client: LocalSimulationToolClient,
+        adapter_type: str = "simulation",
         env: dict[str, str] | None = None,
         cwd: str | Path | None = None,
     ) -> None:
         self.command = command
         self.args = args
+        self.adapter_type = adapter_type
         self.env = env or {}
         self.cwd = Path(cwd) if cwd else None
         self.fallback_client = fallback_client
@@ -36,12 +38,16 @@ class McpToolClient:
             return {
                 "mode": "fallback",
                 "available": False,
+                "adapter_type": self.adapter_type,
+                "stateful_tools_mode": "application_shared",
                 "command": self.command,
                 "args": self.args,
             }
         return {
             "mode": "stdio",
             "available": True,
+            "adapter_type": self.adapter_type,
+            "stateful_tools_mode": "application_shared",
             "command": self.command,
             "args": self.args,
         }
@@ -50,7 +56,7 @@ class McpToolClient:
         return self._call_or_fallback("get_equipment_status", {}, self.fallback_client.get_equipment_status)
 
     def get_queue_snapshot(self) -> dict:
-        return self._call_or_fallback("get_queue_snapshot", {}, self.fallback_client.get_queue_snapshot)
+        return self.fallback_client.get_queue_snapshot()
 
     def reserve_equipment_slot(
         self,
@@ -60,22 +66,12 @@ class McpToolClient:
         duration_minutes: int,
         sample_quantity: int,
     ) -> dict:
-        return self._call_or_fallback(
-            "reserve_equipment_slot",
-            {
-                "equipment_type": equipment_type,
-                "order_id": order_id,
-                "start_minute": start_minute,
-                "duration_minutes": duration_minutes,
-                "sample_quantity": sample_quantity,
-            },
-            lambda: self.fallback_client.reserve_equipment_slot(
-                equipment_type=equipment_type,
-                order_id=order_id,
-                start_minute=start_minute,
-                duration_minutes=duration_minutes,
-                sample_quantity=sample_quantity,
-            ),
+        return self.fallback_client.reserve_equipment_slot(
+            equipment_type=equipment_type,
+            order_id=order_id,
+            start_minute=start_minute,
+            duration_minutes=duration_minutes,
+            sample_quantity=sample_quantity,
         )
 
     def _command_available(self) -> bool:

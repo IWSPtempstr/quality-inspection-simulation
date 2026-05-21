@@ -1,0 +1,149 @@
+{
+  "description": "合成设备台账，字段 d 表示设备数量，capacity_n 表示单台设备单次批处理容量。",
+  "equipment_types": [
+    {
+      "equipment_type": "safety_tester",
+      "display_name": "安全性能测试台",
+      "d": 4,
+      "capacity_n": 3,
+      "supported_project_types": [
+        "safety_check"
+      ],
+      "maintenance_group": "electrical_safety",
+      "instances": [
+        {
+          "equipment_id": "safety_tester-1",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-2",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-3",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-4",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "maintenance_group": "electrical_safety"
+        }
+      ]
+    },
+    {
+      "equipment_type": "emc_tester",
+      "display_name": "电磁兼容测试系统",
+      "d": 2,
+      "capacity_n": 1,
+      "supported_project_types": [
+        "emc_check"
+      ],
+      "maintenance_group": "emc",
+      "instances": [
+        {
+          "equipment_id": "emc_tester-1",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-2",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "maintenance_group": "emc"
+        }
+      ]
+    },
+    {
+      "equipment_type": "performance_bench",
+      "display_name": "性能测试台",
+      "d": 3,
+      "capacity_n": 4,
+      "supported_project_types": [
+        "performance_check"
+      ],
+      "maintenance_group": "performance",
+      "instances": [
+        {
+          "equipment_id": "performance_bench-1",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "maintenance_group": "performance"
+        },
+        {
+          "equipment_id": "performance_bench-2",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "maintenance_group": "performance"
+        },
+        {
+          "equipment_id": "performance_bench-3",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "maintenance_group": "performance"
+        }
+      ]
+    },
+    {
+      "equipment_type": "environmental_chamber",
+      "display_name": "环境试验箱",
+      "d": 2,
+      "capacity_n": 6,
+      "supported_project_types": [
+        "environmental_check"
+      ],
+      "maintenance_group": "environmental",
+      "instances": [
+        {
+          "equipment_id": "environmental_chamber-1",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-2",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "maintenance_group": "environmental"
+        }
+      ]
+    },
+    {
+      "equipment_type": "international_protocol_bench",
+      "display_name": "国际认证资料评审台",
+      "d": 1,
+      "capacity_n": 2,
+      "supported_project_types": [
+        "cb_review"
+      ],
+      "maintenance_group": "certification_review",
+      "instances": [
+        {
+          "equipment_id": "international_protocol_bench-1",
+          "equipment_type": "international_protocol_bench",
+          "status": "idle",
+          "capacity_n": 2,
+          "maintenance_group": "certification_review"
+        }
+      ]
+    }
+  ]
+}

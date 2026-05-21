@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +15,7 @@ from rag.retriever import KnowledgeRetriever
 from services.queue_service import QueueService
 from services.simulation_service import SimulationService
 from services.mcp_client import McpToolClient
+from services.llm_client import OpenAICompatibleLlmClient
 from services.tool_client import LocalSimulationToolClient
 from web import router as web_router
 
@@ -21,6 +24,12 @@ def _seed_reference_data(app: FastAPI) -> None:
     with app.state.session_factory() as session:
         EquipmentRepository(session).seed_if_empty(app.state.simulation_service.seed_equipment())
         DetectionProjectRepository(session).seed_if_empty(app.state.simulation_service.seed_projects())
+
+
+def _load_operations_constraints(path) -> dict:
+    if path and path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return {}
 
 
 def create_app() -> FastAPI:
@@ -41,7 +50,9 @@ def create_app() -> FastAPI:
     session_factory = get_session_factory(settings.database_url)
     create_tables(session_factory)
 
-    simulation_service = SimulationService()
+    simulation_service = SimulationService(
+        operations_constraints=_load_operations_constraints(settings.operations_constraints_path)
+    )
     queue_service = QueueService(simulation_service)
     knowledge_retriever = KnowledgeRetriever(settings.knowledge_base_dir, index_dir=settings.rag_index_dir)
     fallback_tool_client = LocalSimulationToolClient(simulation_service, queue_service)
@@ -49,6 +60,7 @@ def create_app() -> FastAPI:
         command=settings.mcp_server_command,
         args=settings.mcp_server_args or [],
         fallback_client=fallback_tool_client,
+        adapter_type=settings.mcp_adapter_type,
         cwd=settings.mcp_server_cwd,
     )
 
@@ -63,6 +75,8 @@ def create_app() -> FastAPI:
         queue_service=queue_service,
         retriever=knowledge_retriever,
         tool_client=tool_client,
+        agent_configs=settings.agent_configs,
+        llm_client=OpenAICompatibleLlmClient(),
     )
 
     _seed_reference_data(app)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, Protocol, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from sqlalchemy.orm import Session, sessionmaker
@@ -8,9 +8,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from db.repositories import OrderRepository
 from domain.schemas import AgentRunRequest, CertificationType, OrderCreate
 from rag.retriever import KnowledgeRetriever
+from config.settings import AgentModelConfig
 from services.queue_service import QueueService
 from services.simulation_service import SimulationService
-from services.tool_client import LocalSimulationToolClient
+
+
+class ExceptionAnalysisClient(Protocol):
+    def analyze_exception(
+        self,
+        config: AgentModelConfig,
+        snapshot: dict[str, Any],
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        ...
 
 
 class AgentState(TypedDict, total=False):
@@ -32,14 +42,24 @@ class AgentGraphRunner:
         simulation_service: SimulationService,
         queue_service: QueueService,
         retriever: KnowledgeRetriever,
-        tool_client: LocalSimulationToolClient,
+        tool_client: Any,
+        agent_configs: dict[str, AgentModelConfig] | None = None,
+        llm_client: ExceptionAnalysisClient | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.simulation_service = simulation_service
         self.queue_service = queue_service
         self.retriever = retriever
         self.tool_client = tool_client
+        self.agent_configs = agent_configs or {}
+        self.llm_client = llm_client
         self.graph = self._build_graph()
+
+    def public_agent_configs(self) -> dict[str, dict]:
+        return {
+            agent_name: config.public_dict()
+            for agent_name, config in self.agent_configs.items()
+        }
 
     def run(self, request: AgentRunRequest) -> dict[str, Any]:
         initial_state: AgentState = {
@@ -56,6 +76,11 @@ class AgentGraphRunner:
             "visited_agents": final_state.get("visited_agents", []),
             "handoffs": final_state.get("handoffs", []),
             "errors": final_state.get("errors", []),
+            "agent_configs": {
+                agent_name: self.agent_configs[agent_name].public_dict()
+                for agent_name in final_state.get("visited_agents", [])
+                if agent_name in self.agent_configs
+            },
             "result": final_state.get("result", {}),
         }
 
@@ -193,13 +218,34 @@ class AgentGraphRunner:
             "analyze_exception",
         }:
             errors.append(f"unsupported task type: {state.get('task_type')}")
+        analysis = self._deterministic_exception_analysis(snapshot)
+        config = self.agent_configs.get("exception_analyzer")
+        if self.llm_client and config and config.api_key:
+            try:
+                analysis = self.llm_client.analyze_exception(
+                    config=config,
+                    snapshot=self._json_ready(snapshot),
+                    payload=state.get("payload", {}),
+                )
+            except Exception as exc:
+                errors.append(f"exception_analyzer llm failed: {exc}")
+
         return {
-            "result": {
-                "blocked_orders": self._json_ready(snapshot["blocked_orders"]),
-                "blocked_count": snapshot["blocked_count"],
-            },
+            "result": analysis,
             "errors": errors,
             "visited_agents": self._append(state, "exception_analyzer"),
+        }
+
+    def _deterministic_exception_analysis(self, snapshot: dict[str, Any]) -> dict[str, Any]:
+        blocked_orders = self._json_ready(snapshot["blocked_orders"])
+        return {
+            "blocked_orders": blocked_orders,
+            "blocked_count": snapshot["blocked_count"],
+            "analysis": {
+                "mode": "deterministic_fallback",
+                "blocked_count": snapshot["blocked_count"],
+                "blocked_orders": blocked_orders,
+            },
         }
 
     def _append(self, state: AgentState, agent_name: str) -> list[str]:

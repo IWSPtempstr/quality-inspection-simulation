@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
 from math import ceil
 
 from domain.schemas import CertificationType, EquipmentStatus
@@ -9,9 +10,10 @@ from domain.schemas import CertificationType, EquipmentStatus
 class SimulationService:
     """In-memory simulation of laboratory equipment and certification flows."""
 
-    def __init__(self) -> None:
+    def __init__(self, operations_constraints: dict | None = None) -> None:
         self.equipment = self._build_default_equipment()
         self.projects = self._build_default_projects()
+        self.operations_constraints = operations_constraints or {}
         self.reservations: list[dict] = []
 
     def _build_default_equipment(self) -> list[dict]:
@@ -123,6 +125,29 @@ class SimulationService:
     def list_equipment(self) -> list[dict]:
         return [dict(item) for item in self.equipment]
 
+    def equipment_instances_for(self, equipment_type: str) -> list[dict]:
+        return [
+            item
+            for item in self.equipment
+            if item["equipment_type"] == equipment_type and item["status"] != EquipmentStatus.OFFLINE
+        ]
+
+    def maintenance_windows_for(self, equipment_id: str) -> list[dict]:
+        events = [
+            *self.operations_constraints.get("maintenance_windows", []),
+            *self.operations_constraints.get("failure_events", []),
+        ]
+        windows = [
+            {
+                **event,
+                "start_dt": self._parse_datetime(event["start"]),
+                "end_dt": self._parse_datetime(event["end"]),
+            }
+            for event in events
+            if event.get("equipment_id") == equipment_id
+        ]
+        return sorted(windows, key=lambda item: item["start_dt"])
+
     def get_detection_flow(
         self,
         certification_type: CertificationType | str,
@@ -150,6 +175,12 @@ class SimulationService:
         if not equipment:
             return 0
         return max(item["capacity"] for item in equipment)
+
+    def equipment_instance_capacity(self, equipment_id: str) -> int:
+        for item in self.equipment:
+            if item["id"] == equipment_id:
+                return int(item["capacity"])
+        return 0
 
     def required_batches(self, equipment_type: str, sample_quantity: int) -> int:
         capacity = self.equipment_capacity(equipment_type)
@@ -200,3 +231,7 @@ class SimulationService:
             for equipment_type, items in grouped.items()
         }
 
+    def _parse_datetime(self, value: datetime | str) -> datetime:
+        if isinstance(value, datetime):
+            return value
+        return datetime.fromisoformat(value)

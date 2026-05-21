@@ -1,0 +1,1 @@
+国际认证在仿真系统中对应安全检测、电磁兼容检测和 CB 资料评审三个步骤，设备依次为 safety_tester、emc_tester 和 international_protocol_bench。

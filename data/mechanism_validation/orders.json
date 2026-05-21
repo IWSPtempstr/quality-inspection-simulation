@@ -1,0 +1,39 @@
+{
+  "orders": [
+    {
+      "order_type": "vip",
+      "sample_name": "国际认证样品A",
+      "sample_quantity": 3,
+      "certification_type": "international"
+    },
+    {
+      "order_type": "urgent",
+      "sample_name": "CVC认证样品B",
+      "sample_quantity": 4,
+      "certification_type": "cvc"
+    },
+    {
+      "order_type": "normal",
+      "sample_name": "CCC认证样品C",
+      "sample_quantity": 2,
+      "certification_type": "ccc"
+    },
+    {
+      "order_type": "normal",
+      "sample_name": "阻塞样品D",
+      "sample_quantity": 1,
+      "certification_type": "cvc",
+      "requested_projects": [
+        "nonexistent_project"
+      ]
+    }
+  ],
+  "expectations": {
+    "scheduled_order_types": [
+      "vip",
+      "urgent",
+      "normal"
+    ],
+    "blocked_count": 1
+  }
+}

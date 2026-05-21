@@ -56,3 +56,23 @@ def test_agent_run_can_query_queue_and_report_direct_handoff(tmp_path, monkeypat
     assert "queue_scheduler" in data["visited_agents"]
     assert "equipment_monitor" in data["visited_agents"]
     assert data["handoffs"]
+    assert "orchestrator" in data["agent_configs"]
+
+
+def test_agent_configs_endpoint_returns_sanitized_per_agent_config(tmp_path, monkeypatch):
+    db_path = tmp_path / "agent-configs.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("LLM_API_KEY", "secret-key")
+    monkeypatch.setenv("AGENT_QUEUE_SCHEDULER_MODEL", "queue-model")
+    monkeypatch.setenv("AGENT_EXCEPTION_ANALYZER_ENABLE_THINKING", "true")
+
+    client = TestClient(create_app())
+
+    response = client.get("/api/agent/configs")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["queue_scheduler"]["model"] == "queue-model"
+    assert data["queue_scheduler"]["api_key_configured"] is True
+    assert data["exception_analyzer"]["enable_thinking"] is True
+    assert "api_key" not in data["queue_scheduler"]

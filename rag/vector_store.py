@@ -132,6 +132,11 @@ class FaissVectorStore:
         if not self.metadata_path.exists():
             return False
         metadata = json.loads(self.metadata_path.read_text(encoding="utf-8"))
+        if metadata.get("embedding_provider") != self.embedding_provider.name:
+            self.documents = []
+            self.vectors = None
+            self._faiss_index = None
+            return False
         self.documents = [
             KnowledgeDocument(source=item["source"], content=item["content"])
             for item in metadata.get("documents", [])

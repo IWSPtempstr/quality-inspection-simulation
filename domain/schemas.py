@@ -41,6 +41,8 @@ class OrderCreate(BaseModel):
     sample_quantity: int = Field(gt=0)
     certification_type: CertificationType
     requested_projects: list[str] = Field(default_factory=list)
+    arrival_time: datetime | None = None
+    promised_finish_time: datetime | None = None
 
     @field_validator("requested_projects")
     @classmethod
@@ -55,6 +57,8 @@ class OrderUpdate(BaseModel):
     certification_type: CertificationType | None = None
     requested_projects: list[str] | None = None
     status: QueueStatus | None = None
+    arrival_time: datetime | None = None
+    promised_finish_time: datetime | None = None
 
 
 class OrderResponse(BaseModel):
@@ -67,6 +71,8 @@ class OrderResponse(BaseModel):
     certification_type: CertificationType
     requested_projects: list[str]
     status: QueueStatus
+    arrival_time: datetime | None = None
+    promised_finish_time: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -92,4 +98,3 @@ def utc_now() -> datetime:
 
 def new_id(prefix: str) -> str:
     return f"{prefix}-{uuid4().hex[:12]}"
-

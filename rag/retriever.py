@@ -45,7 +45,7 @@ class KnowledgeRetriever:
         return status
 
     def search(self, query: str, top_k: int = 3) -> list[dict]:
-        if not self.store.exists():
+        if not self.store.load():
             self.reindex()
         results = self.store.search(query, top_k)
         if results:
