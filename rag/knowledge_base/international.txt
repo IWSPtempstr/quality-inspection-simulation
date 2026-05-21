@@ -1,0 +1,2 @@
+国际认证在本项目中抽象为与IECEE CB体系、NCB、CBTL等国际互认能力相关的检测任务。仿真流程默认包括安全检测、电磁兼容检测和CB资料评审，设备依次为 safety_tester、emc_tester 和 international_protocol_bench。
+

@@ -1,0 +1,2 @@
+CVC认证在本项目中抽象为自愿性产品认证和质量评价任务。仿真检测流程默认包含性能检测和环境适应性检测，可分别映射到 performance_bench 和 environmental_chamber。
+
