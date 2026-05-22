@@ -92,3 +92,34 @@ def test_synthetic_center_dataset_validates_static_files(tmp_path):
         "api_queue_integration",
         "agent_handoff",
     }
+
+
+def test_synthetic_center_dataset_contains_personnel_transfer_and_preprocessing_constraints(tmp_path):
+    output_dir = tmp_path / "constraints"
+    generate_dataset(output_dir)
+
+    operations = json.loads((output_dir / "operations_constraints.json").read_text(encoding="utf-8"))
+    project_catalog = json.loads((output_dir / "project_catalog.json").read_text(encoding="utf-8"))
+    orders = json.loads((output_dir / "order_arrivals.json").read_text(encoding="utf-8"))["orders"]
+
+    assert operations["employees"]
+    assert operations["transfer_matrix"]
+    assert operations["preprocessing_rules"]
+    assert operations["consumables"]
+    assert operations["lab_areas"]
+
+    first_flow = project_catalog["certification_flows"][0]["steps"][0]
+    assert "operator_requirements" in first_flow
+    assert "lab_area" in first_flow
+    assert "setup_minutes" in first_flow
+
+    first_order = orders[0]
+    assert first_order["preprocessing_profile"]
+    assert first_order["detection_route"][0]["operator_requirements"]
+
+    report = validate_dataset(dataset_dir=output_dir, working_dir=tmp_path / "validation")
+    assert report["summary"]["failed"] == 0
+    catalog_evidence = next(check for check in report["checks"] if check["name"] == "catalog_references")["evidence"]
+    assert catalog_evidence["employee_capacity_valid"]
+    assert catalog_evidence["transfer_rules_valid"]
+    assert catalog_evidence["preprocessing_rules_valid"]

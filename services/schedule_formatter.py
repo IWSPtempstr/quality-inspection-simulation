@@ -46,13 +46,25 @@ def format_schedule_detail(schedule: dict) -> dict:
                 "steps": [],
             },
         )
-        if step.get("project_id"):
+        if step.get("project_id") or step.get("step_kind"):
             order["steps"].append(
                 {
+                    "id": step.get("id"),
+                    "run_id": step.get("run_id"),
+                    "position": step.get("position"),
+                    "step_kind": step.get("step_kind"),
                     "project_id": step.get("project_id"),
                     "project_type": step.get("project_type"),
                     "equipment_type": step.get("equipment_type"),
                     "equipment_id": step.get("equipment_id"),
+                    "lab_area": step.get("lab_area"),
+                    "assigned_employee_ids": step.get("assigned_employee_ids", []),
+                    "resource_ids": step.get("resource_ids", []),
+                    "constraint_detail": step.get("constraint_detail", {}),
+                    "setup_minutes": step.get("setup_minutes"),
+                    "staff_role": step.get("staff_role"),
+                    "consumable_type": step.get("consumable_type"),
+                    "consumable_units": step.get("consumable_units"),
                     "sequence": step.get("sequence"),
                     "start_minute": step.get("start_minute"),
                     "start_time": _serialize(step.get("start_time")),
@@ -61,6 +73,11 @@ def format_schedule_detail(schedule: dict) -> dict:
                     "end_time": _serialize(step.get("end_time")),
                     "batch_count": step.get("batch_count"),
                     "required_batches": step.get("required_batches"),
+                    "execution_status": step.get("execution_status"),
+                    "locked": bool(step.get("locked")),
+                    "actual_start_time": _serialize(step.get("actual_start_time")),
+                    "actual_end_time": _serialize(step.get("actual_end_time")),
+                    "execution_note": step.get("execution_note"),
                 }
             )
 
@@ -73,6 +90,44 @@ def format_schedule_detail(schedule: dict) -> dict:
         "scheduled_orders": list(orders.values()),
         "blocked_orders": blocked_orders,
         "steps": schedule.get("steps", []),
+        "gantt": format_gantt(schedule),
+    }
+
+
+def format_gantt(schedule: dict) -> dict:
+    bars = []
+    for step in schedule.get("steps", []):
+        if not step.get("step_kind") or not step.get("start_time") or not step.get("end_time"):
+            continue
+        resource_id = step.get("equipment_id") or (step.get("resource_ids") or [None])[0]
+        bars.append(
+            {
+                "id": step["id"],
+                "run_id": step["run_id"],
+                "order_id": step["order_id"],
+                "sample_name": step["sample_name"],
+                "step_kind": step.get("step_kind"),
+                "project_type": step.get("project_type"),
+                "resource_id": resource_id,
+                "equipment_type": step.get("equipment_type"),
+                "lab_area": step.get("lab_area"),
+                "start_time": _serialize(step.get("start_time")),
+                "end_time": _serialize(step.get("end_time")),
+                "duration_minutes": step.get("duration_minutes"),
+                "execution_status": step.get("execution_status") or step.get("status"),
+                "locked": bool(step.get("locked")),
+                "assigned_employee_ids": step.get("assigned_employee_ids", []),
+            }
+        )
+    rows = {}
+    for bar in bars:
+        key = bar["resource_id"] or bar["lab_area"] or "unassigned"
+        rows.setdefault(key, []).append(bar)
+    return {
+        "run_id": schedule["id"],
+        "created_at": _serialize(schedule.get("created_at")),
+        "rows": [{"resource_id": key, "bars": value} for key, value in sorted(rows.items())],
+        "bars": bars,
     }
 
 

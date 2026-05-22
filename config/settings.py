@@ -17,6 +17,7 @@ AGENT_NAMES = [
     "rag_retriever",
     "queue_scheduler",
     "equipment_monitor",
+    "notification_agent",
     "exception_analyzer",
 ]
 
@@ -47,6 +48,7 @@ class AgentModelConfig:
 
 @dataclass(frozen=True)
 class Settings:
+    base_dir: Path = BASE_DIR
     app_name: str = "电器产品质量检测多Agent仿真系统"
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'simulation.db'}")
     knowledge_base_dir: Path = BASE_DIR / "rag" / "knowledge_base"
@@ -64,6 +66,11 @@ class Settings:
     mcp_server_args: list[str] | None = None
     mcp_server_cwd: Path = BASE_DIR
     mcp_adapter_type: str = "simulation"
+    scheduler_heartbeat_enabled: bool = True
+    scheduler_heartbeat_interval_seconds: int = 30
+    scheduler_debounce_seconds: int = 30
+    scheduler_immediate_severities: set[str] = field(default_factory=lambda: {"critical", "high"})
+    scheduler_default_strategy: str = "hybrid_weighted"
     agent_configs: dict[str, AgentModelConfig] = field(default_factory=dict)
 
 
@@ -106,6 +113,15 @@ def get_settings() -> Settings:
         mcp_server_args=raw_args.split() if raw_args else default_mcp_args,
         mcp_server_cwd=Path(os.getenv("MCP_SERVER_CWD", str(BASE_DIR))),
         mcp_adapter_type=os.getenv("MCP_ADAPTER_TYPE", "simulation"),
+        scheduler_heartbeat_enabled=_env_bool("SCHEDULER_HEARTBEAT_ENABLED", True),
+        scheduler_heartbeat_interval_seconds=_env_int("SCHEDULER_HEARTBEAT_INTERVAL_SECONDS", 30),
+        scheduler_debounce_seconds=_env_int("SCHEDULER_DEBOUNCE_SECONDS", 30),
+        scheduler_immediate_severities=set(
+            item.strip()
+            for item in os.getenv("SCHEDULER_IMMEDIATE_SEVERITIES", "critical,high").split(",")
+            if item.strip()
+        ),
+        scheduler_default_strategy=os.getenv("SCHEDULER_DEFAULT_STRATEGY", "hybrid_weighted"),
         agent_configs=_load_agent_configs(
             provider=llm_provider,
             api_key=llm_api_key,

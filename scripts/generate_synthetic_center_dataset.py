@@ -19,7 +19,7 @@ TZ = timezone(timedelta(hours=8))
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "dataset_version": "0.2.0",
+    "dataset_version": "0.4.0",
     "seed": 20260521,
     "timezone": "Asia/Shanghai",
     "period": {
@@ -55,7 +55,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 LARGE_CONFIG: dict[str, Any] = {
     **deepcopy(DEFAULT_CONFIG),
-    "dataset_version": "0.3.0-large",
+    "dataset_version": "0.4.0-large",
     "seed": 20260522,
     "period": {
         "start_date": "2026-06-01",
@@ -112,6 +112,7 @@ def _build_equipment_catalog() -> dict[str, Any]:
             "display_name": "安全性能测试台",
             "d": 4,
             "capacity_n": 3,
+            "lab_area": "safety_lab",
             "supported_project_types": ["safety_check"],
             "maintenance_group": "electrical_safety",
         },
@@ -120,6 +121,7 @@ def _build_equipment_catalog() -> dict[str, Any]:
             "display_name": "电磁兼容测试系统",
             "d": 2,
             "capacity_n": 1,
+            "lab_area": "emc_lab",
             "supported_project_types": ["emc_check"],
             "maintenance_group": "emc",
         },
@@ -128,6 +130,7 @@ def _build_equipment_catalog() -> dict[str, Any]:
             "display_name": "性能测试台",
             "d": 3,
             "capacity_n": 4,
+            "lab_area": "performance_lab",
             "supported_project_types": ["performance_check"],
             "maintenance_group": "performance",
         },
@@ -136,6 +139,7 @@ def _build_equipment_catalog() -> dict[str, Any]:
             "display_name": "环境试验箱",
             "d": 2,
             "capacity_n": 6,
+            "lab_area": "environmental_lab",
             "supported_project_types": ["environmental_check"],
             "maintenance_group": "environmental",
         },
@@ -144,6 +148,7 @@ def _build_equipment_catalog() -> dict[str, Any]:
             "display_name": "国际认证资料评审台",
             "d": 1,
             "capacity_n": 2,
+            "lab_area": "review_lab",
             "supported_project_types": ["cb_review"],
             "maintenance_group": "certification_review",
         },
@@ -155,6 +160,7 @@ def _build_equipment_catalog() -> dict[str, Any]:
                 "equipment_type": definition["equipment_type"],
                 "status": "idle",
                 "capacity_n": definition["capacity_n"],
+                "lab_area": definition["lab_area"],
                 "maintenance_group": definition["maintenance_group"],
             }
             for index in range(1, definition["d"] + 1)
@@ -166,6 +172,43 @@ def _build_equipment_catalog() -> dict[str, Any]:
 
 
 def _build_project_catalog() -> dict[str, Any]:
+    profiles = {
+        "safety_check": {
+            "lab_area": "safety_lab",
+            "setup_minutes": 5,
+            "operator_requirements": _operator_requirements(1, ["safety_engineer"], "shared_supervision", "running"),
+            "consumable_type": "safety_probe",
+            "consumable_units_per_batch": 1,
+        },
+        "emc_check": {
+            "lab_area": "emc_lab",
+            "setup_minutes": 10,
+            "operator_requirements": _operator_requirements(3, ["emc_engineer", "assistant_operator"], "exclusive", "running"),
+            "consumable_type": "emc_fixture",
+            "consumable_units_per_batch": 1,
+        },
+        "performance_check": {
+            "lab_area": "performance_lab",
+            "setup_minutes": 5,
+            "operator_requirements": _operator_requirements(1, ["performance_engineer"], "shared_supervision", "running"),
+            "consumable_type": "load_fixture",
+            "consumable_units_per_batch": 1,
+        },
+        "environmental_check": {
+            "lab_area": "environmental_lab",
+            "setup_minutes": 15,
+            "operator_requirements": _operator_requirements(1, ["environmental_engineer"], "setup_only", "setup"),
+            "consumable_type": "environmental_tag",
+            "consumable_units_per_batch": 1,
+        },
+        "cb_review": {
+            "lab_area": "review_lab",
+            "setup_minutes": 0,
+            "operator_requirements": _operator_requirements(1, ["certification_reviewer"], "exclusive", "running"),
+            "consumable_type": "review_sheet",
+            "consumable_units_per_batch": 1,
+        },
+    }
     flows = {
         "ccc": [
             ("ccc-safety", "safety_check", "safety_tester", 1, 35, 45, 70, "safety_engineer"),
@@ -196,12 +239,22 @@ def _build_project_catalog() -> dict[str, Any]:
                         "t_mode": t_mode,
                         "t_max": t_max,
                         "staff_role": staff_role,
+                        **profiles[project_type],
                     }
                     for project_id, project_type, equipment_type, sequence, t_min, t_mode, t_max, staff_role in steps
                 ],
             }
             for certification_type, steps in flows.items()
         ],
+    }
+
+
+def _operator_requirements(count: int, roles: list[str], mode: str, phase: str) -> dict[str, Any]:
+    return {
+        "required_operator_count": count,
+        "required_roles": roles,
+        "supervision_mode": mode,
+        "staff_phase": phase,
     }
 
 
@@ -218,6 +271,14 @@ def _build_priority_rules() -> dict[str, Any]:
 
 def _build_operations_constraints() -> dict[str, Any]:
     return {
+        "lab_areas": [
+            {"lab_area": "intake", "display_name": "样品接收与前处理区"},
+            {"lab_area": "safety_lab", "display_name": "安全实验室"},
+            {"lab_area": "emc_lab", "display_name": "电磁兼容实验室"},
+            {"lab_area": "performance_lab", "display_name": "性能实验室"},
+            {"lab_area": "environmental_lab", "display_name": "环境实验室"},
+            {"lab_area": "review_lab", "display_name": "国际认证评审区"},
+        ],
         "calendar": {
             "timezone": "Asia/Shanghai",
             "working_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
@@ -233,11 +294,63 @@ def _build_operations_constraints() -> dict[str, Any]:
         ],
         "staff_roles": [
             {"role": "safety_engineer", "staff_count": 4, "skills": ["safety_check"]},
-            {"role": "emc_engineer", "staff_count": 2, "skills": ["emc_check"]},
+            {"role": "emc_engineer", "staff_count": 4, "skills": ["emc_check"]},
+            {"role": "assistant_operator", "staff_count": 4, "skills": ["emc_check", "performance_check", "environmental_check"]},
             {"role": "performance_engineer", "staff_count": 3, "skills": ["performance_check"]},
             {"role": "environmental_engineer", "staff_count": 2, "skills": ["environmental_check"]},
             {"role": "certification_reviewer", "staff_count": 2, "skills": ["cb_review"]},
+            {"role": "sample_operator", "staff_count": 3, "skills": ["preprocessing"]},
+            {"role": "transfer_operator", "staff_count": 3, "skills": ["sample_transfer"]},
         ],
+        "employees": [
+            {"employee_id": "emp-safety-1", "name": "安全工程师1", "roles": ["safety_engineer"], "skills": ["safety_check", "safety_tester"], "lab_areas": ["safety_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
+            {"employee_id": "emp-safety-2", "name": "安全工程师2", "roles": ["safety_engineer"], "skills": ["safety_check", "safety_tester"], "lab_areas": ["safety_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
+            {"employee_id": "emp-safety-3", "name": "安全工程师3", "roles": ["safety_engineer"], "skills": ["safety_check", "safety_tester"], "lab_areas": ["safety_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
+            {"employee_id": "emp-safety-4", "name": "安全工程师4", "roles": ["safety_engineer"], "skills": ["safety_check", "safety_tester"], "lab_areas": ["safety_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
+            {"employee_id": "emp-emc-1", "name": "EMC工程师1", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-emc-2", "name": "EMC工程师2", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-emc-3", "name": "EMC工程师3", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-assistant-1", "name": "助理操作员1", "roles": ["assistant_operator"], "skills": ["emc_check", "performance_check"], "lab_areas": ["emc_lab", "performance_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-assistant-2", "name": "助理操作员2", "roles": ["assistant_operator"], "skills": ["emc_check", "environmental_check"], "lab_areas": ["emc_lab", "environmental_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-assistant-3", "name": "助理操作员3", "roles": ["assistant_operator"], "skills": ["emc_check"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-performance-1", "name": "性能工程师1", "roles": ["performance_engineer"], "skills": ["performance_check", "performance_bench"], "lab_areas": ["performance_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
+            {"employee_id": "emp-performance-2", "name": "性能工程师2", "roles": ["performance_engineer"], "skills": ["performance_check", "performance_bench"], "lab_areas": ["performance_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
+            {"employee_id": "emp-environment-1", "name": "环境工程师1", "roles": ["environmental_engineer"], "skills": ["environmental_check", "environmental_chamber"], "lab_areas": ["environmental_lab"], "shift_id": "lab_day", "max_parallel_assignments": 3},
+            {"employee_id": "emp-environment-2", "name": "环境工程师2", "roles": ["environmental_engineer"], "skills": ["environmental_check", "environmental_chamber"], "lab_areas": ["environmental_lab"], "shift_id": "lab_day", "max_parallel_assignments": 3},
+            {"employee_id": "emp-review-1", "name": "认证评审员1", "roles": ["certification_reviewer"], "skills": ["cb_review"], "lab_areas": ["review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-review-2", "name": "认证评审员2", "roles": ["certification_reviewer"], "skills": ["cb_review"], "lab_areas": ["review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-prep-1", "name": "样品前处理员1", "roles": ["sample_operator"], "skills": ["preprocessing"], "lab_areas": ["intake"], "shift_id": "intake_morning", "max_parallel_assignments": 1},
+            {"employee_id": "emp-prep-2", "name": "样品前处理员2", "roles": ["sample_operator"], "skills": ["preprocessing"], "lab_areas": ["intake"], "shift_id": "intake_morning", "max_parallel_assignments": 1},
+            {"employee_id": "emp-prep-3", "name": "样品前处理员3", "roles": ["sample_operator"], "skills": ["preprocessing"], "lab_areas": ["intake"], "shift_id": "intake_morning", "max_parallel_assignments": 1},
+            {"employee_id": "emp-transfer-1", "name": "转运员1", "roles": ["transfer_operator"], "skills": ["sample_transfer"], "lab_areas": ["intake", "safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-transfer-2", "name": "转运员2", "roles": ["transfer_operator"], "skills": ["sample_transfer"], "lab_areas": ["intake", "safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-transfer-3", "name": "转运员3", "roles": ["transfer_operator"], "skills": ["sample_transfer"], "lab_areas": ["intake", "safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+        ],
+        "preprocessing_resources": [
+            {"resource_id": "prep-1", "resource_type": "prep_station"},
+            {"resource_id": "prep-2", "resource_type": "prep_station"},
+        ],
+        "preprocessing_rules": {
+            "default": {
+                "required_minutes": 15,
+                "lab_area": "intake",
+                "required_roles": ["sample_operator"],
+                "resource_type": "prep_station",
+                "required_operator_count": 1,
+            }
+        },
+        "transfer_resources": [
+            {"resource_id": "cart-1", "resource_type": "transfer_cart"},
+            {"resource_id": "cart-2", "resource_type": "transfer_cart"},
+        ],
+        "transfer_matrix": _build_transfer_matrix(),
+        "consumables": {
+            "safety_probe": {"daily_capacity": 80},
+            "emc_fixture": {"daily_capacity": 45},
+            "load_fixture": {"daily_capacity": 70},
+            "environmental_tag": {"daily_capacity": 65},
+            "review_sheet": {"daily_capacity": 60},
+        },
         "maintenance_windows": [
             {"event_id": "maint-emc-001", "equipment_id": "emc_tester-1", "start": "2026-06-10T14:00:00+08:00", "end": "2026-06-10T17:00:00+08:00", "event_type": "planned_maintenance"},
             {"event_id": "maint-env-001", "equipment_id": "environmental_chamber-2", "start": "2026-06-17T09:00:00+08:00", "end": "2026-06-17T12:00:00+08:00", "event_type": "planned_maintenance"},
@@ -247,6 +360,46 @@ def _build_operations_constraints() -> dict[str, Any]:
             {"event_id": "fail-cb-001", "equipment_id": "international_protocol_bench-1", "start": "2026-06-19T10:00:00+08:00", "end": "2026-06-19T12:00:00+08:00", "event_type": "simulated_failure"}
         ],
     }
+
+
+def _build_transfer_matrix() -> dict[str, dict[str, Any]]:
+    lab_areas = ["safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"]
+    durations = {
+        "intake->safety_lab": 8,
+        "intake->emc_lab": 10,
+        "intake->performance_lab": 10,
+        "intake->environmental_lab": 12,
+        "intake->review_lab": 8,
+        "safety_lab->emc_lab": 10,
+        "emc_lab->safety_lab": 10,
+        "safety_lab->performance_lab": 12,
+        "performance_lab->safety_lab": 12,
+        "safety_lab->environmental_lab": 14,
+        "environmental_lab->safety_lab": 14,
+        "emc_lab->performance_lab": 12,
+        "performance_lab->emc_lab": 12,
+        "emc_lab->environmental_lab": 14,
+        "environmental_lab->emc_lab": 14,
+        "emc_lab->review_lab": 10,
+        "review_lab->emc_lab": 10,
+        "review_lab->safety_lab": 12,
+        "performance_lab->environmental_lab": 12,
+        "environmental_lab->performance_lab": 12,
+    }
+    matrix: dict[str, dict[str, Any]] = {}
+    for source in ["intake", *lab_areas]:
+        for target in lab_areas:
+            if source == target:
+                continue
+            key = f"{source}->{target}"
+            duration = durations.get(key, 15)
+            matrix[key] = {
+                "duration_minutes": duration,
+                "required_roles": ["transfer_operator"],
+                "resource_type": "transfer_cart",
+                "required_operator_count": 1,
+            }
+    return matrix
 
 
 def _build_order_arrivals(config: dict[str, Any], project_catalog: dict[str, Any]) -> dict[str, Any]:
@@ -289,6 +442,7 @@ def _build_order_arrivals(config: dict[str, Any], project_catalog: dict[str, Any
         route_project_ids = [step["project_id"] for step in detection_route]
         requested_projects = _choose_requested_projects(rng, route_project_ids or project_ids_by_cert[certification_type])
         promised_finish = _add_working_days(arrival, int(config["sla_working_days"][order_type]))
+        preprocessing_profile = _preprocessing_profile(sample_quantity, rng)
         orders.append(
             {
                 "order_id": f"syn-order-{index:04d}",
@@ -300,6 +454,12 @@ def _build_order_arrivals(config: dict[str, Any], project_catalog: dict[str, Any
                 "certification_type": certification_type,
                 "requested_projects": requested_projects,
                 "detection_route": detection_route,
+                "preprocessing_profile": preprocessing_profile,
+                "sample_storage_class": rng.choice(["ambient", "humidity_sensitive", "fragile"]),
+                "transfer_requirements": {
+                    "requires_chain_of_custody": order_type in {"vip", "urgent"},
+                    "preferred_resource_type": "transfer_cart",
+                },
                 "promised_finish_time": promised_finish.isoformat(),
                 "source_channel": rng.choice(channels),
                 "synthetic": True,
@@ -356,17 +516,32 @@ def _build_detection_route(
                 "project_id": project_id,
                 "project_type": profile["project_type"],
                 "equipment_type": profile["equipment_type"],
+                "lab_area": profile["lab_area"],
                 "sequence": sequence,
                 "duration_minutes": duration_minutes,
+                "setup_minutes": profile["setup_minutes"],
                 "duration_profile": {
                     "t_min": profile["t_min"],
                     "t_mode": profile["t_mode"],
                     "t_max": profile["t_max"],
                 },
                 "staff_role": profile["staff_role"],
+                "operator_requirements": profile["operator_requirements"],
+                "consumable_type": profile["consumable_type"],
+                "consumable_units_per_batch": profile["consumable_units_per_batch"],
             }
         )
     return route
+
+
+def _preprocessing_profile(sample_quantity: int, rng: random.Random) -> dict[str, Any]:
+    return {
+        "required_minutes": 10 + min(20, sample_quantity * 2) + rng.randint(0, 5),
+        "lab_area": "intake",
+        "required_roles": ["sample_operator"],
+        "resource_type": "prep_station",
+        "required_operator_count": 1,
+    }
 
 
 def _generate_arrival_times(config: dict[str, Any], rng: random.Random) -> list[datetime]:
@@ -479,7 +654,7 @@ def _write_knowledge_base(knowledge_dir: Path) -> None:
         "certification_flows.md": "CCC、CVC、international 三类认证在本合成数据集中分别映射到安全/电磁兼容、性能/环境、国际安全/电磁兼容/CB资料评审流程。所有流程均包含 sequence 字段，用于验证检测步骤先后顺序。",
         "equipment_constraints.md": "设备约束包括设备类型 x、设备数量 d、批处理容量 n、检测耗时分布 t_min/t_mode/t_max，以及设备实例级维护窗口。订单级 detection_route 允许不同订单共享同一设备类型，从而形成资源竞争。",
         "priority_rules.md": "优先级规则采用非抢占式策略，排序为 vip、urgent、normal。已经开始的检测任务不中断，VIP和加急订单只影响尚未开始任务的队列顺序。",
-        "operations_constraints.md": "运营约束包含工作日历、日班、午休不可用、人员角色、技能矩阵、计划维护和模拟故障停机。这些约束用于拟真压力测试和后续资源约束排程扩展。",
+        "operations_constraints.md": "运营约束包含工作日历、日班、午休不可用、员工实例、技能矩阵、样品前处理、跨实验室转运、耗材日配额、计划维护和模拟故障停机。排程验证会检查每个检测步骤至少绑定一名符合技能和实验室区域的操作人员。",
     }
     for filename, content in documents.items():
         (knowledge_dir / filename).write_text(content + "\n", encoding="utf-8")
@@ -501,10 +676,10 @@ def _write_readme(path: Path, config: dict[str, Any]) -> None:
 ## 文件说明
 
 - `equipment_catalog.json`：设备类型、设备数量 d、设备实例、单台批处理容量 n。
-- `project_catalog.json`：认证流程、检测步骤、设备需求、耗时分布 t。
-- `order_arrivals.json`：合成订单到达记录；每个订单包含 `detection_route`，用于表达订单级检测路线、共享设备类型和按 `t_min/t_mode/t_max` 抽样得到的步骤耗时。
+- `project_catalog.json`：认证流程、检测步骤、设备需求、耗时分布 t、实验室区域、人员需求、准备时间和耗材需求。
+- `order_arrivals.json`：合成订单到达记录；每个订单包含 `detection_route`、`preprocessing_profile` 和转运需求，用于表达订单级检测路线、共享设备类型和按 `t_min/t_mode/t_max` 抽样得到的步骤耗时。
 - `priority_rules.json`：非抢占式 VIP/加急优先规则。
-- `operations_constraints.json`：班次、人员、维护和模拟故障。
+- `operations_constraints.json`：班次、员工实例、前处理资源、转运资源、耗材日配额、维护和模拟故障。
 - `knowledge_base/`：用于 RAG 检索的拟真知识文本。
 
 ## 生成与验证

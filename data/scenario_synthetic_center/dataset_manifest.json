@@ -16,15 +16,15 @@
     },
     {
       "path": "equipment_catalog.json",
-      "sha256": "b11c1f1b9e782673c3589abd4d60ba610721d3380aae2fc54c073cadd41c0c2a"
+      "sha256": "4f2df507d0b8847876179ca6c6a0f892f3c4b9f4ec5cf05978e3c2224a0128b3"
     },
     {
       "path": "project_catalog.json",
-      "sha256": "099443e88e53c18cea99aa52936cc358d99513ca4f0d4f8d3cfc852f61ce4256"
+      "sha256": "4ba510f4c83cf2d5f3e1b0c043b95ef4cb0cdf490adfda3aa81fad7fac885b71"
     },
     {
       "path": "order_arrivals.json",
-      "sha256": "66a501ef42b981f03cc5e45e1e4afd215f5a6c990d75a1890e99ee0b4b08912c"
+      "sha256": "9e84579344bff1123ac2a7159d383e63648b10c2b34437ec1164fc5757110dda"
     },
     {
       "path": "priority_rules.json",
@@ -32,7 +32,7 @@
     },
     {
       "path": "operations_constraints.json",
-      "sha256": "e72707f0610a592e68cf135e29e14f18b608cdadcfbe850f4ec6d1d694192843"
+      "sha256": "8f92a94fdc8809371bf9f2da2fc664d723d98ba6c0e5deeb1354a4e25a42fbe2"
     },
     {
       "path": "knowledge_base/certification_flows.md",
@@ -48,11 +48,11 @@
     },
     {
       "path": "knowledge_base/operations_constraints.md",
-      "sha256": "de9155c328bfa75c9f55396a6f464b40393185afbc46dfe61e67a90a92d9d99c"
+      "sha256": "4c6a21f8e0aa4c913fed15a580e8691f413e99c374e5274adc2dc21085c1c3d4"
     },
     {
       "path": "README.md",
-      "sha256": "6a959e4084239a9832e3b40ad0011b53b6f451565910eb708edf7c530bdb3280"
+      "sha256": "86e6aaf76043ff9f554c0f69a331d26025111a2c2cbc34c127800f8854604afb"
     }
   ]
 }

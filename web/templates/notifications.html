@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>员工通知</h1>
+  <p>查看设备空闲、检测完成、样品前处理、样品转运和 SLA 风险提醒。</p>
+</section>
+<section class="panel grid">
+  <div>
+    <button onclick="loadNotifications()">刷新通知</button>
+    <button onclick="advanceClock()">触发到下一条计划时间</button>
+  </div>
+  <pre id="notifications-output">等待加载...</pre>
+</section>
+<script>
+let latestNotifications = [];
+
+async function loadNotifications() {
+  const response = await fetch('/api/notifications');
+  const payload = await response.json();
+  latestNotifications = payload.data || [];
+  document.getElementById('notifications-output').textContent = JSON.stringify(payload, null, 2);
+}
+
+async function advanceClock() {
+  if (!latestNotifications.length) {
+    await loadNotifications();
+  }
+  const target = latestNotifications.find(item => item.status === 'pending')?.planned_trigger_time;
+  const body = target ? {current_time: target} : {delta_minutes: 30};
+  const response = await fetch('/api/simulation/clock/advance', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  document.getElementById('notifications-output').textContent = JSON.stringify(await response.json(), null, 2);
+}
+
+const stream = new EventSource('/api/notifications/stream');
+stream.onmessage = (event) => {
+  const output = document.getElementById('notifications-output');
+  output.textContent = event.data;
+};
+
+loadNotifications();
+</script>
+{% endblock %}

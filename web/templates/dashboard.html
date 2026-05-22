@@ -2,18 +2,47 @@
 {% block content %}
 <section class="hero">
   <h1>检测队列仪表盘</h1>
-  <p>查看当前队列长度、阻塞数量、设备负载和最新排程状态。</p>
+  <p>查看当前队列、SLA、设备负载、数据集验证摘要和事件闭环状态。</p>
 </section>
 <section class="panel">
-  <button onclick="loadSnapshot()">刷新监测快照</button>
-  <pre id="snapshot">等待加载...</pre>
+  <button onclick="loadReport()">刷新监测报告</button>
+  <div id="metric-cards" class="cards"></div>
+  <div class="grid two">
+    <div>
+      <h2>合成数据集验证摘要</h2>
+      <div id="dataset-report" class="table-like"></div>
+    </div>
+    <div>
+      <h2>事件闭环</h2>
+      <pre id="event-report">等待加载...</pre>
+    </div>
+  </div>
 </section>
 <script>
-async function loadSnapshot() {
-  const response = await fetch('/api/monitor/snapshot');
-  document.getElementById('snapshot').textContent = JSON.stringify(await response.json(), null, 2);
+async function loadReport() {
+  const response = await fetch('/api/monitor/report');
+  const payload = await response.json();
+  const report = payload.data;
+  const metrics = report.latest_schedule.metrics || {};
+  document.getElementById('metric-cards').innerHTML = [
+    ['排程批次', report.latest_schedule.run_id || '-'],
+    ['已排订单', report.latest_schedule.scheduled_count],
+    ['阻塞订单', report.latest_schedule.blocked_count],
+    ['准时率', metrics.on_time_rate ?? '-'],
+    ['平均等待分钟', metrics.average_wait_minutes ?? '-'],
+    ['转运等待分钟', metrics.transfer_wait_minutes ?? '-']
+  ].map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`).join('');
+  document.getElementById('dataset-report').innerHTML = report.dataset_reports.map(item => `
+    <div class="row">
+      <strong>${item.dataset}</strong>
+      <span>${item.order_count} 单</span>
+      <span>设备 ${item.equipment_instance_count}</span>
+      <span>员工 ${item.employee_count}</span>
+      <span>最大路线 ${item.max_route_length} 步</span>
+    </div>
+  `).join('');
+  document.getElementById('event-report').textContent = JSON.stringify(report.event_summary, null, 2);
 }
-loadSnapshot();
+loadReport();
 </script>
 {% endblock %}
-

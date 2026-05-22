@@ -7,18 +7,54 @@
 <section class="panel">
   <button onclick="rebuildQueue()">重建队列</button>
   <button onclick="loadQueue()">查看最新队列</button>
+  <button onclick="loadOptions()">比较策略</button>
+  <div id="gantt" class="gantt"></div>
   <pre id="queue-output">等待加载...</pre>
 </section>
 <script>
 async function rebuildQueue() {
   const response = await fetch('/api/queue/rebuild', {method: 'POST'});
-  document.getElementById('queue-output').textContent = JSON.stringify(await response.json(), null, 2);
+  const payload = await response.json();
+  document.getElementById('queue-output').textContent = JSON.stringify(payload, null, 2);
+  renderGantt(payload.data.gantt);
 }
 async function loadQueue() {
   const response = await fetch('/api/queue');
+  const payload = await response.json();
+  document.getElementById('queue-output').textContent = JSON.stringify(payload, null, 2);
+  renderGantt(payload.data.gantt);
+}
+async function loadOptions() {
+  const response = await fetch('/api/agent/run', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({task_type: 'analyze_schedule_options', payload: {}})
+  });
   document.getElementById('queue-output').textContent = JSON.stringify(await response.json(), null, 2);
+}
+function renderGantt(gantt) {
+  const target = document.getElementById('gantt');
+  if (!gantt || !gantt.rows || !gantt.rows.length) {
+    target.innerHTML = '';
+    return;
+  }
+  const times = gantt.bars.map(item => [Date.parse(item.start_time), Date.parse(item.end_time)]).flat();
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+  const span = Math.max(1, max - min);
+  target.innerHTML = gantt.rows.map(row => `
+    <div class="gantt-row">
+      <div class="gantt-label">${row.resource_id}</div>
+      <div class="gantt-line">
+        ${row.bars.map(bar => {
+          const left = ((Date.parse(bar.start_time) - min) / span) * 100;
+          const width = Math.max(2, ((Date.parse(bar.end_time) - Date.parse(bar.start_time)) / span) * 100);
+          return `<div class="gantt-bar ${bar.locked ? 'locked' : ''}" style="left:${left}%;width:${width}%;" title="${bar.sample_name} ${bar.project_type}">${bar.order_id}</div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
 }
 loadQueue();
 </script>
 {% endblock %}
-

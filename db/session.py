@@ -39,12 +39,76 @@ def _run_sqlite_migrations(engine) -> None:
     if engine.url.get_backend_name() != "sqlite":
         return
     inspector = inspect(engine)
-    if "orders" not in inspector.get_table_names():
+    tables = set(inspector.get_table_names())
+    if "orders" in tables:
+        _add_columns_if_missing(
+            engine,
+            inspector,
+            "orders",
+            {
+                "detection_route": "TEXT DEFAULT '[]'",
+                "preprocessing_profile": "TEXT DEFAULT '{}'",
+                "sample_storage_class": "VARCHAR(80)",
+                "transfer_requirements": "TEXT DEFAULT '{}'",
+                "parent_order_id": "VARCHAR(40)",
+                "retest_reason": "TEXT",
+            },
+        )
+    if "detection_projects" in tables:
+        _add_columns_if_missing(
+            engine,
+            inspector,
+            "detection_projects",
+            {
+                "lab_area": "VARCHAR(80) DEFAULT 'lab'",
+                "setup_minutes": "INTEGER DEFAULT 0",
+                "operator_requirements": "TEXT DEFAULT '{}'",
+                "consumable_type": "VARCHAR(80)",
+                "consumable_units_per_batch": "INTEGER DEFAULT 0",
+            },
+        )
+    if "schedule_steps" in tables:
+        _add_columns_if_missing(
+            engine,
+            inspector,
+            "schedule_steps",
+            {
+                "step_kind": "VARCHAR(40)",
+                "lab_area": "VARCHAR(80)",
+                "assigned_employee_ids": "TEXT DEFAULT '[]'",
+                "resource_ids": "TEXT DEFAULT '[]'",
+                "constraint_detail": "TEXT DEFAULT '{}'",
+                "setup_minutes": "INTEGER",
+                "staff_role": "VARCHAR(80)",
+                "consumable_type": "VARCHAR(80)",
+                "consumable_units": "INTEGER",
+                "execution_status": "VARCHAR(30)",
+                "locked": "INTEGER DEFAULT 0",
+                "actual_start_time": "DATETIME",
+                "actual_end_time": "DATETIME",
+                "execution_note": "TEXT",
+            },
+        )
+    if "scheduling_events" in tables:
+        _add_columns_if_missing(
+            engine,
+            inspector,
+            "scheduling_events",
+            {
+                "source": "VARCHAR(80) DEFAULT 'api'",
+                "error_message": "TEXT",
+            },
+        )
+
+
+def _add_columns_if_missing(engine, inspector, table_name: str, columns: dict[str, str]) -> None:
+    existing = {column["name"] for column in inspector.get_columns(table_name)}
+    missing = [(name, definition) for name, definition in columns.items() if name not in existing]
+    if not missing:
         return
-    columns = {column["name"] for column in inspector.get_columns("orders")}
-    if "detection_route" not in columns:
-        with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE orders ADD COLUMN detection_route TEXT DEFAULT '[]'"))
+    with engine.begin() as connection:
+        for name, definition in missing:
+            connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {name} {definition}"))
 
 
 def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:

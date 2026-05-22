@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from domain.schemas import EquipmentStatus, QueueStatus, utc_now
+from domain.schemas import EquipmentStatus, NotificationStatus, NotificationType, QueueStatus, SchedulingEventStatus, utc_now
 
 
 class Base(DeclarativeBase):
@@ -22,9 +22,14 @@ class OrderModel(Base):
     certification_type: Mapped[str] = mapped_column(String(40), index=True)
     requested_projects: Mapped[str] = mapped_column(Text, default="[]")
     detection_route: Mapped[str] = mapped_column(Text, default="[]")
+    preprocessing_profile: Mapped[str] = mapped_column(Text, default="{}")
+    sample_storage_class: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    transfer_requirements: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(30), default=QueueStatus.PENDING.value, index=True)
     arrival_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     promised_finish_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    parent_order_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    retest_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
@@ -49,6 +54,11 @@ class DetectionProjectModel(Base):
     equipment_type: Mapped[str] = mapped_column(String(80))
     sequence: Mapped[int] = mapped_column(Integer)
     duration_minutes: Mapped[int] = mapped_column(Integer)
+    lab_area: Mapped[str] = mapped_column(String(80), default="lab")
+    setup_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    operator_requirements: Mapped[str] = mapped_column(Text, default="{}")
+    consumable_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    consumable_units_per_batch: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class QueueEventModel(Base):
@@ -59,6 +69,26 @@ class QueueEventModel(Base):
     event_type: Mapped[str] = mapped_column(String(40))
     detail: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class SchedulingEventModel(Base):
+    __tablename__ = "scheduling_events"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(80), index=True)
+    severity: Mapped[str] = mapped_column(String(30), default="medium", index=True)
+    entity_type: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    entity_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    payload: Mapped[str] = mapped_column(Text, default="{}")
+    source: Mapped[str] = mapped_column(String(80), default="api", index=True)
+    status: Mapped[str] = mapped_column(String(30), default=SchedulingEventStatus.PENDING.value, index=True)
+    fingerprint: Mapped[str] = mapped_column(String(160), index=True)
+    debounce_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    schedule_run_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
 class ScheduleRunModel(Base):
@@ -82,10 +112,19 @@ class ScheduleStepModel(Base):
     sample_name: Mapped[str] = mapped_column(String(120))
     certification_type: Mapped[str] = mapped_column(String(40), index=True)
     status: Mapped[str] = mapped_column(String(30), index=True)
+    step_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
     project_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     project_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
     equipment_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
     equipment_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    lab_area: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    assigned_employee_ids: Mapped[str] = mapped_column(Text, default="[]")
+    resource_ids: Mapped[str] = mapped_column(Text, default="[]")
+    constraint_detail: Mapped[str] = mapped_column(Text, default="{}")
+    setup_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    staff_role: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    consumable_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    consumable_units: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -99,3 +138,54 @@ class ScheduleStepModel(Base):
     sla_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
     delay_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blocked_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    execution_status: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    locked: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    actual_start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    actual_end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    execution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class NotificationModel(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    notification_type: Mapped[str] = mapped_column(String(60), index=True)
+    status: Mapped[str] = mapped_column(String(30), default=NotificationStatus.PENDING.value, index=True)
+    severity: Mapped[str] = mapped_column(String(30), default="info", index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    message: Mapped[str] = mapped_column(Text)
+    order_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    run_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    step_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    related_resource_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    planned_trigger_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payload: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(String(40), index=True)
+    permissions: Mapped[str] = mapped_column(Text, default="[]")
+    active: Mapped[int] = mapped_column(Integer, default=1, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class AuditLogModel(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    actor_id: Mapped[str] = mapped_column(String(80), index=True)
+    actor_role: Mapped[str] = mapped_column(String(40), index=True)
+    action: Mapped[str] = mapped_column(String(120), index=True)
+    target_type: Mapped[str] = mapped_column(String(80), index=True)
+    target_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    detail: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)

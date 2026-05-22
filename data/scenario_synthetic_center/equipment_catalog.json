@@ -6,6 +6,7 @@
       "display_name": "安全性能测试台",
       "d": 4,
       "capacity_n": 3,
+      "lab_area": "safety_lab",
       "supported_project_types": [
         "safety_check"
       ],
@@ -16,6 +17,7 @@
           "equipment_type": "safety_tester",
           "status": "idle",
           "capacity_n": 3,
+          "lab_area": "safety_lab",
           "maintenance_group": "electrical_safety"
         },
         {
@@ -23,6 +25,7 @@
           "equipment_type": "safety_tester",
           "status": "idle",
           "capacity_n": 3,
+          "lab_area": "safety_lab",
           "maintenance_group": "electrical_safety"
         },
         {
@@ -30,6 +33,7 @@
           "equipment_type": "safety_tester",
           "status": "idle",
           "capacity_n": 3,
+          "lab_area": "safety_lab",
           "maintenance_group": "electrical_safety"
         },
         {
@@ -37,6 +41,7 @@
           "equipment_type": "safety_tester",
           "status": "idle",
           "capacity_n": 3,
+          "lab_area": "safety_lab",
           "maintenance_group": "electrical_safety"
         }
       ]
@@ -46,6 +51,7 @@
       "display_name": "电磁兼容测试系统",
       "d": 2,
       "capacity_n": 1,
+      "lab_area": "emc_lab",
       "supported_project_types": [
         "emc_check"
       ],
@@ -56,6 +62,7 @@
           "equipment_type": "emc_tester",
           "status": "idle",
           "capacity_n": 1,
+          "lab_area": "emc_lab",
           "maintenance_group": "emc"
         },
         {
@@ -63,6 +70,7 @@
           "equipment_type": "emc_tester",
           "status": "idle",
           "capacity_n": 1,
+          "lab_area": "emc_lab",
           "maintenance_group": "emc"
         }
       ]
@@ -72,6 +80,7 @@
       "display_name": "性能测试台",
       "d": 3,
       "capacity_n": 4,
+      "lab_area": "performance_lab",
       "supported_project_types": [
         "performance_check"
       ],
@@ -82,6 +91,7 @@
           "equipment_type": "performance_bench",
           "status": "idle",
           "capacity_n": 4,
+          "lab_area": "performance_lab",
           "maintenance_group": "performance"
         },
         {
@@ -89,6 +99,7 @@
           "equipment_type": "performance_bench",
           "status": "idle",
           "capacity_n": 4,
+          "lab_area": "performance_lab",
           "maintenance_group": "performance"
         },
         {
@@ -96,6 +107,7 @@
           "equipment_type": "performance_bench",
           "status": "idle",
           "capacity_n": 4,
+          "lab_area": "performance_lab",
           "maintenance_group": "performance"
         }
       ]
@@ -105,6 +117,7 @@
       "display_name": "环境试验箱",
       "d": 2,
       "capacity_n": 6,
+      "lab_area": "environmental_lab",
       "supported_project_types": [
         "environmental_check"
       ],
@@ -115,6 +128,7 @@
           "equipment_type": "environmental_chamber",
           "status": "idle",
           "capacity_n": 6,
+          "lab_area": "environmental_lab",
           "maintenance_group": "environmental"
         },
         {
@@ -122,6 +136,7 @@
           "equipment_type": "environmental_chamber",
           "status": "idle",
           "capacity_n": 6,
+          "lab_area": "environmental_lab",
           "maintenance_group": "environmental"
         }
       ]
@@ -131,6 +146,7 @@
       "display_name": "国际认证资料评审台",
       "d": 1,
       "capacity_n": 2,
+      "lab_area": "review_lab",
       "supported_project_types": [
         "cb_review"
       ],
@@ -141,6 +157,7 @@
           "equipment_type": "international_protocol_bench",
           "status": "idle",
           "capacity_n": 2,
+          "lab_area": "review_lab",
           "maintenance_group": "certification_review"
         }
       ]

@@ -6,7 +6,7 @@
 
 ## 当前版本快照
 
-当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、订单级检测路线、设备实例级调度、排程批次持久化、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
+当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、设备实例级调度、人员实例约束、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、结构化调度解释、通知 Agent、操作审计、排程批次持久化、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
 
 本仓库包含三组验证数据：
 
@@ -48,6 +48,10 @@ API Layer
   ├─ /api/orders       订单增删改查
   ├─ /api/queue        队列查询与重建
   ├─ /api/schedules    历史排程查询
+  ├─ /api/scheduling   排程事件与心跳
+  ├─ /api/notifications 员工通知与 SSE
+  ├─ /api/simulation   仿真时钟
+  ├─ /api/admin        用户权限与操作审计
   ├─ /api/monitor      队列与设备监测快照
   ├─ /api/knowledge    RAG 知识检索与索引重建
   ├─ /api/mcp          MCP 工具状态
@@ -60,11 +64,17 @@ Agent Layer
   ├─ RAG Retriever Agent       认证与设备知识检索
   ├─ Queue Scheduler Agent     队列调度
   ├─ Equipment Monitor Agent   设备状态监测
+  ├─ Notification Agent        排程提醒与仿真时钟
   └─ Exception Analyzer Agent  异常与阻塞分析
 
 Service Layer
   ├─ SimulationService   设备与检测项目仿真
   ├─ QueueService        优先级排序与排程
+  ├─ SchedulingEventService 排程事件写入、去重与查询
+  ├─ SchedulerHeartbeatService 心跳触发与后台消费
+  ├─ SchedulingCoordinatorService queue_scheduler 统一排程入口
+  ├─ ScheduleOptimizerService 候选策略评分
+  ├─ NotificationService 员工提醒生成与触发
   ├─ OpenAICompatibleLlmClient  可选异常分析增强
   ├─ McpToolClient       MCP stdio 调用与 fallback
   └─ ScheduleFormatter   持久化排程输出整理
@@ -74,13 +84,17 @@ DB Layer
   ├─ equipment
   ├─ detection_projects
   ├─ queue_events
+  ├─ scheduling_events
   ├─ schedule_runs
-  └─ schedule_steps
+  ├─ schedule_steps
+  ├─ notifications
+  ├─ users
+  └─ audit_logs
 ```
 
 系统采用混合型多 Agent 架构。Orchestrator 负责统一入口、任务路由和全局状态控制；子 Agent 在明确依赖关系下允许定向通信，例如 Queue Scheduler Agent 可向 Equipment Monitor Agent 请求设备状态，Project Identifier Agent 可向 RAG Retriever Agent 请求认证知识上下文。
 
-当前 Agent 主要是 LangGraph 状态图中的确定性流程节点。`exception_analyzer` 支持在配置 API Key 后调用 OpenAI 兼容 Chat API，用于解释阻塞、延期和瓶颈；调用失败时返回确定性 fallback。其他 Agent 的模型配置已具备读取能力，但尚未把自然语言推理作为核心决策依据。
+当前 Agent 主要是 LangGraph 状态图中的确定性流程节点。`queue_scheduler` 是统一排程协调节点，API 手动重排、Agent 重排和心跳自动重排均通过它进入候选策略分析、排程计算、持久化和通知生成流程，并输出候选策略差异、瓶颈资源和 SLA 风险摘要。`exception_analyzer` 支持在配置 API Key 后调用 OpenAI 兼容 Chat API，用于解释阻塞、延期和瓶颈；调用失败时返回确定性结构化 fallback。其他 Agent 的模型配置已具备读取能力，但尚未把自然语言推理作为核心决策依据。
 
 ## 排程机制
 
@@ -91,10 +105,31 @@ DB Layer
 - 同一检测项目可绑定多个设备实例，排程步骤会记录具体 `equipment_id`，设备数量 `d` 会直接影响并行能力。
 - 单台设备单次容量 `n` 会影响 `required_batches` 和步骤持续时间。
 - 检测步骤按 `sequence` 顺序执行，后续步骤不能早于前序步骤完成。
-- 维护窗口、模拟故障窗口、周末和工作日结束时间会参与排程避让。
-- 系统输出 `sla_status`、`delay_minutes`、平均等待时间、设备利用率、VIP SLA 达成率、加急延误率和阻塞原因分布。
+- 人员采用具体员工实例建模，每个检测步骤至少分配 1 名符合技能、角色和实验室区域要求的员工；部分步骤可配置 3 名及以上员工同时在场。
+- 支持 `exclusive`、`shared_supervision`、`setup_only` 三类人员占用模式。共享监管限定在同一实验室区域、同技能范围和员工并行上限内。
+- 首个检测步骤前可插入样品前处理步骤；相邻步骤跨实验室区域时自动插入样品转运步骤。
+- 设备准备/换型时间、维护窗口、模拟故障窗口、周末、午休、工作日结束时间和耗材日配额会参与排程避让。
+- 系统输出 `sla_status`、`delay_minutes`、平均等待时间、设备利用率、VIP SLA 达成率、加急延误率、人员阻塞、转运等待和阻塞原因分布。
 
-该排程仍属于规则仿真，不包含人员技能容量、跨实验室转运、样品前处理、设备校准准备时间或数学优化求解器。
+该排程仍属于规则仿真和候选策略评分，不声明全局数学最优；默认采用非抢占式重排，已开始检测步骤在业务定义上不应被中断，当前代码层面的自动重排主要面向未开始订单和未开始步骤。
+
+## 事件驱动重排
+
+系统新增 `scheduling_events` 事件表，订单创建、修改、取消会自动写入事件；设备故障、人员不可用、耗材不足、维护变更、检测完成、样品转运和手动重排等突发状况可通过事件 API 写入。事件状态包括 `pending`、`processing`、`done`、`ignored` 和 `failed`。
+
+事件使用 `fingerprint` 和防抖窗口做合并处理，默认 30 秒内的同类事件会被标记为 `ignored`。`SchedulerHeartbeatService` 提供手动触发 API，也会在 FastAPI 启动时按 `SCHEDULER_HEARTBEAT_ENABLED` 和 `SCHEDULER_HEARTBEAT_INTERVAL_SECONDS` 启动后台心跳。高严重度事件（默认 `critical,high`）通过事件 API 写入后会立即触发一次心跳处理。
+
+`queue_scheduler` 是统一排程入口。它读取待处理事件和当前订单，调用 `ScheduleOptimizerService` 生成候选策略，包括 `priority_fifo`、`earliest_due_date`、`shortest_processing_time`、`bottleneck_resource_first` 和 `hybrid_weighted`。候选排程按阻塞订单数、VIP/加急/普通延期分钟、平均等待、设备空闲惩罚、人员阻塞和转运等待进行评分，默认选择评分最低的方案并持久化为 `schedule_runs` 和 `schedule_steps`。
+
+## 执行状态与审计
+
+排程步骤支持运行中和完成回写。`/api/schedules/steps/{step_id}/running` 会把对应检测步骤和订单标记为 `running`，并设置 `locked=true`；后续自动重排会保留该订单已锁定的步骤，只重排未开始订单和未开始步骤。`/api/schedules/steps/{step_id}/complete` 会记录实际完成时间，并在订单所有检测步骤完成后把订单状态回写为 `completed`。
+
+复检通过 `/api/orders/{order_id}/retest` 创建新订单，记录 `parent_order_id` 和 `retest_reason`，并写入 `retest_required` 排程事件。系统同时提供简单的 header 权限模型，默认角色为 `admin`；可通过 `X-User-Role` 和 `X-User-Id` 模拟 `admin/scheduler/operator/viewer`。订单、排程、事件、通知和执行回写会写入 `audit_logs`，用于演示操作审计。
+
+## 算法替代路线
+
+当前规则排程和候选评分仍作为 baseline。可替代算法路线见 [docs/scheduling_algorithm_options.md](docs/scheduling_algorithm_options.md)，重点包括 CP-SAT/约束规划、MILP、元启发式算法、滚动时域重排和强化学习。第一优先级建议是 CP-SAT + 滚动时域，因为它更容易表达设备互斥、人员容量、维护窗口、耗材容量和运行中步骤锁定。
 
 ## 目录结构
 
@@ -112,6 +147,7 @@ project/
 │   ├── mechanism_validation/          # 最小机制验证数据集
 │   ├── scenario_synthetic_center/     # 500 单合成拟真数据集
 │   └── scenario_synthetic_center_large/ # 5000 单大样本合成数据集
+├── docs/                # 算法路线和项目设计文档
 ├── tests/               # pytest 测试
 ├── web/                 # Jinja2 管理页
 ├── app.py               # FastAPI 应用入口
@@ -173,6 +209,11 @@ export OPERATIONS_CONSTRAINTS_PATH=/home/work/workproject2/project/data/scenario
 export MCP_ADAPTER_TYPE=simulation
 export MCP_SERVER_COMMAND=/root/anaconda3/envs/agent-learning/bin/python
 export MCP_SERVER_ARGS="-m mcp_server.simulation_server"
+export SCHEDULER_HEARTBEAT_ENABLED=true
+export SCHEDULER_HEARTBEAT_INTERVAL_SECONDS=30
+export SCHEDULER_DEBOUNCE_SECONDS=30
+export SCHEDULER_IMMEDIATE_SEVERITIES=critical,high
+export SCHEDULER_DEFAULT_STRATEGY=hybrid_weighted
 ```
 
 关键配置说明：
@@ -182,6 +223,7 @@ export MCP_SERVER_ARGS="-m mcp_server.simulation_server"
 - `EMBEDDING_*`：RAG 向量化配置。未配置 `EMBEDDING_API_KEY` 时，系统会使用本地确定性向量 fallback，便于离线测试。
 - `OPERATIONS_CONSTRAINTS_PATH`：合成拟真数据集中的班次、维护、停机等运营约束文件。
 - `MCP_ADAPTER_TYPE`：MCP 工具适配器标签，当前可用值以 `simulation` 为主，真实 LIMS/设备台账适配器仍是后续扩展。
+- `SCHEDULER_*`：排程事件防抖、后台心跳、立即触发严重度和默认候选策略配置。
 
 对于 Qwen 推理模型，若通过普通 chat completion 接口返回业务 JSON 或短文本，建议将对应 Agent 的 `*_ENABLE_THINKING=false`。本项目只在模型名称包含 `qwen` 时向请求体写入 `enable_thinking` 字段。
 
@@ -218,6 +260,43 @@ curl http://127.0.0.1:8002/api/queue
 curl http://127.0.0.1:8002/api/schedules
 ```
 
+写入突发排程事件：
+
+```bash
+curl -X POST http://127.0.0.1:8002/api/scheduling/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "equipment_offline",
+    "severity": "high",
+    "entity_type": "equipment",
+    "entity_id": "safety_tester-1",
+    "payload": {"reason": "simulated failure"}
+  }'
+```
+
+手动触发一次心跳消费：
+
+```bash
+curl -X POST http://127.0.0.1:8002/api/scheduling/heartbeat
+curl http://127.0.0.1:8002/api/scheduling/heartbeat/status
+```
+
+闭环异常事件：
+
+```bash
+curl -X PATCH http://127.0.0.1:8002/api/scheduling/events/{event_id}/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"status": "done", "resolution_note": "已人工确认并关闭"}'
+```
+
+比较候选排程策略：
+
+```bash
+curl -X POST http://127.0.0.1:8002/api/agent/run \
+  -H "Content-Type: application/json" \
+  -d '{"task_type": "analyze_schedule_options", "payload": {}}'
+```
+
 RAG 检索：
 
 ```bash
@@ -248,6 +327,44 @@ curl -X POST http://127.0.0.1:8002/api/agent/run \
   -d '{"task_type": "query_queue", "payload": {}}'
 ```
 
+标记检测步骤运行中与完成：
+
+```bash
+curl -X PATCH http://127.0.0.1:8002/api/schedules/steps/{step_id}/running \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: operator" \
+  -d '{"note": "开始检测"}'
+
+curl -X PATCH http://127.0.0.1:8002/api/schedules/steps/{step_id}/complete \
+  -H "Content-Type: application/json" \
+  -H "X-User-Role: operator" \
+  -d '{"note": "检测完成"}'
+```
+
+创建复检订单：
+
+```bash
+curl -X POST http://127.0.0.1:8002/api/orders/{order_id}/retest \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "检测结果复核不一致"}'
+```
+
+查询甘特图、监控报告和审计：
+
+```bash
+curl http://127.0.0.1:8002/api/schedules/{run_id}/gantt
+curl http://127.0.0.1:8002/api/monitor/report
+curl http://127.0.0.1:8002/api/admin/audit-logs
+curl http://127.0.0.1:8002/api/admin/users
+```
+
+查询通知：
+
+```bash
+curl http://127.0.0.1:8002/api/notifications
+curl -N http://127.0.0.1:8002/api/notifications/stream
+```
+
 ## 管理页
 
 - `/`：检测队列仪表盘
@@ -255,6 +372,7 @@ curl -X POST http://127.0.0.1:8002/api/agent/run \
 - `/queue`：队列与排程
 - `/knowledge`：知识库检索
 - `/agents`：Agent 执行轨迹
+- `/notifications`：员工提醒与仿真通知
 
 管理页通过现有 API 获取数据，不引入 Node、Vue 或 React 构建链。
 
@@ -280,7 +398,7 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
 ```
 
-验证结果为 `37 passed`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
+验证结果为 `48 passed`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
 
 当前测试覆盖：
 
@@ -303,6 +421,10 @@ cd /home/work/workproject2/project
 - 设备实例级并行排程
 - 到达时间感知的非抢占式优先级、维护窗口避让、工作日结束时间约束、SLA 状态和延期分钟数
 - 排程指标：平均等待、设备利用率、VIP SLA 达成率、加急延误率、阻塞原因分布
+- 人员实例约束、多人设备、共享监管、样品前处理、跨实验室转运、设备准备时间和耗材日配额
+- 排程事件写入、去重、防抖、手动心跳、高严重度立即触发、候选策略评分和 queue_scheduler 统一入口
+- Notification Agent、通知持久化、仿真时钟推进和 SSE 接口
+- 运行中步骤锁定、检测完成回写、复检订单、设备预约甘特图、监控报告、权限拦截和操作审计
 - 异常分析 Agent 的 LLM 失败 fallback
 
 ## 当前完成度
@@ -316,23 +438,32 @@ cd /home/work/workproject2/project
 - 检测设备仿真与认证项目仿真流程
 - 队列排序、队列重建、阻塞识别
 - 设备实例级排程：排程步骤记录具体 `equipment_id`，同类多台设备可并行处理
-- 运营约束接入：订单到达时间、承诺完成时间、维护/故障窗口和工作日结束时间参与排程
-- SLA 与运营指标：准时/延期状态、延期分钟数、等待时间、设备利用率和阻塞原因分布
+- 运营约束接入：订单到达时间、承诺完成时间、人员实例、班次、午休、维护/故障窗口、工作日结束时间、前处理、转运、准备时间和耗材日配额参与排程
+- SLA 与运营指标：准时/延期状态、延期分钟数、等待时间、设备利用率、人员阻塞、转运等待和阻塞原因分布
+- 排程事件队列：订单变化和突发状况写入 `scheduling_events`，支持去重、防抖、状态追踪和关联排程批次
+- 心跳重排机制：支持后台周期消费、手动触发、高严重度事件即时触发和并发锁控制
+- 候选策略评分：支持多种规则策略比较，并记录 `selected_strategy` 和 `candidate_scores`
+- 结构化调度解释：输出候选策略排名、瓶颈资源、SLA 风险、阻塞原因和建议动作
+- 执行状态流转：支持步骤运行中锁定、检测完成回写、复检订单和运行中订单重排保留
+- 权限与审计：提供 `admin/scheduler/operator/viewer` 模拟角色、操作审计日志和用户权限查询
 - RAG 索引重建、保存、加载和检索
 - MCP stdio 独立服务入口与本地 fallback
 - MCP 适配器标签：当前为 `simulation`，用于后续替换真实工具源
 - 排程批次和步骤持久化
-- Jinja2 管理页：仪表盘、订单、队列、知识库、Agent轨迹
+- Notification Agent、通知表、仿真时钟、SSE 通知流和通知管理 API
+- Jinja2 管理页：仪表盘、订单、队列、知识库、Agent轨迹、通知面板
 - LangGraph 多 Agent 编排与异常分析 Agent 可选 LLM 调用
 - FastAPI 接口与自动化测试
 
 当前限制：
 
-- FAISS 在当前环境未安装时会自动使用 numpy fallback；安装 `faiss-cpu` 后可切换为 FAISS 后端。
+- 当前环境已安装 `faiss-cpu`，RAG 索引优先使用 FAISS；若其他环境未安装 FAISS，会自动使用 numpy fallback。
 - MCP 独立服务目前封装的是仿真工具，还未接入真实实验室系统。
 - `MCP_ADAPTER_TYPE` 当前是适配器类型标识，不代表已经连通真实 LIMS、设备台账或工时系统。
 - 合成数据集用于机制验证和压力测试，不代表某真实检测中心的设备数量、检测耗时、订单到达分布或插队规则。
-- 调度器已使用设备实例、到达时间、SLA、维护窗口和工作日结束时间，但仍是规则排程；尚未实现人员技能容量、跨实验室转运、样品前处理和复杂优化算法。
+- 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间，但仍是规则排程与候选评分，不是数学优化求解器。
+- 非抢占式约束已覆盖运行中步骤锁定和未开始任务重排；暂停、续跑、人工复核审批流仍是后续扩展。
+- 高严重度事件通过 API 写入后会立即触发一次心跳；后台周期心跳只在 FastAPI 生命周期启动后运行，测试和脚本仍以手动触发为主，以保证验证结果确定。
 - MCP stdio 服务已可独立启动，但需要共享应用状态的工具当前仍通过应用内 fallback 执行；真实外部 MCP 服务适配需要单独设计状态同步或数据库访问边界。
 - 除 `exception_analyzer` 外，其他 Agent 当前仍以确定性流程为主，模型配置属于后续增强入口。
 - 前端管理页以服务端渲染和少量原生 JS 为主，尚未加入权限控制和复杂交互组件。
@@ -341,8 +472,7 @@ cd /home/work/workproject2/project
 
 ## 后续步骤
 
-1. 补齐人员、班次、午休、周末和维护约束的完整资源排程逻辑。
-2. 增强管理页指标展示，形成 500 单和 5000 单合成数据的验证报告。
-3. 扩充异常分析 Agent 的提示词、结构化输出和回归测试。
-4. 将 MCP 工具替换为真实设备台账、LIMS、检测标准库和工时服务适配器，并明确状态同步方式。
-5. 增加订单执行状态流转、设备预约甘特图、异常事件闭环、用户权限和操作审计。
+1. 将 CP-SAT/滚动时域求解器接入 `ScheduleOptimizerService`，与当前规则 baseline 并行对比。
+2. 增加暂停、续跑、返工审批、报告复核等更完整的执行闭环。
+3. 将 MCP 工具替换为真实设备台账、LIMS、检测标准库、人员考勤和工时服务适配器，并明确状态同步方式。
+4. 增加权限模型的真实登录、角色管理和操作审计导出。

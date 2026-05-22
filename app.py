@@ -9,13 +9,22 @@ from fastapi.staticfiles import StaticFiles
 from agents import AgentGraphRunner
 from api import api_routers
 from config.settings import get_settings
-from db.repositories import DetectionProjectRepository, EquipmentRepository
+from db.repositories import DetectionProjectRepository, EquipmentRepository, UserRepository
 from db.session import create_tables, get_session_factory
 from rag.retriever import KnowledgeRetriever
 from services.queue_service import QueueService
 from services.simulation_service import SimulationService
 from services.mcp_client import McpToolClient
 from services.llm_client import OpenAICompatibleLlmClient
+from services.notification_service import NotificationService
+from services.monitoring_service import MonitoringReportService
+from services.scheduler_service import (
+    ScheduleOptimizerService,
+    SchedulerHeartbeatService,
+    SchedulingCoordinatorService,
+    SchedulingEventService,
+)
+from services.security_service import AuditService, PermissionService
 from services.tool_client import LocalSimulationToolClient
 from web import router as web_router
 
@@ -24,6 +33,7 @@ def _seed_reference_data(app: FastAPI) -> None:
     with app.state.session_factory() as session:
         EquipmentRepository(session).seed_if_empty(app.state.simulation_service.seed_equipment())
         DetectionProjectRepository(session).seed_if_empty(app.state.simulation_service.seed_projects())
+        UserRepository(session).seed_if_empty()
 
 
 def _load_operations_constraints(path) -> dict:
@@ -54,6 +64,31 @@ def create_app() -> FastAPI:
         operations_constraints=_load_operations_constraints(settings.operations_constraints_path)
     )
     queue_service = QueueService(simulation_service)
+    notification_service = NotificationService(session_factory)
+    scheduling_event_service = SchedulingEventService(
+        session_factory=session_factory,
+        debounce_seconds=settings.scheduler_debounce_seconds,
+        immediate_severities=settings.scheduler_immediate_severities,
+    )
+    schedule_optimizer = ScheduleOptimizerService(
+        queue_service=queue_service,
+        default_strategy=settings.scheduler_default_strategy,
+    )
+    scheduling_coordinator = SchedulingCoordinatorService(
+        session_factory=session_factory,
+        queue_service=queue_service,
+        notification_service=notification_service,
+        event_service=scheduling_event_service,
+        optimizer=schedule_optimizer,
+    )
+    scheduler_heartbeat_service = SchedulerHeartbeatService(
+        scheduling_coordinator,
+        enabled=settings.scheduler_heartbeat_enabled,
+        interval_seconds=settings.scheduler_heartbeat_interval_seconds,
+    )
+    permission_service = PermissionService()
+    audit_service = AuditService(session_factory)
+    monitoring_report_service = MonitoringReportService(session_factory, settings.base_dir)
     knowledge_retriever = KnowledgeRetriever(settings.knowledge_base_dir, index_dir=settings.rag_index_dir)
     fallback_tool_client = LocalSimulationToolClient(simulation_service, queue_service)
     tool_client = McpToolClient(
@@ -67,6 +102,14 @@ def create_app() -> FastAPI:
     app.state.session_factory = session_factory
     app.state.simulation_service = simulation_service
     app.state.queue_service = queue_service
+    app.state.notification_service = notification_service
+    app.state.scheduling_event_service = scheduling_event_service
+    app.state.schedule_optimizer = schedule_optimizer
+    app.state.scheduling_coordinator = scheduling_coordinator
+    app.state.scheduler_heartbeat_service = scheduler_heartbeat_service
+    app.state.permission_service = permission_service
+    app.state.audit_service = audit_service
+    app.state.monitoring_report_service = monitoring_report_service
     app.state.knowledge_retriever = knowledge_retriever
     app.state.tool_client = tool_client
     app.state.agent_graph = AgentGraphRunner(
@@ -75,11 +118,17 @@ def create_app() -> FastAPI:
         queue_service=queue_service,
         retriever=knowledge_retriever,
         tool_client=tool_client,
+        notification_service=notification_service,
+        scheduling_coordinator=scheduling_coordinator,
+        scheduler_heartbeat_service=scheduler_heartbeat_service,
         agent_configs=settings.agent_configs,
         llm_client=OpenAICompatibleLlmClient(),
     )
 
     _seed_reference_data(app)
+
+    app.router.add_event_handler("startup", scheduler_heartbeat_service.start_background_loop)
+    app.router.add_event_handler("shutdown", scheduler_heartbeat_service.stop_background_loop)
 
     for router in api_routers:
         app.include_router(router)

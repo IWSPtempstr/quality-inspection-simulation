@@ -66,6 +66,99 @@ nav a {
   gap: 18px;
 }
 
+.grid.two {
+  grid-template-columns: 1fr 1fr;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.metric {
+  border: 1px solid #d9e2e7;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fbfc;
+}
+
+.metric span {
+  display: block;
+  color: #52616b;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.metric strong {
+  font-size: 22px;
+}
+
+.table-like {
+  display: grid;
+  gap: 8px;
+}
+
+.table-like .row {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(4, 1fr);
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #e5edf2;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.gantt {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.gantt-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.gantt-label {
+  font-size: 13px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-line {
+  position: relative;
+  min-height: 32px;
+  border: 1px solid #d9e2e7;
+  background: #f8fafc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gantt-bar {
+  position: absolute;
+  top: 5px;
+  height: 20px;
+  min-width: 28px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #176b87;
+  color: #fff;
+  font-size: 11px;
+  line-height: 20px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.gantt-bar.locked {
+  background: #b45309;
+}
+
 form {
   display: grid;
   gap: 12px;
@@ -113,6 +206,11 @@ pre {
   }
 
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-like .row,
+  .gantt-row {
     grid-template-columns: 1fr;
   }
 }

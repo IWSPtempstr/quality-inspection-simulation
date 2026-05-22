@@ -104,8 +104,8 @@ def validate_dataset(
         _record(
             checks,
             "catalog_references",
-            _catalog_references_ok(equipment_catalog, project_catalog, orders),
-            _catalog_reference_evidence(equipment_catalog, project_catalog, orders),
+            _catalog_references_ok(equipment_catalog, project_catalog, orders, operations),
+            _catalog_reference_evidence(equipment_catalog, project_catalog, orders, operations),
         )
         _record(
             checks,
@@ -177,6 +177,9 @@ def _run_integration_checks(
                 "certification_type": order["certification_type"],
                 "requested_projects": order.get("requested_projects", []),
                 "detection_route": order.get("detection_route", []),
+                "preprocessing_profile": order.get("preprocessing_profile"),
+                "sample_storage_class": order.get("sample_storage_class"),
+                "transfer_requirements": order.get("transfer_requirements", {}),
                 "arrival_time": order.get("arrival_time"),
                 "promised_finish_time": order.get("promised_finish_time"),
             }
@@ -188,7 +191,7 @@ def _run_integration_checks(
         scheduled_orders = queue_data.get("scheduled_orders", [])
         schedules_response = client.get("/api/schedules")
         batch_step_seen = any(
-            step.get("required_batches", 0) > 1
+            (step.get("required_batches") or 0) > 1
             for scheduled in scheduled_orders
             for step in scheduled.get("steps", [])
         )
@@ -281,8 +284,13 @@ def _step_within_workday(step: dict[str, Any]) -> bool:
     return 9 <= start.hour < 18 and (end.hour < 18 or (end.hour == 18 and end.minute == 0 and end.second == 0))
 
 
-def _catalog_references_ok(equipment_catalog: dict[str, Any], project_catalog: dict[str, Any], orders: list[dict[str, Any]]) -> bool:
-    evidence = _catalog_reference_evidence(equipment_catalog, project_catalog, orders)
+def _catalog_references_ok(
+    equipment_catalog: dict[str, Any],
+    project_catalog: dict[str, Any],
+    orders: list[dict[str, Any]],
+    operations: dict[str, Any],
+) -> bool:
+    evidence = _catalog_reference_evidence(equipment_catalog, project_catalog, orders, operations)
     return (
         not evidence["missing_equipment_types"]
         and not evidence["missing_route_equipment_types"]
@@ -294,10 +302,18 @@ def _catalog_references_ok(equipment_catalog: dict[str, Any], project_catalog: d
         and evidence["route_durations_valid"]
         and evidence["max_route_length"] >= 4
         and evidence["shared_equipment_seen"]
+        and evidence["employee_capacity_valid"]
+        and evidence["transfer_rules_valid"]
+        and evidence["preprocessing_rules_valid"]
     )
 
 
-def _catalog_reference_evidence(equipment_catalog: dict[str, Any], project_catalog: dict[str, Any], orders: list[dict[str, Any]]) -> dict[str, Any]:
+def _catalog_reference_evidence(
+    equipment_catalog: dict[str, Any],
+    project_catalog: dict[str, Any],
+    orders: list[dict[str, Any]],
+    operations: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     equipment_types = {item["equipment_type"] for item in equipment_catalog["equipment_types"]}
     known_projects: set[str] = set()
     profile_by_project: dict[str, dict[str, Any]] = {}
@@ -332,6 +348,10 @@ def _catalog_reference_evidence(equipment_catalog: dict[str, Any], project_catal
         sum(1 for sequence in route_equipment_sequences if equipment_type in sequence) > 1
         for equipment_type in route_equipment_types
     )
+    operations = operations or {}
+    employee_capacity_valid = _employee_capacity_valid(project_catalog, orders, operations)
+    transfer_rules_valid = _transfer_rules_valid(orders, operations)
+    preprocessing_rules_valid = _preprocessing_rules_valid(orders, operations)
     return {
         "missing_equipment_types": sorted(project_equipment_types - equipment_types),
         "missing_route_equipment_types": sorted(route_equipment_types - equipment_types),
@@ -343,6 +363,9 @@ def _catalog_reference_evidence(equipment_catalog: dict[str, Any], project_catal
         "route_durations_valid": route_durations_valid,
         "max_route_length": max(route_lengths) if route_lengths else 0,
         "shared_equipment_seen": shared_equipment_seen,
+        "employee_capacity_valid": employee_capacity_valid,
+        "transfer_rules_valid": transfer_rules_valid,
+        "preprocessing_rules_valid": preprocessing_rules_valid,
     }
 
 
@@ -355,10 +378,38 @@ def _operations_ok(config: dict[str, Any], equipment_catalog: dict[str, Any], op
         for instance in item["instances"]
     }
     events = [*operations.get("maintenance_windows", []), *operations.get("failure_events", [])]
+    shift_ids = {shift["shift_id"] for shift in operations.get("shifts", [])}
+    lab_areas = {item["lab_area"] for item in operations.get("lab_areas", [])}
+    employees = operations.get("employees", [])
+    preprocessing_resource_types = {item["resource_type"] for item in operations.get("preprocessing_resources", [])}
+    transfer_resource_types = {item["resource_type"] for item in operations.get("transfer_resources", [])}
     return (
         bool(operations.get("shifts"))
         and bool(operations.get("staff_roles"))
+        and bool(operations.get("employees"))
+        and bool(operations.get("lab_areas"))
+        and bool(operations.get("preprocessing_rules"))
+        and bool(operations.get("transfer_matrix"))
+        and bool(operations.get("consumables"))
         and all(role["staff_count"] > 0 for role in operations["staff_roles"])
+        and all(
+            employee.get("employee_id")
+            and employee.get("shift_id") in shift_ids
+            and employee.get("max_parallel_assignments", 0) >= 1
+            and set(employee.get("lab_areas", [])).issubset(lab_areas)
+            for employee in employees
+        )
+        and all(
+            rule.get("resource_type") in preprocessing_resource_types
+            and (rule.get("required_minutes") or 0) > 0
+            for rule in operations.get("preprocessing_rules", {}).values()
+        )
+        and all(
+            rule.get("resource_type") in transfer_resource_types
+            and (rule.get("duration_minutes") or 0) > 0
+            for rule in operations.get("transfer_matrix", {}).values()
+        )
+        and all((entry.get("daily_capacity") or 0) > 0 for entry in operations.get("consumables", {}).values())
         and all(
             event["equipment_id"] in equipment_ids
             and period_start <= datetime.fromisoformat(event["start"]).date() <= period_end
@@ -373,9 +424,96 @@ def _operations_evidence(operations: dict[str, Any]) -> dict[str, Any]:
     return {
         "shift_count": len(operations.get("shifts", [])),
         "staff_role_count": len(operations.get("staff_roles", [])),
+        "employee_count": len(operations.get("employees", [])),
+        "lab_area_count": len(operations.get("lab_areas", [])),
+        "preprocessing_resource_count": len(operations.get("preprocessing_resources", [])),
+        "transfer_resource_count": len(operations.get("transfer_resources", [])),
+        "transfer_rule_count": len(operations.get("transfer_matrix", {})),
+        "consumable_count": len(operations.get("consumables", {})),
         "maintenance_count": len(operations.get("maintenance_windows", [])),
         "failure_count": len(operations.get("failure_events", [])),
     }
+
+
+def _employee_capacity_valid(project_catalog: dict[str, Any], orders: list[dict[str, Any]], operations: dict[str, Any]) -> bool:
+    employees = operations.get("employees", [])
+    if not employees:
+        return False
+    steps = [
+        step
+        for flow in project_catalog.get("certification_flows", [])
+        for step in flow.get("steps", [])
+    ]
+    steps.extend(step for order in orders[:100] for step in order.get("detection_route", []))
+    return all(_has_matching_employee_capacity(step, employees) for step in steps)
+
+
+def _has_matching_employee_capacity(step: dict[str, Any], employees: list[dict[str, Any]]) -> bool:
+    requirements = step.get("operator_requirements") or {}
+    required_count = int(requirements.get("required_operator_count", 1))
+    required_roles = set(requirements.get("required_roles", []))
+    lab_area = step.get("lab_area")
+    project_type = step.get("project_type")
+    equipment_type = step.get("equipment_type")
+    matches = [
+        employee
+        for employee in employees
+        if lab_area in employee.get("lab_areas", [])
+        and (
+            not required_roles
+            or required_roles.intersection(employee.get("roles", []))
+            or project_type in employee.get("skills", [])
+            or equipment_type in employee.get("skills", [])
+        )
+    ]
+    return len(matches) >= required_count
+
+
+def _transfer_rules_valid(orders: list[dict[str, Any]], operations: dict[str, Any]) -> bool:
+    transfer_matrix = operations.get("transfer_matrix", {})
+    transfer_resource_types = {item["resource_type"] for item in operations.get("transfer_resources", [])}
+    if not transfer_matrix or not transfer_resource_types:
+        return False
+    if not all(
+        (rule.get("duration_minutes") or 0) > 0 and rule.get("resource_type") in transfer_resource_types
+        for rule in transfer_matrix.values()
+    ):
+        return False
+    seen_transition = False
+    for order in orders[:200]:
+        labs = [step.get("lab_area") for step in order.get("detection_route", []) if step.get("lab_area")]
+        if order.get("preprocessing_profile") and labs:
+            labs = [order["preprocessing_profile"].get("lab_area"), *labs]
+        for source, target in zip(labs, labs[1:]):
+            if source == target:
+                continue
+            seen_transition = True
+            if f"{source}->{target}" not in transfer_matrix and "default" not in transfer_matrix:
+                return False
+    return seen_transition
+
+
+def _preprocessing_rules_valid(orders: list[dict[str, Any]], operations: dict[str, Any]) -> bool:
+    rules = operations.get("preprocessing_rules", {})
+    resources = {item["resource_type"] for item in operations.get("preprocessing_resources", [])}
+    employees = operations.get("employees", [])
+    if not rules or not resources:
+        return False
+    profiles = [order.get("preprocessing_profile") for order in orders[:200]]
+    if not profiles or not all(profile for profile in profiles):
+        return False
+    for profile in profiles:
+        required_roles = set(profile.get("required_roles", []))
+        lab_area = profile.get("lab_area")
+        if (profile.get("required_minutes") or 0) <= 0 or profile.get("resource_type") not in resources:
+            return False
+        if not any(
+            lab_area in employee.get("lab_areas", [])
+            and required_roles.intersection(employee.get("roles", []))
+            for employee in employees
+        ):
+            return False
+    return True
 
 
 def _rag_knowledge_ok(knowledge_dir: Path) -> bool:

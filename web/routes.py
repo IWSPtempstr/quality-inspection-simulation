@@ -31,3 +31,8 @@ def knowledge(request: Request):
 @router.get("/agents")
 def agents(request: Request):
     return templates.TemplateResponse(request, "agents.html", {"title": "Agent 执行轨迹"})
+
+
+@router.get("/notifications")
+def notifications(request: Request):
+    return templates.TemplateResponse(request, "notifications.html", {"title": "员工通知"})
