@@ -6,12 +6,12 @@
 
 ## 当前版本快照
 
-当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、设备实例级调度、排程批次持久化、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
+当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、订单级检测路线、设备实例级调度、排程批次持久化、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
 
 本仓库包含三组验证数据：
 
 - `data/mechanism_validation/`：最小机制验证数据集，用于验证订单、队列、RAG、MCP 和 Agent 链路是否连通。
-- `data/scenario_synthetic_center/`：500 单合成拟真数据集，用于常规机制验证和指标输出。
+- `data/scenario_synthetic_center/`：500 单合成拟真数据集，用于常规机制验证和指标输出；订单中包含 `detection_route`，用于表达订单级检测路线和共享设备冲突。
 - `data/scenario_synthetic_center_large/`：5000 单合成拟真数据集，用于较大样本压力验证；验证脚本默认对全量数据做静态校验，并抽取前 500 单跑通 API、RAG、排程和 Agent 链路。
 
 数据集均为合成仿真数据，不代表任何真实检测中心的设备数量、检测耗时、订单分布或插队规则。
@@ -280,13 +280,17 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
 ```
 
-验证结果为 `33 passed`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
+验证结果为 `37 passed`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
 
 当前测试覆盖：
 
 - 订单优先级：`vip > urgent > normal`
 - 同优先级按创建时间排序
 - 多步骤检测流程顺序
+- 订单级 `detection_route` 覆盖默认认证流程
+- 旧版 SQLite 订单表自动补齐 `detection_route` 列
+- 检测耗时按 `t_min/t_mode/t_max` 生成浮动值
+- 不同订单共享设备类型时的资源冲突排队
 - 设备容量与批处理计算
 - 设备不可用时的阻塞状态
 - RAG 索引持久化、重建和状态查询

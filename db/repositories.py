@@ -28,7 +28,7 @@ from domain.schemas import (
 )
 
 
-def _json_dump(value: list[str] | dict) -> str:
+def _json_dump(value) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
@@ -39,6 +39,19 @@ def _json_list(value: str | None) -> list[str]:
     return parsed if isinstance(parsed, list) else []
 
 
+def _json_value(value: str | None):
+    if not value:
+        return []
+    return json.loads(value)
+
+
+def _model_dump_list(value) -> list[dict]:
+    return [
+        item.model_dump(mode="json") if hasattr(item, "model_dump") else item
+        for item in (value or [])
+    ]
+
+
 def order_to_dict(order: OrderModel) -> dict:
     return {
         "id": order.id,
@@ -47,6 +60,7 @@ def order_to_dict(order: OrderModel) -> dict:
         "sample_quantity": order.sample_quantity,
         "certification_type": CertificationType(order.certification_type),
         "requested_projects": _json_list(order.requested_projects),
+        "detection_route": _json_value(order.detection_route),
         "status": QueueStatus(order.status),
         "arrival_time": order.arrival_time,
         "promised_finish_time": order.promised_finish_time,
@@ -67,6 +81,7 @@ class OrderRepository:
             sample_quantity=payload.sample_quantity,
             certification_type=payload.certification_type.value,
             requested_projects=_json_dump(payload.requested_projects),
+            detection_route=_json_dump(_model_dump_list(payload.detection_route)),
             status=QueueStatus.PENDING.value,
             arrival_time=payload.arrival_time,
             promised_finish_time=payload.promised_finish_time,
@@ -94,6 +109,8 @@ class OrderRepository:
                 continue
             if key == "requested_projects":
                 setattr(model, key, _json_dump(value))
+            elif key == "detection_route":
+                setattr(model, key, _json_dump(_model_dump_list(value)))
             elif hasattr(value, "value"):
                 setattr(model, key, value.value)
             else:

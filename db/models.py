@@ -21,6 +21,7 @@ class OrderModel(Base):
     sample_quantity: Mapped[int] = mapped_column(Integer)
     certification_type: Mapped[str] = mapped_column(String(40), index=True)
     requested_projects: Mapped[str] = mapped_column(Text, default="[]")
+    detection_route: Mapped[str] = mapped_column(Text, default="[]")
     status: Mapped[str] = mapped_column(String(30), default=QueueStatus.PENDING.value, index=True)
     arrival_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     promised_finish_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

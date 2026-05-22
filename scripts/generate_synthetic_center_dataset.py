@@ -266,6 +266,8 @@ def _build_order_arrivals(config: dict[str, Any], project_catalog: dict[str, Any
         flow["certification_type"]: [step["project_id"] for step in flow["steps"]]
         for flow in project_catalog["certification_flows"]
     }
+    project_profiles = _project_profiles(project_catalog)
+    route_templates = _build_route_templates()
     product_names = {
         "ccc": ["电热水壶", "电源适配器", "插座转换器", "照明灯具", "电线组件"],
         "cvc": ["空气净化器", "电饭煲", "吸尘器", "饮水机", "小型风扇"],
@@ -278,7 +280,14 @@ def _build_order_arrivals(config: dict[str, Any], project_catalog: dict[str, Any
         order_type = order_types[index - 1]
         certification_type = certifications[index - 1]
         sample_quantity = _sample_quantity(rng)
-        requested_projects = _choose_requested_projects(rng, project_ids_by_cert[certification_type])
+        detection_route = _build_detection_route(
+            certification_type=certification_type,
+            route_templates=route_templates,
+            project_profiles=project_profiles,
+            rng=rng,
+        )
+        route_project_ids = [step["project_id"] for step in detection_route]
+        requested_projects = _choose_requested_projects(rng, route_project_ids or project_ids_by_cert[certification_type])
         promised_finish = _add_working_days(arrival, int(config["sla_working_days"][order_type]))
         orders.append(
             {
@@ -290,15 +299,74 @@ def _build_order_arrivals(config: dict[str, Any], project_catalog: dict[str, Any
                 "sample_quantity": sample_quantity,
                 "certification_type": certification_type,
                 "requested_projects": requested_projects,
+                "detection_route": detection_route,
                 "promised_finish_time": promised_finish.isoformat(),
                 "source_channel": rng.choice(channels),
                 "synthetic": True,
             }
         )
     return {
-        "description": "合成订单到达数据；arrival_time 和 promised_finish_time 用于后续时序调度增强，当前 API 集成只消费核心订单字段。",
+        "description": "合成订单到达数据；detection_route 为订单级检测路线，duration_minutes 为基于 t_min/t_mode/t_max 抽样得到的实际仿真耗时。",
         "orders": orders,
     }
+
+
+def _project_profiles(project_catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        step["project_id"]: step
+        for flow in project_catalog["certification_flows"]
+        for step in flow["steps"]
+    }
+
+
+def _build_route_templates() -> dict[str, list[list[str]]]:
+    return {
+        "ccc": [
+            ["ccc-safety", "ccc-emc"],
+            ["ccc-safety", "cvc-environment", "ccc-emc"],
+            ["cvc-environment", "cvc-performance", "ccc-emc", "ccc-safety"],
+        ],
+        "cvc": [
+            ["cvc-performance", "cvc-environment"],
+            ["cvc-environment", "cvc-performance", "ccc-emc", "ccc-safety"],
+            ["ccc-safety", "cvc-performance", "cvc-environment"],
+        ],
+        "international": [
+            ["international-safety", "international-emc", "international-cb"],
+            ["international-emc", "international-cb", "international-safety"],
+            ["cvc-environment", "cvc-performance", "international-emc", "ccc-safety"],
+        ],
+    }
+
+
+def _build_detection_route(
+    certification_type: str,
+    route_templates: dict[str, list[list[str]]],
+    project_profiles: dict[str, dict[str, Any]],
+    rng: random.Random,
+) -> list[dict[str, Any]]:
+    template = rng.choice(route_templates[certification_type])
+    route = []
+    for sequence, project_id in enumerate(template, start=1):
+        profile = project_profiles[project_id]
+        duration_minutes = int(round(rng.triangular(profile["t_min"], profile["t_max"], profile["t_mode"])))
+        duration_minutes = max(profile["t_min"], min(profile["t_max"], duration_minutes))
+        route.append(
+            {
+                "project_id": project_id,
+                "project_type": profile["project_type"],
+                "equipment_type": profile["equipment_type"],
+                "sequence": sequence,
+                "duration_minutes": duration_minutes,
+                "duration_profile": {
+                    "t_min": profile["t_min"],
+                    "t_mode": profile["t_mode"],
+                    "t_max": profile["t_max"],
+                },
+                "staff_role": profile["staff_role"],
+            }
+        )
+    return route
 
 
 def _generate_arrival_times(config: dict[str, Any], rng: random.Random) -> list[datetime]:
@@ -409,7 +477,7 @@ def _write_knowledge_base(knowledge_dir: Path) -> None:
     knowledge_dir.mkdir(parents=True, exist_ok=True)
     documents = {
         "certification_flows.md": "CCC、CVC、international 三类认证在本合成数据集中分别映射到安全/电磁兼容、性能/环境、国际安全/电磁兼容/CB资料评审流程。所有流程均包含 sequence 字段，用于验证检测步骤先后顺序。",
-        "equipment_constraints.md": "设备约束包括设备类型 x、设备数量 d、批处理容量 n、检测耗时分布 t_min/t_mode/t_max，以及设备实例级维护窗口。当前系统主要消费设备类型和批处理容量，实例级数据用于后续增强。",
+        "equipment_constraints.md": "设备约束包括设备类型 x、设备数量 d、批处理容量 n、检测耗时分布 t_min/t_mode/t_max，以及设备实例级维护窗口。订单级 detection_route 允许不同订单共享同一设备类型，从而形成资源竞争。",
         "priority_rules.md": "优先级规则采用非抢占式策略，排序为 vip、urgent、normal。已经开始的检测任务不中断，VIP和加急订单只影响尚未开始任务的队列顺序。",
         "operations_constraints.md": "运营约束包含工作日历、日班、午休不可用、人员角色、技能矩阵、计划维护和模拟故障停机。这些约束用于拟真压力测试和后续资源约束排程扩展。",
     }
@@ -434,7 +502,7 @@ def _write_readme(path: Path, config: dict[str, Any]) -> None:
 
 - `equipment_catalog.json`：设备类型、设备数量 d、设备实例、单台批处理容量 n。
 - `project_catalog.json`：认证流程、检测步骤、设备需求、耗时分布 t。
-- `order_arrivals.json`：合成订单到达记录。
+- `order_arrivals.json`：合成订单到达记录；每个订单包含 `detection_route`，用于表达订单级检测路线、共享设备类型和按 `t_min/t_mode/t_max` 抽样得到的步骤耗时。
 - `priority_rules.json`：非抢占式 VIP/加急优先规则。
 - `operations_constraints.json`：班次、人员、维护和模拟故障。
 - `knowledge_base/`：用于 RAG 检索的拟真知识文本。

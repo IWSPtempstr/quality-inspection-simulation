@@ -24,7 +24,7 @@
     },
     {
       "path": "order_arrivals.json",
-      "sha256": "099dcedc30f535b642c46f4ccac792bd9970048c609d0e54d22a422b61acb4b2"
+      "sha256": "66a501ef42b981f03cc5e45e1e4afd215f5a6c990d75a1890e99ee0b4b08912c"
     },
     {
       "path": "priority_rules.json",
@@ -40,7 +40,7 @@
     },
     {
       "path": "knowledge_base/equipment_constraints.md",
-      "sha256": "aa879d76d2b81b24be611c66b517fdfccc2ba1af84bd86de462be0a3fa7235be"
+      "sha256": "193e6a3ace61b9680c6583395706e01ba27b08b0bf6e3ce21ab80570d9de5b0a"
     },
     {
       "path": "knowledge_base/priority_rules.md",
@@ -52,7 +52,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "a7695ac4a6d070449bf247f4cd99d360c7bf4eb5c26a817409d6e167648b9b6a"
+      "sha256": "6a959e4084239a9832e3b40ad0011b53b6f451565910eb708edf7c530bdb3280"
     }
   ]
 }

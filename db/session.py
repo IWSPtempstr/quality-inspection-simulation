@@ -4,6 +4,8 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from sqlalchemy import create_engine
+from sqlalchemy import inspect
+from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from config.settings import get_settings
@@ -28,7 +30,21 @@ def get_session_factory(database_url: str | None = None) -> sessionmaker[Session
 
 
 def create_tables(session_factory: sessionmaker[Session]) -> None:
-    Base.metadata.create_all(session_factory.kw["bind"])
+    engine = session_factory.kw["bind"]
+    Base.metadata.create_all(engine)
+    _run_sqlite_migrations(engine)
+
+
+def _run_sqlite_migrations(engine) -> None:
+    if engine.url.get_backend_name() != "sqlite":
+        return
+    inspector = inspect(engine)
+    if "orders" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("orders")}
+    if "detection_route" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN detection_route TEXT DEFAULT '[]'"))
 
 
 def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:
@@ -41,4 +57,3 @@ def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:
         raise
     finally:
         session.close()
-

@@ -176,6 +176,7 @@ def _run_integration_checks(
                 "sample_quantity": order["sample_quantity"],
                 "certification_type": order["certification_type"],
                 "requested_projects": order.get("requested_projects", []),
+                "detection_route": order.get("detection_route", []),
                 "arrival_time": order.get("arrival_time"),
                 "promised_finish_time": order.get("promised_finish_time"),
             }
@@ -282,26 +283,66 @@ def _step_within_workday(step: dict[str, Any]) -> bool:
 
 def _catalog_references_ok(equipment_catalog: dict[str, Any], project_catalog: dict[str, Any], orders: list[dict[str, Any]]) -> bool:
     evidence = _catalog_reference_evidence(equipment_catalog, project_catalog, orders)
-    return not evidence["missing_equipment_types"] and not evidence["missing_requested_projects"] and evidence["positive_capacity"] and evidence["positive_durations"] and evidence["valid_d_counts"]
+    return (
+        not evidence["missing_equipment_types"]
+        and not evidence["missing_route_equipment_types"]
+        and not evidence["missing_requested_projects"]
+        and evidence["positive_capacity"]
+        and evidence["positive_durations"]
+        and evidence["valid_d_counts"]
+        and evidence["route_sequences_valid"]
+        and evidence["route_durations_valid"]
+        and evidence["max_route_length"] >= 4
+        and evidence["shared_equipment_seen"]
+    )
 
 
 def _catalog_reference_evidence(equipment_catalog: dict[str, Any], project_catalog: dict[str, Any], orders: list[dict[str, Any]]) -> dict[str, Any]:
     equipment_types = {item["equipment_type"] for item in equipment_catalog["equipment_types"]}
     known_projects: set[str] = set()
+    profile_by_project: dict[str, dict[str, Any]] = {}
     project_equipment_types: set[str] = set()
     positive_durations = True
     for flow in project_catalog["certification_flows"]:
         for step in flow["steps"]:
             known_projects.add(step["project_id"])
+            profile_by_project[step["project_id"]] = step
             project_equipment_types.add(step["equipment_type"])
             positive_durations = positive_durations and min(step["t_min"], step["t_mode"], step["t_max"]) > 0
     requested = {project for order in orders for project in order.get("requested_projects", [])}
+    route_projects = {step.get("project_id") for order in orders for step in order.get("detection_route", [])}
+    route_equipment_types = {step.get("equipment_type") for order in orders for step in order.get("detection_route", [])}
+    route_sequences_valid = all(
+        [step.get("sequence") for step in order.get("detection_route", [])]
+        == list(range(1, len(order.get("detection_route", [])) + 1))
+        for order in orders
+    )
+    route_durations_valid = all(
+        step.get("project_id") in profile_by_project
+        and profile_by_project[step["project_id"]]["t_min"] <= step.get("duration_minutes", 0) <= profile_by_project[step["project_id"]]["t_max"]
+        for order in orders
+        for step in order.get("detection_route", [])
+    )
+    route_lengths = [len(order.get("detection_route", [])) for order in orders]
+    route_equipment_sequences = [
+        tuple(step.get("equipment_type") for step in order.get("detection_route", []))
+        for order in orders
+    ]
+    shared_equipment_seen = any(
+        sum(1 for sequence in route_equipment_sequences if equipment_type in sequence) > 1
+        for equipment_type in route_equipment_types
+    )
     return {
         "missing_equipment_types": sorted(project_equipment_types - equipment_types),
-        "missing_requested_projects": sorted(requested - known_projects),
+        "missing_route_equipment_types": sorted(route_equipment_types - equipment_types),
+        "missing_requested_projects": sorted((requested | route_projects) - known_projects),
         "positive_capacity": all(item["capacity_n"] > 0 for item in equipment_catalog["equipment_types"]),
         "valid_d_counts": all(item["d"] == len(item["instances"]) and item["d"] > 0 for item in equipment_catalog["equipment_types"]),
         "positive_durations": positive_durations,
+        "route_sequences_valid": route_sequences_valid,
+        "route_durations_valid": route_durations_valid,
+        "max_route_length": max(route_lengths) if route_lengths else 0,
+        "shared_equipment_seen": shared_equipment_seen,
     }
 
 

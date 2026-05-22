@@ -14,7 +14,7 @@
 
 - `equipment_catalog.json`：设备类型、设备数量 d、设备实例、单台批处理容量 n。
 - `project_catalog.json`：认证流程、检测步骤、设备需求、耗时分布 t。
-- `order_arrivals.json`：合成订单到达记录。
+- `order_arrivals.json`：合成订单到达记录；每个订单包含 `detection_route`，用于表达订单级检测路线、共享设备类型和按 `t_min/t_mode/t_max` 抽样得到的步骤耗时。
 - `priority_rules.json`：非抢占式 VIP/加急优先规则。
 - `operations_constraints.json`：班次、人员、维护和模拟故障。
 - `knowledge_base/`：用于 RAG 检索的拟真知识文本。

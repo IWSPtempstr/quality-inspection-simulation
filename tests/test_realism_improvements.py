@@ -109,6 +109,119 @@ def test_non_continuous_detection_step_does_not_cross_workday_end():
     assert step["end_time"] == "2026-06-02T09:40:00+08:00"
 
 
+def test_order_level_detection_route_overrides_default_certification_flow():
+    order = _order(
+        "route-order",
+        OrderType.NORMAL,
+        datetime(2026, 6, 1, 9, 0, tzinfo=TZ),
+        quantity=1,
+    )
+    order["requested_projects"] = []
+    order["detection_route"] = [
+        {
+            "project_id": "custom-safety",
+            "project_type": "safety_check",
+            "equipment_type": "safety_tester",
+            "sequence": 1,
+            "duration_minutes": 37,
+            "duration_profile": {"t_min": 35, "t_mode": 45, "t_max": 70},
+            "staff_role": "safety_engineer",
+        },
+        {
+            "project_id": "custom-environment",
+            "project_type": "environmental_check",
+            "equipment_type": "environmental_chamber",
+            "sequence": 2,
+            "duration_minutes": 143,
+            "duration_profile": {"t_min": 120, "t_mode": 180, "t_max": 360},
+            "staff_role": "environmental_engineer",
+        },
+        {
+            "project_id": "custom-emc",
+            "project_type": "emc_check",
+            "equipment_type": "emc_tester",
+            "sequence": 3,
+            "duration_minutes": 111,
+            "duration_profile": {"t_min": 90, "t_mode": 120, "t_max": 180},
+            "staff_role": "emc_engineer",
+        },
+        {
+            "project_id": "custom-performance",
+            "project_type": "performance_check",
+            "equipment_type": "performance_bench",
+            "sequence": 4,
+            "duration_minutes": 64,
+            "duration_profile": {"t_min": 45, "t_mode": 60, "t_max": 100},
+            "staff_role": "performance_engineer",
+        },
+    ]
+
+    schedule = QueueService(SimulationService()).rebuild_schedule([order])
+    steps = schedule["scheduled_orders"][0]["steps"]
+
+    assert [step["equipment_type"] for step in steps] == [
+        "safety_tester",
+        "environmental_chamber",
+        "emc_tester",
+        "performance_bench",
+    ]
+    assert [step["duration_minutes"] for step in steps] == [37, 143, 111, 64]
+
+
+def test_shared_equipment_in_order_level_routes_creates_non_overlapping_queue():
+    arrival = datetime(2026, 6, 1, 9, 0, tzinfo=TZ)
+    order_a = _order("order-a", OrderType.NORMAL, arrival, quantity=1)
+    order_b = _order("order-b", OrderType.NORMAL, arrival, quantity=1)
+    order_a["detection_route"] = [
+        {
+            "project_id": "a-safety",
+            "project_type": "safety_check",
+            "equipment_type": "safety_tester",
+            "sequence": 1,
+            "duration_minutes": 30,
+            "duration_profile": {"t_min": 30, "t_mode": 30, "t_max": 30},
+            "staff_role": "safety_engineer",
+        },
+        {
+            "project_id": "a-emc",
+            "project_type": "emc_check",
+            "equipment_type": "emc_tester",
+            "sequence": 2,
+            "duration_minutes": 60,
+            "duration_profile": {"t_min": 60, "t_mode": 60, "t_max": 60},
+            "staff_role": "emc_engineer",
+        },
+    ]
+    order_b["detection_route"] = [
+        {
+            "project_id": "b-emc",
+            "project_type": "emc_check",
+            "equipment_type": "emc_tester",
+            "sequence": 1,
+            "duration_minutes": 45,
+            "duration_profile": {"t_min": 45, "t_mode": 45, "t_max": 45},
+            "staff_role": "emc_engineer",
+        },
+        {
+            "project_id": "b-performance",
+            "project_type": "performance_check",
+            "equipment_type": "performance_bench",
+            "sequence": 2,
+            "duration_minutes": 45,
+            "duration_profile": {"t_min": 45, "t_mode": 45, "t_max": 45},
+            "staff_role": "performance_engineer",
+        },
+    ]
+
+    schedule = QueueService(SimulationService()).rebuild_schedule([order_a, order_b])
+    scheduled_by_id = {order["id"]: order for order in schedule["scheduled_orders"]}
+    a_emc = next(step for step in scheduled_by_id["order-a"]["steps"] if step["equipment_type"] == "emc_tester")
+    b_emc = next(step for step in scheduled_by_id["order-b"]["steps"] if step["equipment_type"] == "emc_tester")
+
+    assert a_emc["equipment_id"] == b_emc["equipment_id"]
+    assert a_emc["end_time"] <= b_emc["start_time"] or b_emc["end_time"] <= a_emc["start_time"]
+
+
 def test_schedule_metrics_include_wait_utilization_and_blocked_reason_distribution():
     arrival = datetime(2026, 6, 1, 9, 0, tzinfo=TZ)
     blocked = _order("blocked", OrderType.NORMAL, arrival)

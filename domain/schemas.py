@@ -35,12 +35,23 @@ class EquipmentStatus(str, Enum):
     OFFLINE = "offline"
 
 
+class DetectionRouteStep(BaseModel):
+    project_id: str = Field(min_length=1, max_length=80)
+    project_type: str = Field(min_length=1, max_length=80)
+    equipment_type: str = Field(min_length=1, max_length=80)
+    sequence: int = Field(ge=1)
+    duration_minutes: int = Field(gt=0)
+    duration_profile: dict[str, int] = Field(default_factory=dict)
+    staff_role: str | None = None
+
+
 class OrderCreate(BaseModel):
     order_type: OrderType
     sample_name: str = Field(min_length=1, max_length=120)
     sample_quantity: int = Field(gt=0)
     certification_type: CertificationType
     requested_projects: list[str] = Field(default_factory=list)
+    detection_route: list[DetectionRouteStep] = Field(default_factory=list)
     arrival_time: datetime | None = None
     promised_finish_time: datetime | None = None
 
@@ -56,6 +67,7 @@ class OrderUpdate(BaseModel):
     sample_quantity: int | None = Field(default=None, gt=0)
     certification_type: CertificationType | None = None
     requested_projects: list[str] | None = None
+    detection_route: list[DetectionRouteStep] | None = None
     status: QueueStatus | None = None
     arrival_time: datetime | None = None
     promised_finish_time: datetime | None = None
@@ -70,6 +82,7 @@ class OrderResponse(BaseModel):
     sample_quantity: int
     certification_type: CertificationType
     requested_projects: list[str]
+    detection_route: list[DetectionRouteStep] = Field(default_factory=list)
     status: QueueStatus
     arrival_time: datetime | None = None
     promised_finish_time: datetime | None = None

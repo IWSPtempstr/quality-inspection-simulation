@@ -53,10 +53,7 @@ class QueueService:
         while unscheduled_orders:
             order = self._select_next_order(unscheduled_orders, availability, schedule_origin)
             unscheduled_orders.remove(order)
-            flow = self.simulation.get_detection_flow(
-                order["certification_type"],
-                order.get("requested_projects") or [],
-            )
+            flow = self._detection_flow_for_order(order)
             if not flow:
                 blocked_orders.append(
                     {
@@ -84,6 +81,7 @@ class QueueService:
                     earliest_start=previous_end_time,
                     duration_base=project["duration_minutes"],
                     project_type=project["project_type"],
+                    duration_is_total=bool(project.get("duration_is_total")),
                     sample_quantity=order["sample_quantity"],
                 )
                 if candidate is None:
@@ -179,6 +177,7 @@ class QueueService:
         earliest_start: datetime,
         duration_base: int,
         project_type: str,
+        duration_is_total: bool,
         sample_quantity: int,
     ):
         candidates = []
@@ -186,7 +185,7 @@ class QueueService:
             equipment_id = equipment["id"]
             capacity = int(equipment["capacity"])
             required_batches = ceil(sample_quantity / capacity)
-            duration_minutes = duration_base * required_batches
+            duration_minutes = duration_base if duration_is_total else duration_base * required_batches
             start_time = max(earliest_start, availability.get(equipment_id, earliest_start))
             start_time = self._next_slot_start(start_time, duration_minutes, project_type)
             start_time = self._avoid_maintenance(equipment_id, start_time, duration_minutes, project_type)
@@ -231,17 +230,15 @@ class QueueService:
         schedule_origin: datetime,
     ) -> datetime:
         arrival_time = self._next_work_start(max(self._order_release_time(order, schedule_origin), schedule_origin))
-        flow = self.simulation.get_detection_flow(
-            order["certification_type"],
-            order.get("requested_projects") or [],
-        )
+        flow = self._detection_flow_for_order(order)
         if not flow:
             return arrival_time
         project = flow[0]
         starts = []
         for equipment in self.simulation.equipment_instances_for(project["equipment_type"]):
             capacity = int(equipment["capacity"])
-            duration_minutes = project["duration_minutes"] * ceil(order["sample_quantity"] / capacity)
+            required_batches = ceil(order["sample_quantity"] / capacity)
+            duration_minutes = project["duration_minutes"] if project.get("duration_is_total") else project["duration_minutes"] * required_batches
             candidate = max(arrival_time, availability.get(equipment["id"], arrival_time))
             candidate = self._next_slot_start(candidate, duration_minutes, project["project_type"])
             candidate = self._avoid_maintenance(
@@ -252,6 +249,29 @@ class QueueService:
             )
             starts.append(candidate)
         return min(starts) if starts else arrival_time
+
+    def _detection_flow_for_order(self, order: dict) -> list[dict]:
+        route = order.get("detection_route") or []
+        if route:
+            normalized = []
+            for step in route:
+                normalized.append(
+                    {
+                        "id": step.get("id") or step.get("project_id"),
+                        "project_type": step["project_type"],
+                        "equipment_type": step["equipment_type"],
+                        "sequence": step["sequence"],
+                        "duration_minutes": step["duration_minutes"],
+                        "duration_is_total": True,
+                        "duration_profile": step.get("duration_profile", {}),
+                        "staff_role": step.get("staff_role"),
+                    }
+                )
+            return sorted(normalized, key=lambda item: item["sequence"])
+        return self.simulation.get_detection_flow(
+            order["certification_type"],
+            order.get("requested_projects") or [],
+        )
 
     def _avoid_maintenance(self, equipment_id: str, start_time: datetime, duration_minutes: int, project_type: str) -> datetime:
         current = start_time
