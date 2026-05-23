@@ -5,7 +5,15 @@ from datetime import datetime
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from domain.schemas import EquipmentStatus, NotificationStatus, NotificationType, QueueStatus, SchedulingEventStatus, utc_now
+from domain.schemas import (
+    DatasetReplayStatus,
+    EquipmentStatus,
+    NotificationStatus,
+    NotificationType,
+    QueueStatus,
+    SchedulingEventStatus,
+    utc_now,
+)
 
 
 class Base(DeclarativeBase):
@@ -143,6 +151,43 @@ class ScheduleStepModel(Base):
     actual_start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     actual_end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     execution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class DatasetReplayRunModel(Base):
+    __tablename__ = "dataset_replay_runs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    dataset_name: Mapped[str] = mapped_column(String(120), index=True)
+    total_orders: Mapped[int] = mapped_column(Integer, default=0)
+    imported_orders: Mapped[int] = mapped_column(Integer, default=0)
+    current_simulation_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    speed_minutes_per_second: Mapped[int] = mapped_column(Integer, default=30)
+    status: Mapped[str] = mapped_column(String(30), default=DatasetReplayStatus.CREATED.value, index=True)
+    latest_order_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    latest_source_order_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    latest_schedule_run_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class DatasetReplayItemModel(Base):
+    __tablename__ = "dataset_replay_items"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(40), index=True)
+    sequence: Mapped[int] = mapped_column(Integer, index=True)
+    original_order_id: Mapped[str] = mapped_column(String(120), index=True)
+    arrival_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    import_status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    system_order_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    original_payload: Mapped[str] = mapped_column(Text, default="{}")
+    imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
 class NotificationModel(Base):

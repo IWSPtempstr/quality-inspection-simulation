@@ -381,6 +381,7 @@ code {
 
 .badge-completed,
 .badge-done,
+.badge-imported,
 .badge-read,
 .badge-triggered,
 .badge-scheduled {
@@ -469,6 +470,29 @@ tr.sla-delayed td {
 
 .timeline li {
   margin-bottom: 8px;
+}
+
+.process-flow {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.process-flow li {
+  padding: 8px 10px;
+  border-left: 4px solid #d4d4d8;
+  background: #f7f7f8;
+}
+
+.process-flow li.is-complete {
+  border-left-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.process-flow li.is-active {
+  border-left-color: #002fa7;
+  background: #eef2ff;
 }
 
 .gantt {

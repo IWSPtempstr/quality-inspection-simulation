@@ -5,10 +5,13 @@ from datetime import datetime
 from typing import Iterable
 
 from sqlalchemy import func, or_, select
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from db.models import (
     AuditLogModel,
+    DatasetReplayItemModel,
+    DatasetReplayRunModel,
     DetectionProjectModel,
     EquipmentModel,
     NotificationModel,
@@ -22,6 +25,7 @@ from db.models import (
 from domain.schemas import (
     AuditLogResponse,
     CertificationType,
+    DatasetReplayStatus,
     EquipmentStatus,
     NotificationResponse,
     NotificationStatus,
@@ -738,6 +742,222 @@ class ScheduleRepository:
         self.session.commit()
         self.session.refresh(step)
         return self._step_to_dict(step)
+
+
+class RuntimeRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def clear_runtime(self, include_replay: bool = True) -> None:
+        for model in [
+            NotificationModel,
+            SchedulingEventModel,
+            QueueEventModel,
+            ScheduleStepModel,
+            ScheduleRunModel,
+            OrderModel,
+        ]:
+            self.session.execute(delete(model))
+        if include_replay:
+            self.session.execute(delete(DatasetReplayItemModel))
+            self.session.execute(delete(DatasetReplayRunModel))
+        self.session.commit()
+
+
+class DatasetReplayRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create_run(
+        self,
+        *,
+        dataset_name: str,
+        total_orders: int,
+        start_time: datetime,
+        end_time: datetime,
+        speed_minutes_per_second: int,
+    ) -> dict:
+        model = DatasetReplayRunModel(
+            id=new_id("replay"),
+            dataset_name=dataset_name,
+            total_orders=total_orders,
+            imported_orders=0,
+            current_simulation_time=start_time,
+            start_time=start_time,
+            end_time=end_time,
+            speed_minutes_per_second=speed_minutes_per_second,
+            status=DatasetReplayStatus.CREATED.value,
+        )
+        self.session.add(model)
+        self.session.commit()
+        self.session.refresh(model)
+        return self._run_to_dict(model)
+
+    def create_items(self, run_id: str, orders: list[dict]) -> None:
+        for index, order in enumerate(orders, start=1):
+            self.session.add(
+                DatasetReplayItemModel(
+                    id=new_id("replay-item"),
+                    run_id=run_id,
+                    sequence=index,
+                    original_order_id=str(order.get("order_id") or f"dataset-order-{index:05d}"),
+                    arrival_time=self._parse_datetime(order["arrival_time"]),
+                    original_payload=_json_dump(order),
+                )
+            )
+        self.session.commit()
+
+    def get_run(self, run_id: str) -> dict | None:
+        model = self.session.get(DatasetReplayRunModel, run_id)
+        return self._run_to_dict(model) if model else None
+
+    def get_run_with_items(self, run_id: str, limit: int = 50) -> dict | None:
+        run = self.session.get(DatasetReplayRunModel, run_id)
+        if run is None:
+            return None
+        items = self.session.scalars(
+            select(DatasetReplayItemModel)
+            .where(DatasetReplayItemModel.run_id == run_id)
+            .order_by(DatasetReplayItemModel.sequence.asc())
+            .limit(limit)
+        ).all()
+        return {
+            **self._run_to_dict(run),
+            "items": [self._item_to_dict(item) for item in items],
+        }
+
+    def latest_run(self) -> dict | None:
+        model = self.session.scalars(
+            select(DatasetReplayRunModel).order_by(DatasetReplayRunModel.created_at.desc())
+        ).first()
+        return self._run_to_dict(model) if model else None
+
+    def due_items(self, run_id: str, current_time: datetime) -> list[dict]:
+        items = self.session.scalars(
+            select(DatasetReplayItemModel)
+            .where(DatasetReplayItemModel.run_id == run_id)
+            .where(DatasetReplayItemModel.import_status == "pending")
+            .where(DatasetReplayItemModel.arrival_time <= current_time)
+            .order_by(DatasetReplayItemModel.arrival_time.asc(), DatasetReplayItemModel.sequence.asc())
+        ).all()
+        return [self._item_to_dict(item) for item in items]
+
+    def next_pending_item(self, run_id: str) -> dict | None:
+        model = self.session.scalars(
+            select(DatasetReplayItemModel)
+            .where(DatasetReplayItemModel.run_id == run_id)
+            .where(DatasetReplayItemModel.import_status == "pending")
+            .order_by(DatasetReplayItemModel.arrival_time.asc(), DatasetReplayItemModel.sequence.asc())
+        ).first()
+        return self._item_to_dict(model) if model else None
+
+    def mark_item_imported(self, item_id: str, system_order_id: str, imported_at: datetime) -> dict | None:
+        model = self.session.get(DatasetReplayItemModel, item_id)
+        if model is None:
+            return None
+        model.import_status = "imported"
+        model.system_order_id = system_order_id
+        model.imported_at = imported_at
+        model.updated_at = imported_at
+        self.session.commit()
+        self.session.refresh(model)
+        return self._item_to_dict(model)
+
+    def mark_item_failed(self, item_id: str, error_message: str, failed_at: datetime) -> dict | None:
+        model = self.session.get(DatasetReplayItemModel, item_id)
+        if model is None:
+            return None
+        model.import_status = "failed"
+        model.error_message = error_message
+        model.updated_at = failed_at
+        self.session.commit()
+        self.session.refresh(model)
+        return self._item_to_dict(model)
+
+    def imported_count(self, run_id: str) -> int:
+        return self.session.scalar(
+            select(func.count())
+            .select_from(DatasetReplayItemModel)
+            .where(DatasetReplayItemModel.run_id == run_id)
+            .where(DatasetReplayItemModel.import_status == "imported")
+        ) or 0
+
+    def update_run(
+        self,
+        run_id: str,
+        *,
+        status: DatasetReplayStatus | str | None = None,
+        current_simulation_time: datetime | None = None,
+        imported_orders: int | None = None,
+        latest_order_id: str | None = None,
+        latest_source_order_id: str | None = None,
+        latest_schedule_run_id: str | None = None,
+        error_message: str | None = None,
+    ) -> dict | None:
+        model = self.session.get(DatasetReplayRunModel, run_id)
+        if model is None:
+            return None
+        if status is not None:
+            model.status = self._enum_value(status)
+        if current_simulation_time is not None:
+            model.current_simulation_time = current_simulation_time
+        if imported_orders is not None:
+            model.imported_orders = imported_orders
+        if latest_order_id is not None:
+            model.latest_order_id = latest_order_id
+        if latest_source_order_id is not None:
+            model.latest_source_order_id = latest_source_order_id
+        if latest_schedule_run_id is not None:
+            model.latest_schedule_run_id = latest_schedule_run_id
+        if error_message is not None:
+            model.error_message = error_message
+        model.updated_at = utc_now()
+        self.session.commit()
+        self.session.refresh(model)
+        return self._run_to_dict(model)
+
+    def _run_to_dict(self, model: DatasetReplayRunModel) -> dict:
+        return {
+            "id": model.id,
+            "dataset_name": model.dataset_name,
+            "total_orders": model.total_orders,
+            "imported_orders": model.imported_orders,
+            "current_simulation_time": model.current_simulation_time,
+            "start_time": model.start_time,
+            "end_time": model.end_time,
+            "speed_minutes_per_second": model.speed_minutes_per_second,
+            "status": model.status,
+            "latest_order_id": model.latest_order_id,
+            "latest_source_order_id": model.latest_source_order_id,
+            "latest_schedule_run_id": model.latest_schedule_run_id,
+            "error_message": model.error_message,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
+        }
+
+    def _item_to_dict(self, model: DatasetReplayItemModel) -> dict:
+        return {
+            "id": model.id,
+            "run_id": model.run_id,
+            "sequence": model.sequence,
+            "original_order_id": model.original_order_id,
+            "arrival_time": model.arrival_time,
+            "import_status": model.import_status,
+            "system_order_id": model.system_order_id,
+            "error_message": model.error_message,
+            "original_payload": _json_dict(model.original_payload),
+            "imported_at": model.imported_at,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
+        }
+
+    def _parse_datetime(self, value):
+        if hasattr(value, "isoformat"):
+            return value
+        return datetime.fromisoformat(value)
+
+    def _enum_value(self, value):
+        return value.value if hasattr(value, "value") else value
 
 
 class NotificationRepository:

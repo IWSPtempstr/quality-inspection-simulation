@@ -69,6 +69,15 @@ class SchedulingEventStatus(str, Enum):
     FAILED = "failed"
 
 
+class DatasetReplayStatus(str, Enum):
+    CREATED = "created"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class NotificationType(str, Enum):
     EQUIPMENT_IDLE = "equipment_idle"
     DETECTION_COMPLETED = "detection_completed"
@@ -188,6 +197,12 @@ class KnowledgeSearchRequest(BaseModel):
 class SimulationClockAdvanceRequest(BaseModel):
     current_time: datetime | None = None
     delta_minutes: int | None = Field(default=None, ge=1)
+
+
+class DatasetReplayStartRequest(BaseModel):
+    speed_minutes_per_second: int = Field(default=30, ge=1, le=1440)
+    max_orders: int = Field(default=500, ge=1, le=5000)
+    reset_runtime: bool = True
 
 
 class SchedulingEventCreate(BaseModel):

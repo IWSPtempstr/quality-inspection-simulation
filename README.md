@@ -6,7 +6,7 @@
 
 ## 当前版本快照
 
-当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、设备实例级调度、人员实例约束、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、结构化调度解释、通知 Agent、操作审计、排程批次持久化、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
+当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、设备实例级调度、人员实例约束、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、结构化调度解释、通知 Agent、操作审计、排程批次持久化、数据集按时间回放导入、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
 
 本仓库包含三组验证数据：
 
@@ -53,6 +53,7 @@ API Layer
   ├─ /api/simulation   仿真时钟
   ├─ /api/admin        用户权限与操作审计
   ├─ /api/monitor      队列与设备监测快照
+  ├─ /api/datasets     数据集摘要与按时间回放
   ├─ /api/knowledge    RAG 知识检索与索引重建
   ├─ /api/mcp          MCP 工具状态
   └─ /api/agent        LangGraph Agent 入口
@@ -75,6 +76,7 @@ Service Layer
   ├─ SchedulingCoordinatorService queue_scheduler 统一排程入口
   ├─ ScheduleOptimizerService 候选策略评分
   ├─ NotificationService 员工提醒生成与触发
+  ├─ DatasetReplayService 数据集按到达时间回放导入
   ├─ OpenAICompatibleLlmClient  可选异常分析增强
   ├─ McpToolClient       MCP stdio 调用与 fallback
   └─ ScheduleFormatter   持久化排程输出整理
@@ -87,6 +89,8 @@ DB Layer
   ├─ scheduling_events
   ├─ schedule_runs
   ├─ schedule_steps
+  ├─ dataset_replay_runs
+  ├─ dataset_replay_items
   ├─ notifications
   ├─ users
   └─ audit_logs
@@ -120,6 +124,22 @@ DB Layer
 事件使用 `fingerprint` 和防抖窗口做合并处理，默认 30 秒内的同类事件会被标记为 `ignored`。`SchedulerHeartbeatService` 提供手动触发 API，也会在 FastAPI 启动时按 `SCHEDULER_HEARTBEAT_ENABLED` 和 `SCHEDULER_HEARTBEAT_INTERVAL_SECONDS` 启动后台心跳。高严重度事件（默认 `critical,high`）通过事件 API 写入后会立即触发一次心跳处理。
 
 `queue_scheduler` 是统一排程入口。它读取待处理事件和当前订单，调用 `ScheduleOptimizerService` 生成候选策略，包括 `priority_fifo`、`earliest_due_date`、`shortest_processing_time`、`bottleneck_resource_first` 和 `hybrid_weighted`。候选排程按阻塞订单数、VIP/加急/普通延期分钟、平均等待、设备空闲惩罚、人员阻塞和转运等待进行评分，默认选择评分最低的方案并持久化为 `schedule_runs` 和 `schedule_steps`。
+
+## 数据集按时间回放
+
+数据集不再只作为静态验证摘要展示。系统新增 `dataset_replay_runs` 和 `dataset_replay_items`，可将 `data/` 目录下的数据集按订单 `arrival_time` 加速回放导入系统。启动回放时，系统读取指定数据集的订单文件，按到达时间排序，并建立待导入清单；正式订单表在启动后仍为空，只有当用户执行单步导入或手动 Tick 时，已到达订单才会写入 `orders`。
+
+回放流程如下：
+
+1. 选择数据集并创建回放批次。
+2. 将仿真时钟设置为数据集最早订单到达时间。
+3. 单步导入下一条订单，或按倍率推进 Tick。
+4. 将到达时间小于等于当前仿真时间的订单写入正式订单表。
+5. 为导入订单写入 `order_created` 排程事件。
+6. 每个 Tick 结束后触发一次 `scheduler_heartbeat`，由 `queue_scheduler` 统一重排。
+7. 生成通知并更新仪表盘、队列页和通知页。
+
+默认倍率为 `1 秒真实时间 = 30 分钟仿真时间`。第一版不在后端启动长期定时器，页面通过“单步导入”和“手动 Tick”按钮驱动确定性推进；暂停状态下 Tick 不推进。`scenario_synthetic_center_large` 包含 5000 单，回放接口默认最多导入前 500 单，完整压力测试仍建议使用验证脚本。
 
 ## 执行状态与审计
 
@@ -281,6 +301,32 @@ curl -X POST http://127.0.0.1:8002/api/scheduling/heartbeat
 curl http://127.0.0.1:8002/api/scheduling/heartbeat/status
 ```
 
+查询可回放数据集并启动按时间回放：
+
+```bash
+curl http://127.0.0.1:8002/api/datasets
+curl http://127.0.0.1:8002/api/datasets/scenario_synthetic_center/summary
+
+curl -X POST http://127.0.0.1:8002/api/datasets/scenario_synthetic_center/replay/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "speed_minutes_per_second": 30,
+    "max_orders": 500,
+    "reset_runtime": true
+  }'
+```
+
+推进、暂停和查询回放批次：
+
+```bash
+curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/step
+curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/tick
+curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/pause
+curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/resume
+curl http://127.0.0.1:8002/api/datasets/replay/{run_id}
+curl -N http://127.0.0.1:8002/api/datasets/replay/{run_id}/stream
+```
+
 闭环异常事件：
 
 ```bash
@@ -367,7 +413,7 @@ curl -N http://127.0.0.1:8002/api/notifications/stream
 
 ## 管理页
 
-- `/`：检测队列仪表盘
+- `/`：检测队列仪表盘与数据集回放控制台
 - `/orders`：订单管理
 - `/queue`：队列与排程
 - `/knowledge`：知识库检索
@@ -398,7 +444,7 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
 ```
 
-验证结果为 `48 passed`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
+验证结果为 `60 passed, 3 warnings`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
 
 当前测试覆盖：
 
@@ -423,6 +469,7 @@ cd /home/work/workproject2/project
 - 排程指标：平均等待、设备利用率、VIP SLA 达成率、加急延误率、阻塞原因分布
 - 人员实例约束、多人设备、共享监管、样品前处理、跨实验室转运、设备准备时间和耗材日配额
 - 排程事件写入、去重、防抖、手动心跳、高严重度立即触发、候选策略评分和 queue_scheduler 统一入口
+- 数据集列表、摘要、按时间回放启动、Tick 导入、单步导入、暂停续跑、权限拦截和 SSE 状态快照
 - Notification Agent、通知持久化、仿真时钟推进和 SSE 接口
 - 运行中步骤锁定、检测完成回写、复检订单、设备预约甘特图、监控报告、权限拦截和操作审计
 - 异常分析 Agent 的 LLM 失败 fallback
@@ -450,6 +497,7 @@ cd /home/work/workproject2/project
 - MCP stdio 独立服务入口与本地 fallback
 - MCP 适配器标签：当前为 `simulation`，用于后续替换真实工具源
 - 排程批次和步骤持久化
+- 数据集回放：支持列出数据集、查看摘要、按 `arrival_time` 建立回放批次、单步导入、手动 Tick、暂停、续跑和 SSE 状态快照
 - Notification Agent、通知表、仿真时钟、SSE 通知流和通知管理 API
 - Jinja2 管理页：仪表盘、订单、队列、知识库、Agent轨迹、通知面板
 - LangGraph 多 Agent 编排与异常分析 Agent 可选 LLM 调用
@@ -461,18 +509,19 @@ cd /home/work/workproject2/project
 - MCP 独立服务目前封装的是仿真工具，还未接入真实实验室系统。
 - `MCP_ADAPTER_TYPE` 当前是适配器类型标识，不代表已经连通真实 LIMS、设备台账或工时系统。
 - 合成数据集用于机制验证和压力测试，不代表某真实检测中心的设备数量、检测耗时、订单到达分布或插队规则。
+- 数据集回放验证的是订单释放、事件触发、心跳重排和页面联动机制，不代表真实检测中心的实时接单节奏或生产排程效果。
 - 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间，但仍是规则排程与候选评分，不是数学优化求解器。
 - 非抢占式约束已覆盖运行中步骤锁定和未开始任务重排；暂停、续跑、人工复核审批流仍是后续扩展。
 - 高严重度事件通过 API 写入后会立即触发一次心跳；后台周期心跳只在 FastAPI 生命周期启动后运行，测试和脚本仍以手动触发为主，以保证验证结果确定。
 - MCP stdio 服务已可独立启动，但需要共享应用状态的工具当前仍通过应用内 fallback 执行；真实外部 MCP 服务适配需要单独设计状态同步或数据库访问边界。
 - 除 `exception_analyzer` 外，其他 Agent 当前仍以确定性流程为主，模型配置属于后续增强入口。
-- 前端管理页以服务端渲染和少量原生 JS 为主，尚未加入权限控制和复杂交互组件。
+- 前端管理页以服务端渲染和少量原生 JS 为主，尚未加入真实登录态下的权限控制和复杂交互组件。
 - 设备状态、检测时间、检测项目仍是仿真种子数据。
 - 尚未接入真实 LIMS、设备台账、检测标准库或历史工时数据。
 
 ## 后续步骤
 
 1. 将 CP-SAT/滚动时域求解器接入 `ScheduleOptimizerService`，与当前规则 baseline 并行对比。
-2. 增加暂停、续跑、返工审批、报告复核等更完整的执行闭环。
+2. 增加检测执行层面的暂停、续跑、返工审批、报告复核等更完整闭环。
 3. 将 MCP 工具替换为真实设备台账、LIMS、检测标准库、人员考勤和工时服务适配器，并明确状态同步方式。
 4. 增加权限模型的真实登录、角色管理和操作审计导出。

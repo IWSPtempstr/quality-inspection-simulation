@@ -18,6 +18,7 @@ from services.mcp_client import McpToolClient
 from services.llm_client import OpenAICompatibleLlmClient
 from services.notification_service import NotificationService
 from services.monitoring_service import MonitoringReportService
+from services.dataset_replay_service import DatasetReplayService
 from services.scheduler_service import (
     ScheduleOptimizerService,
     SchedulerHeartbeatService,
@@ -89,6 +90,13 @@ def create_app() -> FastAPI:
     permission_service = PermissionService()
     audit_service = AuditService(session_factory)
     monitoring_report_service = MonitoringReportService(session_factory, settings.base_dir)
+    dataset_replay_service = DatasetReplayService(
+        session_factory=session_factory,
+        base_dir=settings.base_dir,
+        scheduling_event_service=scheduling_event_service,
+        scheduler_heartbeat_service=scheduler_heartbeat_service,
+        notification_service=notification_service,
+    )
     knowledge_retriever = KnowledgeRetriever(settings.knowledge_base_dir, index_dir=settings.rag_index_dir)
     fallback_tool_client = LocalSimulationToolClient(simulation_service, queue_service)
     tool_client = McpToolClient(
@@ -110,6 +118,7 @@ def create_app() -> FastAPI:
     app.state.permission_service = permission_service
     app.state.audit_service = audit_service
     app.state.monitoring_report_service = monitoring_report_service
+    app.state.dataset_replay_service = dataset_replay_service
     app.state.knowledge_retriever = knowledge_retriever
     app.state.tool_client = tool_client
     app.state.agent_graph = AgentGraphRunner(
