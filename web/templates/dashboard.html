@@ -2,7 +2,7 @@
 {% block content %}
 <section class="hero">
   <h1>检测队列仪表盘</h1>
-  <p>查看当前队列、SLA、设备负载、数据集按时间回放和事件闭环状态。</p>
+  <p>查看当前队列、SLA、设备负载和事件闭环状态。</p>
 </section>
 
 <section class="panel stack">
@@ -12,105 +12,6 @@
   </div>
 
   <div id="metric-cards" class="cards" aria-live="polite"></div>
-
-  <section id="dataset-replay-console" class="stack" aria-labelledby="dataset-title">
-    <div class="section-heading">
-      <div>
-        <h2 id="dataset-title">数据集回放控制台</h2>
-        <p>按订单到达时间逐条或分批导入数据集，导入后触发排程事件、心跳重排和通知生成。</p>
-      </div>
-      <div id="replay-status" class="status-line" aria-live="polite">等待选择数据集</div>
-    </div>
-
-    <form id="dataset-replay-form" autocomplete="off">
-      <fieldset>
-        <legend>回放参数</legend>
-        <label>数据集
-          <select id="dataset-select" name="dataset_name" required>
-            <option value="">正在加载数据集…</option>
-          </select>
-        </label>
-        <label>倍率（仿真分钟/秒）
-          <input id="replay-speed" name="speed_minutes_per_second" type="number" min="1" max="1440" value="30" required>
-        </label>
-        <label>最大订单数
-          <input id="replay-max-orders" name="max_orders" type="number" min="1" max="5000" value="500" required>
-        </label>
-        <label class="checkbox-row">
-          <input id="replay-reset" name="reset_runtime" type="checkbox" checked>
-          清空运行数据
-        </label>
-        <button type="submit">启动回放</button>
-      </fieldset>
-    </form>
-
-    <div class="toolbar">
-      <div class="actions">
-        <button type="button" data-action="replay-step">单步导入</button>
-        <button type="button" data-action="replay-tick">手动 Tick</button>
-        <button type="button" data-action="replay-pause">暂停</button>
-        <button type="button" data-action="replay-resume">续跑</button>
-      </div>
-      <div id="replay-live-status" class="status-line" aria-live="polite">尚未启动回放</div>
-    </div>
-
-    <div id="replay-cards" class="cards compact" aria-live="polite"></div>
-
-    <div class="grid two">
-      <section aria-labelledby="dataset-summary-title">
-        <h3 id="dataset-summary-title">数据集摘要</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>数据集</th>
-                <th>订单</th>
-                <th>开始时间</th>
-                <th>结束时间</th>
-                <th>最大路线</th>
-              </tr>
-            </thead>
-            <tbody id="dataset-report-body">
-              <tr><td colspan="5" class="empty">等待加载</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section aria-labelledby="replay-flow-title">
-        <h3 id="replay-flow-title">运行流程</h3>
-        <ol id="replay-flow" class="process-flow" aria-live="polite">
-          <li data-flow-step="load">加载数据集</li>
-          <li data-flow-step="wait">等待订单到达</li>
-          <li data-flow-step="import">写入订单</li>
-          <li data-flow-step="event">触发排程事件</li>
-          <li data-flow-step="schedule">心跳重排</li>
-          <li data-flow-step="notify">生成通知</li>
-          <li data-flow-step="render">更新队列与甘特图</li>
-        </ol>
-      </section>
-    </div>
-
-    <section aria-labelledby="replay-items-title">
-      <h3 id="replay-items-title">回放订单清单</h3>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>序号</th>
-              <th>源订单</th>
-              <th>到达时间</th>
-              <th>导入状态</th>
-              <th>系统订单</th>
-            </tr>
-          </thead>
-          <tbody id="replay-items-body">
-            <tr><td colspan="5" class="empty">等待加载</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </section>
 
   <div class="grid two">
     <section aria-labelledby="event-title">

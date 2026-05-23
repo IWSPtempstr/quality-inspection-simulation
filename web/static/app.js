@@ -56,7 +56,6 @@
   };
 
   let currentScheduleSteps = new Map();
-  let currentReplayRunId = null;
 
   function $(selector, root = document) {
     return root.querySelector(selector);
@@ -194,14 +193,7 @@
     if (!$("#metric-cards")) return;
     const refresh = $('[data-action="dashboard-refresh"]');
     refresh?.addEventListener("click", () => loadDashboard());
-    $("#dataset-replay-form")?.addEventListener("submit", handleReplayStart);
-    $("#dataset-select")?.addEventListener("change", () => loadSelectedDatasetSummary());
-    $('[data-action="replay-step"]')?.addEventListener("click", (event) => runReplayAction("step", event.currentTarget));
-    $('[data-action="replay-tick"]')?.addEventListener("click", (event) => runReplayAction("tick", event.currentTarget));
-    $('[data-action="replay-pause"]')?.addEventListener("click", (event) => runReplayAction("pause", event.currentTarget));
-    $('[data-action="replay-resume"]')?.addEventListener("click", (event) => runReplayAction("resume", event.currentTarget));
     loadDashboard();
-    loadDatasets();
   }
 
   async function loadDashboard() {
@@ -242,141 +234,6 @@
     } finally {
       setButtonBusy(button, false);
     }
-  }
-
-  async function loadDatasets() {
-    const select = $("#dataset-select");
-    if (!select) return;
-    setStatus("replay-status", "正在加载可回放数据集…");
-    try {
-      const payload = await apiFetch("/api/datasets");
-      const items = payload.data?.items || [];
-      select.innerHTML = items.length
-        ? items.map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}（${formatNumber(item.order_count)} 单）</option>`).join("")
-        : '<option value="">没有可回放数据集</option>';
-      renderDatasetSummary(items[0] || null);
-      setStatus("replay-status", items.length ? "数据集已加载" : "未找到数据集", items.length ? "success" : "muted");
-    } catch (error) {
-      select.innerHTML = '<option value="">数据集加载失败</option>';
-      $("#dataset-report-body").innerHTML = emptyRow(5, "数据集加载失败");
-      setStatus("replay-status", `${error.message}。请检查数据集接口权限。`, "error");
-    }
-  }
-
-  async function loadSelectedDatasetSummary() {
-    const datasetName = $("#dataset-select")?.value;
-    if (!datasetName) return;
-    setStatus("replay-status", "正在加载数据集摘要…");
-    try {
-      const payload = await apiFetch(`/api/datasets/${encodeURIComponent(datasetName)}/summary`);
-      renderDatasetSummary(payload.data);
-      setStatus("replay-status", "数据集摘要已更新", "success");
-    } catch (error) {
-      $("#dataset-report-body").innerHTML = emptyRow(5, "数据集摘要加载失败");
-      setStatus("replay-status", `${error.message}。请检查数据集名称。`, "error");
-    }
-  }
-
-  function renderDatasetSummary(item) {
-    $("#dataset-report-body").innerHTML = item
-      ? `
-        <tr>
-          <td>${escapeHtml(item.name || item.dataset)}</td>
-          <td>${formatNumber(item.order_count)}</td>
-          <td>${formatDate(item.start_time)}</td>
-          <td>${formatDate(item.end_time)}</td>
-          <td>${formatNumber(item.max_route_length)}</td>
-        </tr>
-      `
-      : emptyRow(5, "暂无数据集摘要");
-  }
-
-  async function handleReplayStart(event) {
-    event.preventDefault();
-    const button = event.submitter;
-    const form = new FormData(event.currentTarget);
-    const datasetName = form.get("dataset_name");
-    if (!datasetName) {
-      setStatus("replay-live-status", "请先选择数据集", "error");
-      return;
-    }
-    setButtonBusy(button, true, "启动中…");
-    setStatus("replay-live-status", "正在创建回放批次…");
-    try {
-      const payload = {
-        speed_minutes_per_second: Number(form.get("speed_minutes_per_second") || 30),
-        max_orders: Number(form.get("max_orders") || 500),
-        reset_runtime: form.get("reset_runtime") === "on",
-      };
-      const response = await apiFetch(`/api/datasets/${encodeURIComponent(datasetName)}/replay/start`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      renderReplay(response.data, "load");
-      setStatus("replay-live-status", "回放批次已创建，可单步导入或手动 Tick", "success");
-      await loadDashboard();
-    } catch (error) {
-      setStatus("replay-live-status", `${error.message}。请检查数据集和权限配置。`, "error");
-    } finally {
-      setButtonBusy(button, false);
-    }
-  }
-
-  async function runReplayAction(action, button) {
-    if (!currentReplayRunId) {
-      setStatus("replay-live-status", "请先启动回放批次", "error");
-      return;
-    }
-    const text = { step: "导入中…", tick: "Tick 中…", pause: "暂停中…", resume: "续跑中…" }[action] || "处理中…";
-    setButtonBusy(button, true, text);
-    try {
-      const payload = await apiFetch(`/api/datasets/replay/${encodeURIComponent(currentReplayRunId)}/${action}`, {
-        method: "POST",
-      });
-      renderReplay(payload.data, action === "pause" ? "wait" : action === "resume" ? "wait" : "render");
-      setStatus("replay-live-status", `回放状态：${label("status", payload.data.status)}，已导入 ${payload.data.imported_orders}/${payload.data.total_orders}`, "success");
-      await loadDashboard();
-    } catch (error) {
-      setStatus("replay-live-status", `${error.message}。请检查回放状态。`, "error");
-    } finally {
-      setButtonBusy(button, false);
-    }
-  }
-
-  function renderReplay(run, activeFlowStep = "wait") {
-    if (!run) return;
-    currentReplayRunId = run.id;
-    const progress = run.total_orders ? `${formatNumber(run.imported_orders)} / ${formatNumber(run.total_orders)}` : "-";
-    $("#replay-cards").innerHTML = [
-      metricCard("回放批次", run.id || "-"),
-      metricCard("状态", label("status", run.status)),
-      metricCard("当前仿真时间", formatDate(run.current_simulation_time)),
-      metricCard("导入进度", progress),
-      metricCard("最新订单", run.latest_order_id || "-"),
-      metricCard("最新排程", run.latest_schedule_run_id || "-"),
-    ].join("");
-    $("#replay-items-body").innerHTML = (run.items || []).length
-      ? run.items.slice(0, 20).map((item) => `
-        <tr>
-          <td>${formatNumber(item.sequence)}</td>
-          <td><code>${escapeHtml(item.original_order_id)}</code></td>
-          <td>${formatDate(item.arrival_time)}</td>
-          <td>${badge(item.import_status, "status")}</td>
-          <td>${item.system_order_id ? `<code>${escapeHtml(item.system_order_id)}</code>` : "-"}</td>
-        </tr>
-      `).join("")
-      : emptyRow(5, "暂无回放订单");
-    renderReplayFlow(activeFlowStep, run);
-  }
-
-  function renderReplayFlow(activeStep, run) {
-    const order = ["load", "wait", "import", "event", "schedule", "notify", "render"];
-    const activeIndex = order.indexOf(activeStep);
-    document.querySelectorAll("#replay-flow [data-flow-step]").forEach((item) => {
-      const index = order.indexOf(item.dataset.flowStep);
-      item.classList.toggle("is-active", index === activeIndex);
-      item.classList.toggle("is-complete", index < activeIndex || run.status === "completed");
-    });
   }
 
   function initOrders() {

@@ -234,3 +234,38 @@ class AuditLogModel(Base):
     target_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     detail: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+
+class AgentTraceModel(Base):
+    __tablename__ = "agent_traces"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_type: Mapped[str] = mapped_column(String(80), index=True)
+    actor_id: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    actor_role: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="success", index=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    visited_agents: Mapped[str] = mapped_column(Text, default="[]")
+    handoffs: Mapped[str] = mapped_column(Text, default="[]")
+    tool_calls: Mapped[str] = mapped_column(Text, default="[]")
+    token_usage: Mapped[str] = mapped_column(Text, default="{}")
+    errors: Mapped[str] = mapped_column(Text, default="[]")
+    payload_summary: Mapped[str] = mapped_column(Text, default="{}")
+    result_summary: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+
+class AgentTraceStepModel(Base):
+    __tablename__ = "agent_trace_steps"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String(40), index=True)
+    sequence: Mapped[int] = mapped_column(Integer, default=0)
+    agent_name: Mapped[str] = mapped_column(String(80), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="success", index=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tool_calls: Mapped[str] = mapped_column(Text, default="[]")
+    token_usage: Mapped[str] = mapped_column(Text, default="{}")

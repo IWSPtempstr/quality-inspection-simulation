@@ -108,7 +108,7 @@ def test_replay_step_imports_one_order_and_pause_blocks_tick(tmp_path, monkeypat
     assert second["imported_orders"] == 2
 
 
-def test_dataset_replay_permissions_errors_stream_and_dashboard_controls(tmp_path, monkeypatch):
+def test_dataset_replay_permissions_errors_stream_and_dashboard_hides_replay_console(tmp_path, monkeypatch):
     client = _client(tmp_path, monkeypatch, "replay-ui")
 
     invalid = client.get("/api/datasets/missing_dataset/summary")
@@ -128,5 +128,7 @@ def test_dataset_replay_permissions_errors_stream_and_dashboard_controls(tmp_pat
     assert forbidden_start.status_code == 403
     assert stream.status_code == 200
     assert stream.headers["content-type"].startswith("text/event-stream")
-    assert "dataset-replay-console" in dashboard.text
-    assert "数据集回放控制台" in dashboard.text
+    assert "dataset-replay-console" not in dashboard.text
+    assert "数据集回放控制台" not in dashboard.text
+    assert "合成数据集验证摘要" not in dashboard.text
+    assert "dataset-report-body" not in dashboard.text

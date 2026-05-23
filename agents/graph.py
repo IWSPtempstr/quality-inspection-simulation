@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Protocol, TypedDict
+from time import perf_counter
+from typing import Any, Callable, Literal, Protocol, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from sqlalchemy.orm import Session, sessionmaker
 
 from db.repositories import OrderRepository
-from domain.schemas import AgentRunRequest, CertificationType, OrderCreate
+from domain.schemas import AgentRunRequest, CertificationType, OrderCreate, new_id, utc_now
 from rag.retriever import KnowledgeRetriever
 from config.settings import AgentModelConfig
 from services.notification_service import NotificationService
@@ -33,6 +34,7 @@ class AgentState(TypedDict, total=False):
     visited_agents: list[str]
     handoffs: list[dict[str, Any]]
     errors: list[str]
+    trace_steps: list[dict[str, Any]]
 
 
 class AgentGraphRunner:
@@ -70,20 +72,47 @@ class AgentGraphRunner:
         }
 
     def run(self, request: AgentRunRequest) -> dict[str, Any]:
+        trace_id = new_id("trace")
+        started_at = utc_now()
+        started_perf = perf_counter()
         initial_state: AgentState = {
             "task_type": request.task_type,
             "payload": request.payload,
             "visited_agents": [],
             "handoffs": [],
             "errors": [],
+            "trace_steps": [],
         }
         final_state = self.graph.invoke(initial_state)
+        ended_at = utc_now()
+        trace_steps = final_state.get("trace_steps", [])
+        tool_calls = [
+            call
+            for step in trace_steps
+            for call in step.get("tool_calls", [])
+        ]
+        token_usage = self._aggregate_token_usage(trace_steps)
+        errors = final_state.get("errors", [])
+        trace = {
+            "trace_id": trace_id,
+            "started_at": started_at.isoformat(),
+            "ended_at": ended_at.isoformat(),
+            "latency_ms": int((perf_counter() - started_perf) * 1000),
+            "status": "failed" if errors else "success",
+            "visited_agents": final_state.get("visited_agents", []),
+            "handoffs": final_state.get("handoffs", []),
+            "tool_calls": tool_calls,
+            "token_usage": token_usage,
+            "errors": errors,
+            "steps": trace_steps,
+        }
         return {
             "task_type": request.task_type,
             "payload": request.payload,
             "visited_agents": final_state.get("visited_agents", []),
             "handoffs": final_state.get("handoffs", []),
-            "errors": final_state.get("errors", []),
+            "errors": errors,
+            "trace": trace,
             "agent_configs": {
                 agent_name: self.agent_configs[agent_name].public_dict()
                 for agent_name in final_state.get("visited_agents", [])
@@ -94,14 +123,14 @@ class AgentGraphRunner:
 
     def _build_graph(self):
         graph = StateGraph(AgentState)
-        graph.add_node("orchestrator", self._orchestrator)
-        graph.add_node("order_manager", self._order_manager)
-        graph.add_node("project_identifier", self._project_identifier)
-        graph.add_node("rag_retriever", self._rag_retriever)
-        graph.add_node("queue_scheduler", self._queue_scheduler)
-        graph.add_node("equipment_monitor", self._equipment_monitor)
-        graph.add_node("notification_agent", self._notification_agent)
-        graph.add_node("exception_analyzer", self._exception_analyzer)
+        graph.add_node("orchestrator", self._instrument_node("orchestrator", self._orchestrator))
+        graph.add_node("order_manager", self._instrument_node("order_manager", self._order_manager))
+        graph.add_node("project_identifier", self._instrument_node("project_identifier", self._project_identifier))
+        graph.add_node("rag_retriever", self._instrument_node("rag_retriever", self._rag_retriever))
+        graph.add_node("queue_scheduler", self._instrument_node("queue_scheduler", self._queue_scheduler))
+        graph.add_node("equipment_monitor", self._instrument_node("equipment_monitor", self._equipment_monitor))
+        graph.add_node("notification_agent", self._instrument_node("notification_agent", self._notification_agent))
+        graph.add_node("exception_analyzer", self._instrument_node("exception_analyzer", self._exception_analyzer))
 
         graph.add_edge(START, "orchestrator")
         graph.add_conditional_edges(
@@ -124,6 +153,40 @@ class AgentGraphRunner:
         graph.add_edge("notification_agent", END)
         graph.add_edge("exception_analyzer", END)
         return graph.compile()
+
+    def _instrument_node(self, agent_name: str, handler: Callable[[AgentState], AgentState]):
+        def wrapped(state: AgentState) -> AgentState:
+            started_at = utc_now()
+            started_perf = perf_counter()
+            try:
+                output = handler(state)
+                step = {
+                    "agent_name": agent_name,
+                    "status": "success",
+                    "started_at": started_at.isoformat(),
+                    "ended_at": utc_now().isoformat(),
+                    "latency_ms": int((perf_counter() - started_perf) * 1000),
+                    "tool_calls": self._agent_tool_calls(agent_name, state, output),
+                    "token_usage": self._agent_token_usage(agent_name, output),
+                }
+                output["trace_steps"] = [*state.get("trace_steps", []), step]
+                return output
+            except Exception as exc:
+                ended_at = utc_now()
+                step = {
+                    "agent_name": agent_name,
+                    "status": "failed",
+                    "started_at": started_at.isoformat(),
+                    "ended_at": ended_at.isoformat(),
+                    "latency_ms": int((perf_counter() - started_perf) * 1000),
+                    "error": str(exc),
+                    "tool_calls": [],
+                    "token_usage": {},
+                }
+                state["trace_steps"] = [*state.get("trace_steps", []), step]
+                raise
+
+        return wrapped
 
     def _orchestrator(self, state: AgentState) -> AgentState:
         task_type = state.get("task_type", "")
@@ -387,3 +450,34 @@ class AgentGraphRunner:
         if hasattr(value, "isoformat"):
             return value.isoformat()
         return value
+
+    def _agent_tool_calls(self, agent_name: str, state: AgentState, output: AgentState) -> list[dict[str, Any]]:
+        if agent_name == "equipment_monitor":
+            return [{"tool_name": "get_equipment_status", "status": "success", "adapter": "mcp_or_local"}]
+        if agent_name == "rag_retriever":
+            context = output.get("result", {}).get("knowledge_context", [])
+            return [{"tool_name": "knowledge_search", "status": "success", "result_count": len(context)}]
+        if agent_name == "queue_scheduler":
+            return [{"tool_name": state.get("task_type", "queue_task"), "status": "success"}]
+        if agent_name == "notification_agent":
+            return [{"tool_name": state.get("task_type", "notification_task"), "status": "success"}]
+        return []
+
+    def _agent_token_usage(self, agent_name: str, output: AgentState) -> dict[str, int]:
+        analysis = output.get("result", {}).get("analysis", {}) if isinstance(output.get("result"), dict) else {}
+        token_usage = analysis.get("token_usage") if isinstance(analysis, dict) else None
+        if isinstance(token_usage, dict):
+            return {
+                "input_tokens": int(token_usage.get("input_tokens", 0)),
+                "output_tokens": int(token_usage.get("output_tokens", 0)),
+                "total_tokens": int(token_usage.get("total_tokens", 0)),
+            }
+        return {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+
+    def _aggregate_token_usage(self, trace_steps: list[dict[str, Any]]) -> dict[str, int]:
+        totals = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        for step in trace_steps:
+            usage = step.get("token_usage", {})
+            for key in totals:
+                totals[key] += int(usage.get(key, 0) or 0)
+        return totals

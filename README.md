@@ -6,7 +6,7 @@
 
 ## 当前版本快照
 
-当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、设备实例级调度、人员实例约束、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、结构化调度解释、通知 Agent、操作审计、排程批次持久化、数据集按时间回放导入、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
+当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、设备实例级调度、人员实例约束、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、结构化调度解释、通知 Agent、操作审计、排程批次持久化、数据集按时间回放导入、Agent 离线评测与在线 Trace、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
 
 本仓库包含三组验证数据：
 
@@ -54,6 +54,7 @@ API Layer
   ├─ /api/admin        用户权限与操作审计
   ├─ /api/monitor      队列与设备监测快照
   ├─ /api/datasets     数据集摘要与按时间回放
+  ├─ /api/evaluation   Agent 离线评测与在线 Trace
   ├─ /api/knowledge    RAG 知识检索与索引重建
   ├─ /api/mcp          MCP 工具状态
   └─ /api/agent        LangGraph Agent 入口
@@ -77,6 +78,7 @@ Service Layer
   ├─ ScheduleOptimizerService 候选策略评分
   ├─ NotificationService 员工提醒生成与触发
   ├─ DatasetReplayService 数据集按到达时间回放导入
+  ├─ AgentEvaluationService 离线评测与阈值状态
   ├─ OpenAICompatibleLlmClient  可选异常分析增强
   ├─ McpToolClient       MCP stdio 调用与 fallback
   └─ ScheduleFormatter   持久化排程输出整理
@@ -91,6 +93,8 @@ DB Layer
   ├─ schedule_steps
   ├─ dataset_replay_runs
   ├─ dataset_replay_items
+  ├─ agent_traces
+  ├─ agent_trace_steps
   ├─ notifications
   ├─ users
   └─ audit_logs
@@ -139,13 +143,24 @@ DB Layer
 6. 每个 Tick 结束后触发一次 `scheduler_heartbeat`，由 `queue_scheduler` 统一重排。
 7. 生成通知并更新仪表盘、队列页和通知页。
 
-默认倍率为 `1 秒真实时间 = 30 分钟仿真时间`。第一版不在后端启动长期定时器，页面通过“单步导入”和“手动 Tick”按钮驱动确定性推进；暂停状态下 Tick 不推进。`scenario_synthetic_center_large` 包含 5000 单，回放接口默认最多导入前 500 单，完整压力测试仍建议使用验证脚本。
+默认倍率为 `1 秒真实时间 = 30 分钟仿真时间`。第一版不在后端启动长期定时器，主要通过 API、Swagger 或测试脚本调用“单步导入”和“手动 Tick”接口来确定性推进；暂停状态下 Tick 不推进。当前仪表盘不再保留数据集回放控制台或静态数据集摘要表。`scenario_synthetic_center_large` 包含 5000 单，回放接口默认最多导入前 500 单，完整压力测试仍建议使用验证脚本。
 
 ## 执行状态与审计
 
 排程步骤支持运行中和完成回写。`/api/schedules/steps/{step_id}/running` 会把对应检测步骤和订单标记为 `running`，并设置 `locked=true`；后续自动重排会保留该订单已锁定的步骤，只重排未开始订单和未开始步骤。`/api/schedules/steps/{step_id}/complete` 会记录实际完成时间，并在订单所有检测步骤完成后把订单状态回写为 `completed`。
 
 复检通过 `/api/orders/{order_id}/retest` 创建新订单，记录 `parent_order_id` 和 `retest_reason`，并写入 `retest_required` 排程事件。系统同时提供简单的 header 权限模型，默认角色为 `admin`；可通过 `X-User-Role` 和 `X-User-Id` 模拟 `admin/scheduler/operator/viewer`。订单、排程、事件、通知和执行回写会写入 `audit_logs`，用于演示操作审计。
+
+## Agent 评价体系
+
+系统新增离线评测与在线 Trace 两类评价能力。离线评测使用 `data/evaluation/agent_eval_cases.jsonl` 中的 JSONL 标准任务集，对响应质量、轨迹状态和执行效率进行评分；在线 Trace 在每次 `/api/agent/run` 后记录 `trace_id`、Agent 路径、handoff、工具调用、节点耗时、Token 使用占位和错误信息。
+
+当前评价指标包括：
+
+- 系统级：业务正确性、排程质量、系统效率、稳定性和可观测性。
+- Agent 级：Orchestrator 路由准确率、RAG Hit@K、Queue Scheduler 排程可行率、Equipment Monitor 工具调用成功率、Notification Agent 触发准确率、Exception Analyzer 解释质量和 fallback 触发率。
+- 离线评测：响应质量使用规则断言模拟 LLMJudge 输出，语义类指标后续可替换为真实 LLMJudge；轨迹状态会对比 `visited_agents` 与 `handoffs`；效率会检查端到端延迟和 handoff 数量。
+- 在线阈值：默认监控 Agent 成功率、轨迹符合率、MCP 成功率、RAG Hit@3、500 单重排耗时、约束违规数、LLM fallback 连续次数和 Token 预算。
 
 ## 算法替代路线
 
@@ -164,6 +179,7 @@ project/
 ├── rag/                 # RAG 检索、索引与知识库
 ├── services/            # 仿真、调度、MCP 和格式化服务
 ├── data/
+│   ├── evaluation/                    # Agent 离线评测 JSONL
 │   ├── mechanism_validation/          # 最小机制验证数据集
 │   ├── scenario_synthetic_center/     # 500 单合成拟真数据集
 │   └── scenario_synthetic_center_large/ # 5000 单大样本合成数据集
@@ -373,6 +389,18 @@ curl -X POST http://127.0.0.1:8002/api/agent/run \
   -d '{"task_type": "query_queue", "payload": {}}'
 ```
 
+运行离线评测并查询在线 Trace：
+
+```bash
+curl -X POST http://127.0.0.1:8002/api/evaluation/offline/run \
+  -H "Content-Type: application/json" \
+  -d '{"dataset_path": "data/evaluation/agent_eval_cases.jsonl", "limit": 3}'
+
+curl http://127.0.0.1:8002/api/evaluation/traces
+curl http://127.0.0.1:8002/api/evaluation/traces/{trace_id}
+curl http://127.0.0.1:8002/api/evaluation/thresholds/status
+```
+
 标记检测步骤运行中与完成：
 
 ```bash
@@ -413,7 +441,7 @@ curl -N http://127.0.0.1:8002/api/notifications/stream
 
 ## 管理页
 
-- `/`：检测队列仪表盘与数据集回放控制台
+- `/`：检测队列仪表盘
 - `/orders`：订单管理
 - `/queue`：队列与排程
 - `/knowledge`：知识库检索
@@ -444,7 +472,7 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
 ```
 
-验证结果为 `60 passed, 3 warnings`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
+验证结果为 `63 passed, 3 warnings`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
 
 当前测试覆盖：
 
@@ -473,6 +501,7 @@ cd /home/work/workproject2/project
 - Notification Agent、通知持久化、仿真时钟推进和 SSE 接口
 - 运行中步骤锁定、检测完成回写、复检订单、设备预约甘特图、监控报告、权限拦截和操作审计
 - 异常分析 Agent 的 LLM 失败 fallback
+- Agent 在线 Trace 持久化、离线 JSONL 评测、响应质量/轨迹状态/效率评分和阈值状态查询
 
 ## 当前完成度
 
@@ -501,6 +530,7 @@ cd /home/work/workproject2/project
 - Notification Agent、通知表、仿真时钟、SSE 通知流和通知管理 API
 - Jinja2 管理页：仪表盘、订单、队列、知识库、Agent轨迹、通知面板
 - LangGraph 多 Agent 编排与异常分析 Agent 可选 LLM 调用
+- Agent 评价体系：支持 JSONL 离线评测、在线 Trace 入库、节点耗时记录、工具调用记录和阈值状态查询
 - FastAPI 接口与自动化测试
 
 当前限制：
@@ -509,12 +539,13 @@ cd /home/work/workproject2/project
 - MCP 独立服务目前封装的是仿真工具，还未接入真实实验室系统。
 - `MCP_ADAPTER_TYPE` 当前是适配器类型标识，不代表已经连通真实 LIMS、设备台账或工时系统。
 - 合成数据集用于机制验证和压力测试，不代表某真实检测中心的设备数量、检测耗时、订单到达分布或插队规则。
-- 数据集回放验证的是订单释放、事件触发、心跳重排和页面联动机制，不代表真实检测中心的实时接单节奏或生产排程效果。
+- 数据集回放验证的是订单释放、事件触发和心跳重排机制，不代表真实检测中心的实时接单节奏或生产排程效果。
 - 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间，但仍是规则排程与候选评分，不是数学优化求解器。
 - 非抢占式约束已覆盖运行中步骤锁定和未开始任务重排；暂停、续跑、人工复核审批流仍是后续扩展。
 - 高严重度事件通过 API 写入后会立即触发一次心跳；后台周期心跳只在 FastAPI 生命周期启动后运行，测试和脚本仍以手动触发为主，以保证验证结果确定。
 - MCP stdio 服务已可独立启动，但需要共享应用状态的工具当前仍通过应用内 fallback 执行；真实外部 MCP 服务适配需要单独设计状态同步或数据库访问边界。
 - 除 `exception_analyzer` 外，其他 Agent 当前仍以确定性流程为主，模型配置属于后续增强入口。
+- 当前 LLMJudge 为规则断言 fallback，用于离线开发和稳定测试；真实 LLMJudge、云端观测面板和 Token 精细计费仍是后续可接入能力。
 - 前端管理页以服务端渲染和少量原生 JS 为主，尚未加入真实登录态下的权限控制和复杂交互组件。
 - 设备状态、检测时间、检测项目仍是仿真种子数据。
 - 尚未接入真实 LIMS、设备台账、检测标准库或历史工时数据。

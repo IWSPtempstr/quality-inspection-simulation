@@ -295,6 +295,11 @@ class AgentRunRequest(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+class OfflineEvaluationRunRequest(BaseModel):
+    dataset_path: str = Field(default="data/evaluation/agent_eval_cases.jsonl", min_length=1)
+    limit: int | None = Field(default=None, ge=1, le=500)
+
+
 class DataResponse(BaseModel):
     message: str
     data: Any

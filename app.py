@@ -19,6 +19,7 @@ from services.llm_client import OpenAICompatibleLlmClient
 from services.notification_service import NotificationService
 from services.monitoring_service import MonitoringReportService
 from services.dataset_replay_service import DatasetReplayService
+from services.evaluation_service import AgentEvaluationService
 from services.scheduler_service import (
     ScheduleOptimizerService,
     SchedulerHeartbeatService,
@@ -121,7 +122,7 @@ def create_app() -> FastAPI:
     app.state.dataset_replay_service = dataset_replay_service
     app.state.knowledge_retriever = knowledge_retriever
     app.state.tool_client = tool_client
-    app.state.agent_graph = AgentGraphRunner(
+    agent_graph = AgentGraphRunner(
         session_factory=session_factory,
         simulation_service=simulation_service,
         queue_service=queue_service,
@@ -132,6 +133,12 @@ def create_app() -> FastAPI:
         scheduler_heartbeat_service=scheduler_heartbeat_service,
         agent_configs=settings.agent_configs,
         llm_client=OpenAICompatibleLlmClient(),
+    )
+    app.state.agent_graph = agent_graph
+    app.state.agent_evaluation_service = AgentEvaluationService(
+        session_factory=session_factory,
+        base_dir=settings.base_dir,
+        agent_graph=agent_graph,
     )
 
     _seed_reference_data(app)

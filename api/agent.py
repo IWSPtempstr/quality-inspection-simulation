@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
+from db.repositories import AgentTraceRepository
 from domain.schemas import AgentRunRequest, DataResponse
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
@@ -26,7 +27,7 @@ TASK_PERMISSIONS = {
 @router.post("/run", response_model=DataResponse)
 def run_agent(payload: AgentRunRequest, request: Request) -> DataResponse:
     permission = TASK_PERMISSIONS.get(payload.task_type, "schedule:read")
-    request.app.state.permission_service.require(request, permission)
+    actor = request.app.state.permission_service.require(request, permission)
     try:
         result = request.app.state.agent_graph.run(payload)
     except Exception as exc:
@@ -49,6 +50,18 @@ def run_agent(payload: AgentRunRequest, request: Request) -> DataResponse:
             "visited_agents": result.get("visited_agents", []),
         },
     )
+    with request.app.state.session_factory() as session:
+        AgentTraceRepository(session).create_trace(
+            trace=result["trace"],
+            task_type=payload.task_type,
+            actor_id=actor.actor_id,
+            actor_role=actor.role,
+            payload_summary={"payload_keys": sorted(payload.payload.keys())},
+            result_summary={
+                "visited_agents": result.get("visited_agents", []),
+                "error_count": len(result.get("errors", [])),
+            },
+        )
     return DataResponse(message="Agent任务执行完成", data=result)
 
 

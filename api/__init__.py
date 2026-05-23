@@ -1,6 +1,7 @@
 from .admin import router as admin_router
 from .agent import router as agent_router
 from .datasets import router as datasets_router
+from .evaluation import router as evaluation_router
 from .knowledge import router as knowledge_router
 from .mcp import router as mcp_router
 from .monitor import router as monitor_router
@@ -14,6 +15,7 @@ from .simulation import router as simulation_router
 api_routers = [
     admin_router,
     datasets_router,
+    evaluation_router,
     orders_router,
     queue_router,
     schedules_router,

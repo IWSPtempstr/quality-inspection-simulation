@@ -9,6 +9,8 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from db.models import (
+    AgentTraceModel,
+    AgentTraceStepModel,
     AuditLogModel,
     DatasetReplayItemModel,
     DatasetReplayRunModel,
@@ -1172,3 +1174,175 @@ class AuditLogRepository:
             detail=_json_dict(model.detail),
             created_at=model.created_at,
         ).model_dump(mode="json")
+
+
+class AgentTraceRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create_trace(
+        self,
+        *,
+        trace: dict,
+        task_type: str,
+        actor_id: str | None = None,
+        actor_role: str | None = None,
+        payload_summary: dict | None = None,
+        result_summary: dict | None = None,
+    ) -> dict:
+        trace_id = trace["trace_id"]
+        errors = trace.get("errors", [])
+        model = AgentTraceModel(
+            id=trace_id,
+            task_type=task_type,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            status="failed" if errors else "success",
+            latency_ms=int(trace.get("latency_ms") or 0),
+            visited_agents=_json_dump(trace.get("visited_agents", [])),
+            handoffs=_json_dump(trace.get("handoffs", [])),
+            tool_calls=_json_dump(trace.get("tool_calls", [])),
+            token_usage=_json_dump(trace.get("token_usage", {})),
+            errors=_json_dump(errors),
+            payload_summary=_json_dump(payload_summary or {}),
+            result_summary=_json_dump(result_summary or {}),
+            created_at=self._parse_datetime(trace.get("started_at")) or utc_now(),
+        )
+        self.session.add(model)
+        for index, step in enumerate(trace.get("steps", []), start=1):
+            self.session.add(
+                AgentTraceStepModel(
+                    id=new_id("trace-step"),
+                    trace_id=trace_id,
+                    sequence=index,
+                    agent_name=step.get("agent_name", "unknown"),
+                    status=step.get("status", "success"),
+                    latency_ms=int(step.get("latency_ms") or 0),
+                    started_at=self._parse_datetime(step.get("started_at")) or utc_now(),
+                    ended_at=self._parse_datetime(step.get("ended_at")) or utc_now(),
+                    error_message=step.get("error"),
+                    tool_calls=_json_dump(step.get("tool_calls", [])),
+                    token_usage=_json_dump(step.get("token_usage", {})),
+                )
+            )
+        self.session.commit()
+        return self.get_trace(trace_id) or {}
+
+    def list_traces(
+        self,
+        *,
+        task_type: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        filters = []
+        if task_type:
+            filters.append(AgentTraceModel.task_type == task_type)
+        if status:
+            filters.append(AgentTraceModel.status == status)
+        statement = select(AgentTraceModel)
+        count_statement = select(func.count()).select_from(AgentTraceModel)
+        if filters:
+            statement = statement.where(*filters)
+            count_statement = count_statement.where(*filters)
+        statement = statement.order_by(AgentTraceModel.created_at.desc()).limit(limit).offset(offset)
+        models = self.session.scalars(statement).all()
+        return {
+            "items": [self._trace_to_summary(model) for model in models],
+            "total": self.session.scalar(count_statement) or 0,
+            "limit": limit,
+            "offset": offset,
+        }
+
+    def get_trace(self, trace_id: str) -> dict | None:
+        model = self.session.get(AgentTraceModel, trace_id)
+        if model is None:
+            return None
+        steps = self.session.scalars(
+            select(AgentTraceStepModel)
+            .where(AgentTraceStepModel.trace_id == trace_id)
+            .order_by(AgentTraceStepModel.sequence.asc())
+        ).all()
+        return {
+            **self._trace_to_summary(model),
+            "steps": [self._step_to_dict(step) for step in steps],
+            "payload_summary": _json_dict(model.payload_summary),
+            "result_summary": _json_dict(model.result_summary),
+        }
+
+    def threshold_status(self) -> dict:
+        traces = self.session.scalars(select(AgentTraceModel)).all()
+        total = len(traces)
+        successes = sum(1 for item in traces if item.status == "success")
+        success_rate = successes / total if total else 1.0
+        latency_values = sorted(int(item.latency_ms or 0) for item in traces)
+        p95_index = max(0, int(len(latency_values) * 0.95) - 1) if latency_values else 0
+        p95_latency = latency_values[p95_index] if latency_values else 0
+        thresholds = {
+            "agent_success_rate_min": 0.95,
+            "trajectory_compliance_rate_min": 0.95,
+            "mcp_tool_success_rate_min": 0.98,
+            "rag_hit_at_3_min": 0.8,
+            "queue_scheduler_500_orders_latency_ms_max": 10000,
+            "constraint_violation_count_max": 0,
+            "llm_fallback_consecutive_max": 3,
+        }
+        metrics = {
+            "agent_success_rate": round(success_rate, 4),
+            "trace_latency_p95_ms": p95_latency,
+            "trajectory_compliance_rate": round(success_rate, 4),
+        }
+        alerts = []
+        if success_rate < thresholds["agent_success_rate_min"]:
+            alerts.append(
+                {
+                    "metric": "agent_success_rate",
+                    "severity": "warning",
+                    "message": "Agent 运行成功率低于阈值",
+                }
+            )
+        return {
+            "trace_count": total,
+            "metrics": metrics,
+            "thresholds": thresholds,
+            "alerts": alerts,
+        }
+
+    def _trace_to_summary(self, model: AgentTraceModel) -> dict:
+        return {
+            "trace_id": model.id,
+            "task_type": model.task_type,
+            "actor_id": model.actor_id,
+            "actor_role": model.actor_role,
+            "status": model.status,
+            "latency_ms": model.latency_ms,
+            "visited_agents": _json_value(model.visited_agents),
+            "handoffs": _json_value(model.handoffs),
+            "tool_calls": _json_value(model.tool_calls),
+            "token_usage": _json_dict(model.token_usage),
+            "errors": _json_value(model.errors),
+            "created_at": model.created_at,
+        }
+
+    def _step_to_dict(self, step: AgentTraceStepModel) -> dict:
+        return {
+            "id": step.id,
+            "trace_id": step.trace_id,
+            "sequence": step.sequence,
+            "agent_name": step.agent_name,
+            "status": step.status,
+            "latency_ms": step.latency_ms,
+            "started_at": step.started_at,
+            "ended_at": step.ended_at,
+            "error": step.error_message,
+            "tool_calls": _json_value(step.tool_calls),
+            "token_usage": _json_dict(step.token_usage),
+        }
+
+    def _parse_datetime(self, value):
+        if not value:
+            return None
+        if hasattr(value, "isoformat"):
+            return value
+        return datetime.fromisoformat(value)
