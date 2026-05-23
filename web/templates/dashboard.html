@@ -4,45 +4,61 @@
   <h1>检测队列仪表盘</h1>
   <p>查看当前队列、SLA、设备负载、数据集验证摘要和事件闭环状态。</p>
 </section>
-<section class="panel">
-  <button onclick="loadReport()">刷新监测报告</button>
-  <div id="metric-cards" class="cards"></div>
-  <div class="grid two">
-    <div>
-      <h2>合成数据集验证摘要</h2>
-      <div id="dataset-report" class="table-like"></div>
-    </div>
-    <div>
-      <h2>事件闭环</h2>
-      <pre id="event-report">等待加载...</pre>
-    </div>
+
+<section class="panel stack">
+  <div class="toolbar">
+    <button type="button" data-action="dashboard-refresh">刷新监测报告</button>
+    <div id="dashboard-status" class="status-line" aria-live="polite">等待加载</div>
   </div>
+
+  <div id="metric-cards" class="cards" aria-live="polite"></div>
+
+  <div class="grid two">
+    <section aria-labelledby="dataset-title">
+      <h2 id="dataset-title">合成数据集验证摘要</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>数据集</th>
+              <th>订单</th>
+              <th>设备</th>
+              <th>员工</th>
+              <th>最大路线</th>
+            </tr>
+          </thead>
+          <tbody id="dataset-report-body">
+            <tr><td colspan="5" class="empty">等待加载</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="event-title">
+      <h2 id="event-title">事件闭环</h2>
+      <div id="event-status-cards" class="cards compact" aria-live="polite"></div>
+      <h3>待处理事件</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>事件</th>
+              <th>等级</th>
+              <th>对象</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="open-events-body">
+            <tr><td colspan="4" class="empty">等待加载</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <details class="debug-panel">
+    <summary>查看原始监测报告</summary>
+    <pre id="dashboard-debug" aria-live="polite">等待加载</pre>
+  </details>
 </section>
-<script>
-async function loadReport() {
-  const response = await fetch('/api/monitor/report');
-  const payload = await response.json();
-  const report = payload.data;
-  const metrics = report.latest_schedule.metrics || {};
-  document.getElementById('metric-cards').innerHTML = [
-    ['排程批次', report.latest_schedule.run_id || '-'],
-    ['已排订单', report.latest_schedule.scheduled_count],
-    ['阻塞订单', report.latest_schedule.blocked_count],
-    ['准时率', metrics.on_time_rate ?? '-'],
-    ['平均等待分钟', metrics.average_wait_minutes ?? '-'],
-    ['转运等待分钟', metrics.transfer_wait_minutes ?? '-']
-  ].map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`).join('');
-  document.getElementById('dataset-report').innerHTML = report.dataset_reports.map(item => `
-    <div class="row">
-      <strong>${item.dataset}</strong>
-      <span>${item.order_count} 单</span>
-      <span>设备 ${item.equipment_instance_count}</span>
-      <span>员工 ${item.employee_count}</span>
-      <span>最大路线 ${item.max_route_length} 步</span>
-    </div>
-  `).join('');
-  document.getElementById('event-report').textContent = JSON.stringify(report.event_summary, null, 2);
-}
-loadReport();
-</script>
 {% endblock %}

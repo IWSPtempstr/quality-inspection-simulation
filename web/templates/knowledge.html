@@ -4,29 +4,24 @@
   <h1>知识库检索</h1>
   <p>检索 CCC、CVC、国际认证和设备约束知识，或重建向量索引。</p>
 </section>
-<section class="panel grid">
-  <form id="knowledge-form">
-    <label>查询内容 <input name="query" value="CCC 强制性认证 安全检测"></label>
-    <button type="submit">检索</button>
-    <button type="button" onclick="reindex()">重建索引</button>
-  </form>
-  <pre id="knowledge-output">等待操作...</pre>
-</section>
-<script>
-document.getElementById('knowledge-form').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const query = new FormData(event.target).get('query');
-  const response = await fetch('/api/knowledge/search', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({query, top_k: 3})
-  });
-  document.getElementById('knowledge-output').textContent = JSON.stringify(await response.json(), null, 2);
-});
-async function reindex() {
-  const response = await fetch('/api/knowledge/reindex', {method: 'POST'});
-  document.getElementById('knowledge-output').textContent = JSON.stringify(await response.json(), null, 2);
-}
-</script>
-{% endblock %}
 
+<section class="panel grid">
+  <form id="knowledge-form" autocomplete="off">
+    <label>查询内容
+      <input name="query" placeholder="输入认证或设备约束关键词…" autocomplete="off" required>
+    </label>
+    <button type="submit">检索</button>
+    <button type="button" data-action="knowledge-reindex">重建索引</button>
+    <div id="knowledge-status" class="status-line" role="alert" aria-live="polite"></div>
+  </form>
+  <div>
+    <div id="knowledge-results" class="result-list" aria-live="polite">
+      <div class="empty">输入查询内容后显示检索结果。</div>
+    </div>
+    <details class="debug-panel">
+      <summary>查看原始知识库响应</summary>
+      <pre id="knowledge-debug" aria-live="polite">等待操作</pre>
+    </details>
+  </div>
+</section>
+{% endblock %}

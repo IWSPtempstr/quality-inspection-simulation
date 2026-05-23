@@ -2,59 +2,101 @@
 {% block content %}
 <section class="hero">
   <h1>队列与排程</h1>
-  <p>查看最新持久化排程批次，或按当前订单重新生成队列。</p>
+  <p>查看最新持久化排程批次、设备时间线、步骤表和候选排序策略。</p>
 </section>
-<section class="panel">
-  <button onclick="rebuildQueue()">重建队列</button>
-  <button onclick="loadQueue()">查看最新队列</button>
-  <button onclick="loadOptions()">比较策略</button>
-  <div id="gantt" class="gantt"></div>
-  <pre id="queue-output">等待加载...</pre>
-</section>
-<script>
-async function rebuildQueue() {
-  const response = await fetch('/api/queue/rebuild', {method: 'POST'});
-  const payload = await response.json();
-  document.getElementById('queue-output').textContent = JSON.stringify(payload, null, 2);
-  renderGantt(payload.data.gantt);
-}
-async function loadQueue() {
-  const response = await fetch('/api/queue');
-  const payload = await response.json();
-  document.getElementById('queue-output').textContent = JSON.stringify(payload, null, 2);
-  renderGantt(payload.data.gantt);
-}
-async function loadOptions() {
-  const response = await fetch('/api/agent/run', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({task_type: 'analyze_schedule_options', payload: {}})
-  });
-  document.getElementById('queue-output').textContent = JSON.stringify(await response.json(), null, 2);
-}
-function renderGantt(gantt) {
-  const target = document.getElementById('gantt');
-  if (!gantt || !gantt.rows || !gantt.rows.length) {
-    target.innerHTML = '';
-    return;
-  }
-  const times = gantt.bars.map(item => [Date.parse(item.start_time), Date.parse(item.end_time)]).flat();
-  const min = Math.min(...times);
-  const max = Math.max(...times);
-  const span = Math.max(1, max - min);
-  target.innerHTML = gantt.rows.map(row => `
-    <div class="gantt-row">
-      <div class="gantt-label">${row.resource_id}</div>
-      <div class="gantt-line">
-        ${row.bars.map(bar => {
-          const left = ((Date.parse(bar.start_time) - min) / span) * 100;
-          const width = Math.max(2, ((Date.parse(bar.end_time) - Date.parse(bar.start_time)) / span) * 100);
-          return `<div class="gantt-bar ${bar.locked ? 'locked' : ''}" style="left:${left}%;width:${width}%;" title="${bar.sample_name} ${bar.project_type}">${bar.order_id}</div>`;
-        }).join('')}
-      </div>
+
+<section class="panel stack">
+  <div class="toolbar">
+    <button type="button" data-action="queue-rebuild">重建队列</button>
+    <button type="button" data-action="queue-load">查看最新队列</button>
+    <button type="button" data-action="queue-options">比较策略</button>
+    <div id="queue-status" class="status-line" aria-live="polite">等待加载</div>
+  </div>
+
+  <div id="queue-metrics" class="cards" aria-live="polite"></div>
+
+  <section aria-labelledby="strategy-title">
+    <h2 id="strategy-title">策略对比表</h2>
+    <div class="table-wrap">
+      <table id="strategy-table">
+        <thead>
+          <tr>
+            <th>策略</th>
+            <th>评分</th>
+            <th>已排订单</th>
+            <th>阻塞订单</th>
+            <th>准时率</th>
+            <th>平均等待</th>
+          </tr>
+        </thead>
+        <tbody id="strategy-table-body">
+          <tr><td colspan="6" class="empty">点击“比较策略”后显示。</td></tr>
+        </tbody>
+      </table>
     </div>
-  `).join('');
-}
-loadQueue();
-</script>
+  </section>
+
+  <section aria-labelledby="gantt-title">
+    <h2 id="gantt-title">设备预约甘特图</h2>
+    <div id="gantt" class="gantt" aria-live="polite"></div>
+  </section>
+
+  <section aria-labelledby="selected-step-title">
+    <h2 id="selected-step-title">选中步骤详情</h2>
+    <div id="selected-step-detail" class="detail-panel" aria-live="polite">
+      <div class="empty">点击甘特条或步骤表中的“定位”查看详情。</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="steps-title">
+    <h2 id="steps-title">排程步骤</h2>
+    <div class="table-wrap">
+      <table id="steps-table">
+        <thead>
+          <tr>
+            <th>顺序</th>
+            <th>订单</th>
+            <th>SLA 风险</th>
+            <th>步骤</th>
+            <th>设备/资源</th>
+            <th>员工</th>
+            <th>开始</th>
+            <th>结束</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="steps-table-body">
+          <tr><td colspan="10" class="empty">等待加载</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="blocked-title">
+    <h2 id="blocked-title">阻塞原因解释</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>订单</th>
+            <th>类型</th>
+            <th>样品</th>
+            <th>类别</th>
+            <th>解释</th>
+            <th>处理方向</th>
+          </tr>
+        </thead>
+        <tbody id="blocked-orders-body">
+          <tr><td colspan="6" class="empty">等待加载</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <details class="debug-panel">
+    <summary>查看原始队列响应</summary>
+    <pre id="queue-debug" aria-live="polite">等待加载</pre>
+  </details>
+</section>
 {% endblock %}

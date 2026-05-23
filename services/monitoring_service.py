@@ -15,6 +15,9 @@ class MonitoringReportService:
     def __init__(self, session_factory: sessionmaker[Session], base_dir: Path) -> None:
         self.session_factory = session_factory
         self.base_dir = base_dir
+        self._dataset_cache: dict[str, tuple[tuple[float | None, ...], dict[str, Any]]] = {}
+        self._dataset_hits = 0
+        self._dataset_misses = 0
 
     def report(self) -> dict[str, Any]:
         with self.session_factory() as session:
@@ -47,6 +50,13 @@ class MonitoringReportService:
         }
 
     def _dataset_report(self, dataset_dir: Path) -> dict[str, Any]:
+        fingerprint = self._dataset_fingerprint(dataset_dir)
+        cached = self._dataset_cache.get(str(dataset_dir))
+        if cached and cached[0] == fingerprint:
+            self._dataset_hits += 1
+            return cached[1]
+
+        self._dataset_misses += 1
         manifest = self._read_json(dataset_dir / "dataset_manifest.json")
         orders = self._read_json(dataset_dir / "order_arrivals.json")
         equipment = self._read_json(dataset_dir / "equipment_catalog.json")
@@ -56,7 +66,7 @@ class MonitoringReportService:
         order_types = Counter(order.get("order_type") for order in orders)
         certification_types = Counter(order.get("certification_type") for order in orders)
         route_lengths = [len(order.get("detection_route") or []) for order in orders]
-        return {
+        report = {
             "dataset": dataset_dir.name,
             "version": manifest.get("dataset_version") or manifest.get("version"),
             "simulation_period": manifest.get("simulation_period") or manifest.get("period"),
@@ -73,8 +83,26 @@ class MonitoringReportService:
             "maintenance_count": len(operations.get("maintenance_windows", [])),
             "failure_count": len(operations.get("failure_events", operations.get("simulated_failures", []))),
         }
+        self._dataset_cache[str(dataset_dir)] = (fingerprint, report)
+        return report
 
     def _read_json(self, path: Path):
         if not path.exists():
             return {}
         return json.loads(path.read_text(encoding="utf-8"))
+
+    def _dataset_fingerprint(self, dataset_dir: Path) -> tuple[float | None, ...]:
+        files = [
+            dataset_dir / "dataset_manifest.json",
+            dataset_dir / "order_arrivals.json",
+            dataset_dir / "equipment_catalog.json",
+            dataset_dir / "operations_constraints.json",
+        ]
+        return tuple(path.stat().st_mtime if path.exists() else None for path in files)
+
+    def cache_stats(self) -> dict[str, int]:
+        return {
+            "dataset_entries": len(self._dataset_cache),
+            "dataset_hits": self._dataset_hits,
+            "dataset_misses": self._dataset_misses,
+        }

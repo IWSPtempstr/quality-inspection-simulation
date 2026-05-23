@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 
 
 @router.get("", response_model=DataResponse)
-def list_schedules(session: Session = Depends(get_db)) -> DataResponse:
+def list_schedules(request: Request, session: Session = Depends(get_db)) -> DataResponse:
+    request.app.state.permission_service.require(request, "schedule:read")
     repository = ScheduleRepository(session)
     return DataResponse(
         message="排程列表查询成功",
@@ -21,7 +22,8 @@ def list_schedules(session: Session = Depends(get_db)) -> DataResponse:
 
 
 @router.get("/{run_id}", response_model=DataResponse)
-def get_schedule(run_id: str, session: Session = Depends(get_db)) -> DataResponse:
+def get_schedule(run_id: str, request: Request, session: Session = Depends(get_db)) -> DataResponse:
+    request.app.state.permission_service.require(request, "schedule:read")
     repository = ScheduleRepository(session)
     schedule = repository.get(run_id)
     if schedule is None:
@@ -30,7 +32,8 @@ def get_schedule(run_id: str, session: Session = Depends(get_db)) -> DataRespons
 
 
 @router.get("/{run_id}/gantt", response_model=DataResponse)
-def get_schedule_gantt(run_id: str, session: Session = Depends(get_db)) -> DataResponse:
+def get_schedule_gantt(run_id: str, request: Request, session: Session = Depends(get_db)) -> DataResponse:
+    request.app.state.permission_service.require(request, "schedule:read")
     repository = ScheduleRepository(session)
     schedule = repository.get(run_id)
     if schedule is None:

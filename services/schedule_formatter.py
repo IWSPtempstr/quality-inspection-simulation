@@ -19,6 +19,7 @@ def format_schedule_detail(schedule: dict) -> dict:
     for step in schedule.get("steps", []):
         status = step.get("status")
         if status == "blocked":
+            reason = step.get("blocked_reason")
             blocked_orders.append(
                 {
                     "id": step["order_id"],
@@ -26,11 +27,13 @@ def format_schedule_detail(schedule: dict) -> dict:
                     "sample_name": step["sample_name"],
                     "certification_type": step["certification_type"],
                     "status": status,
-                    "reason": step.get("blocked_reason"),
+                    "reason": reason,
+                    "reason_detail": explain_blocked_reason(reason),
                 }
             )
             continue
 
+        sla_risk_level = _sla_risk_level(step.get("sla_status"), step.get("delay_minutes"))
         order = orders.setdefault(
             step["order_id"],
             {
@@ -43,6 +46,7 @@ def format_schedule_detail(schedule: dict) -> dict:
                 "promised_finish_time": _serialize(step.get("promised_finish_time")),
                 "sla_status": step.get("sla_status"),
                 "delay_minutes": step.get("delay_minutes"),
+                "sla_risk_level": sla_risk_level,
                 "steps": [],
             },
         )
@@ -73,6 +77,9 @@ def format_schedule_detail(schedule: dict) -> dict:
                     "end_time": _serialize(step.get("end_time")),
                     "batch_count": step.get("batch_count"),
                     "required_batches": step.get("required_batches"),
+                    "sla_status": step.get("sla_status"),
+                    "delay_minutes": step.get("delay_minutes"),
+                    "sla_risk_level": sla_risk_level,
                     "execution_status": step.get("execution_status"),
                     "locked": bool(step.get("locked")),
                     "actual_start_time": _serialize(step.get("actual_start_time")),
@@ -114,6 +121,9 @@ def format_gantt(schedule: dict) -> dict:
                 "start_time": _serialize(step.get("start_time")),
                 "end_time": _serialize(step.get("end_time")),
                 "duration_minutes": step.get("duration_minutes"),
+                "sla_status": step.get("sla_status"),
+                "delay_minutes": step.get("delay_minutes"),
+                "sla_risk_level": _sla_risk_level(step.get("sla_status"), step.get("delay_minutes")),
                 "execution_status": step.get("execution_status") or step.get("status"),
                 "locked": bool(step.get("locked")),
                 "assigned_employee_ids": step.get("assigned_employee_ids", []),
@@ -135,3 +145,50 @@ def _serialize(value):
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return value
+
+
+def _sla_risk_level(sla_status: str | None, delay_minutes: int | None) -> str:
+    if sla_status == "delayed" or int(delay_minutes or 0) > 0:
+        return "delayed"
+    if sla_status == "on_time":
+        return "on_time"
+    return "not_applicable"
+
+
+def explain_blocked_reason(reason: str | None) -> dict:
+    text = reason or "unknown"
+    lower = text.lower()
+    if "no detection flow" in lower:
+        return {
+            "category": "route_missing",
+            "summary": "未找到可用检测流程。",
+            "suggested_action": "检查认证类型、requested_projects 或订单级 detection_route。",
+            "raw_reason": text,
+        }
+    if "preprocessing" in lower:
+        return {
+            "category": "preprocessing_unavailable",
+            "summary": "样品前处理资源或人员不可用。",
+            "suggested_action": "检查前处理工位、人员技能和班次约束。",
+            "raw_reason": text,
+        }
+    if "transfer" in lower:
+        return {
+            "category": "transfer_unavailable",
+            "summary": f"跨实验室转运资源不可用：{text}",
+            "suggested_action": "检查转运资源、实验室区域路径和转运人员配置。",
+            "raw_reason": text,
+        }
+    if "equipment" in lower or "personnel" in lower or "consumable" in lower:
+        return {
+            "category": "resource_unavailable",
+            "summary": f"设备、人员或耗材资源不可用：{text}",
+            "suggested_action": "检查设备状态、操作人员技能/并行上限和耗材日配额。",
+            "raw_reason": text,
+        }
+    return {
+        "category": "unknown",
+        "summary": text,
+        "suggested_action": "查看订单路线、资源约束和排程事件日志。",
+        "raw_reason": text,
+    }

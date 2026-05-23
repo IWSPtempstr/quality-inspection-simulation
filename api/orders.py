@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from api.dependencies import get_db
 from db.repositories import OrderRepository
-from domain.schemas import DataResponse, OrderCreate, OrderUpdate, RetestCreate
+from domain.schemas import CertificationType, DataResponse, OrderCreate, OrderType, OrderUpdate, QueueStatus, RetestCreate
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -28,8 +28,34 @@ def create_order(payload: OrderCreate, request: Request, session: Session = Depe
     return DataResponse(message="订单创建成功", data=order.model_dump(mode="json"))
 
 
+@router.get("", response_model=DataResponse)
+def list_orders(
+    request: Request,
+    session: Session = Depends(get_db),
+    status: QueueStatus | None = Query(default=None),
+    order_type: OrderType | None = Query(default=None),
+    certification_type: CertificationType | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=120),
+    include_cancelled: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> DataResponse:
+    request.app.state.permission_service.require(request, "orders:read")
+    result = OrderRepository(session).list(
+        status=status.value if status else None,
+        order_type=order_type.value if order_type else None,
+        certification_type=certification_type.value if certification_type else None,
+        q=q,
+        include_cancelled=include_cancelled,
+        limit=limit,
+        offset=offset,
+    )
+    return DataResponse(message="订单列表查询成功", data=result)
+
+
 @router.get("/{order_id}", response_model=DataResponse)
-def get_order(order_id: str, session: Session = Depends(get_db)) -> DataResponse:
+def get_order(order_id: str, request: Request, session: Session = Depends(get_db)) -> DataResponse:
+    request.app.state.permission_service.require(request, "orders:read")
     order = OrderRepository(session).get(order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="订单不存在")

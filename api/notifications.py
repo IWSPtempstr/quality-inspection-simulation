@@ -42,6 +42,8 @@ def mark_notification_read(notification_id: str, request: Request) -> DataRespon
 
 @router.get("/stream")
 def stream_notifications(request: Request) -> StreamingResponse:
+    request.app.state.permission_service.require(request, "notifications:read")
+
     def event_stream():
         yield request.app.state.notification_service.stream_events()
 

@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/queue", tags=["queue"])
 
 @router.get("", response_model=DataResponse)
 def get_queue(request: Request, session: Session = Depends(get_db)) -> DataResponse:
+    request.app.state.permission_service.require(request, "schedule:read")
     repository = ScheduleRepository(session)
     latest = repository.latest()
     if latest:

@@ -3,23 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F7F7F8">
   <title>{{ title }} - 电器产品质量检测多Agent仿真系统</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
 </head>
-<body>
+<body data-page="{{ request.url.path }}">
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
   <header class="topbar">
     <div class="brand">电器产品质量检测多Agent仿真系统</div>
-    <nav>
-      <a href="/">仪表盘</a>
-      <a href="/orders">订单</a>
-      <a href="/queue">队列</a>
-      <a href="/notifications">通知</a>
-      <a href="/knowledge">知识库</a>
-      <a href="/agents">Agent</a>
+    <nav aria-label="主导航">
+      <a href="/" {% if request.url.path == "/" %}aria-current="page"{% endif %}>仪表盘</a>
+      <a href="/orders" {% if request.url.path == "/orders" %}aria-current="page"{% endif %}>订单</a>
+      <a href="/queue" {% if request.url.path == "/queue" %}aria-current="page"{% endif %}>队列</a>
+      <a href="/notifications" {% if request.url.path == "/notifications" %}aria-current="page"{% endif %}>通知</a>
+      <a href="/knowledge" {% if request.url.path == "/knowledge" %}aria-current="page"{% endif %}>知识库</a>
+      <a href="/agents" {% if request.url.path == "/agents" %}aria-current="page"{% endif %}>Agent</a>
       <a href="/docs">API</a>
     </nav>
   </header>
-  <main class="page">
+  <main id="main-content" class="page" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 </body>

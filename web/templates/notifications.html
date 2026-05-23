@@ -2,45 +2,76 @@
 {% block content %}
 <section class="hero">
   <h1>员工通知</h1>
-  <p>查看设备空闲、检测完成、样品前处理、样品转运和 SLA 风险提醒。</p>
+  <p>处理设备空闲、检测完成、前处理、转运、SLA 风险、耗材和人员阻塞提醒。</p>
 </section>
-<section class="panel grid">
-  <div>
-    <button onclick="loadNotifications()">刷新通知</button>
-    <button onclick="advanceClock()">触发到下一条计划时间</button>
+
+<section class="panel stack">
+  <div class="section-heading">
+    <div>
+      <h2>通知收件箱</h2>
+      <p>通知由排程、仿真时钟和执行事件触发。</p>
+    </div>
+    <div>
+      <span id="sse-status" class="badge badge-muted" aria-live="polite">实时连接未建立</span>
+    </div>
   </div>
-  <pre id="notifications-output">等待加载...</pre>
+
+  <form id="notifications-filter-form" class="filters" autocomplete="off">
+    <fieldset>
+      <legend>筛选通知</legend>
+      <label>状态
+        <select name="status">
+          <option value="">全部状态</option>
+          <option value="pending">待触发</option>
+          <option value="triggered">已触发</option>
+          <option value="read">已读</option>
+        </select>
+      </label>
+      <label>类型
+        <select name="notification_type">
+          <option value="">全部类型</option>
+          <option value="equipment_idle">设备空闲</option>
+          <option value="detection_completed">检测完成</option>
+          <option value="sample_preprocessing_todo">样品前处理</option>
+          <option value="sample_transfer_required">样品转运</option>
+          <option value="sla_risk">SLA风险</option>
+          <option value="maintenance_warning">维护临近</option>
+          <option value="consumable_shortage">耗材不足</option>
+          <option value="personnel_blocked">人员阻塞</option>
+          <option value="review_pending">复核待办</option>
+        </select>
+      </label>
+      <button type="submit">应用筛选</button>
+      <button type="button" data-action="notifications-reset">清除筛选</button>
+      <button type="button" data-action="notifications-clock">触发到下一条计划时间</button>
+    </fieldset>
+  </form>
+
+  <div id="notifications-status" class="status-line" aria-live="polite">等待加载</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>标题</th>
+          <th>等级</th>
+          <th>类型</th>
+          <th>状态</th>
+          <th>关联</th>
+          <th>计划触发</th>
+          <th>触发时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="notifications-table-body">
+        <tr><td colspan="8" class="empty">等待加载</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <details class="debug-panel">
+    <summary>查看原始通知响应</summary>
+    <pre id="notifications-debug" aria-live="polite">等待加载</pre>
+  </details>
 </section>
-<script>
-let latestNotifications = [];
-
-async function loadNotifications() {
-  const response = await fetch('/api/notifications');
-  const payload = await response.json();
-  latestNotifications = payload.data || [];
-  document.getElementById('notifications-output').textContent = JSON.stringify(payload, null, 2);
-}
-
-async function advanceClock() {
-  if (!latestNotifications.length) {
-    await loadNotifications();
-  }
-  const target = latestNotifications.find(item => item.status === 'pending')?.planned_trigger_time;
-  const body = target ? {current_time: target} : {delta_minutes: 30};
-  const response = await fetch('/api/simulation/clock/advance', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(body)
-  });
-  document.getElementById('notifications-output').textContent = JSON.stringify(await response.json(), null, 2);
-}
-
-const stream = new EventSource('/api/notifications/stream');
-stream.onmessage = (event) => {
-  const output = document.getElementById('notifications-output');
-  output.textContent = event.data;
-};
-
-loadNotifications();
-</script>
 {% endblock %}

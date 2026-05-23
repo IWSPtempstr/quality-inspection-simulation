@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Iterable
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from db.models import (
@@ -129,6 +129,50 @@ class OrderRepository:
     def list_active(self) -> list[dict]:
         statement = select(OrderModel).where(OrderModel.status != QueueStatus.CANCELLED.value)
         return [order_to_dict(item) for item in self.session.scalars(statement).all()]
+
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        order_type: str | None = None,
+        certification_type: str | None = None,
+        q: str | None = None,
+        include_cancelled: bool = False,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        filters = []
+        if not include_cancelled:
+            filters.append(OrderModel.status != QueueStatus.CANCELLED.value)
+        if status:
+            filters.append(OrderModel.status == status)
+        if order_type:
+            filters.append(OrderModel.order_type == order_type)
+        if certification_type:
+            filters.append(OrderModel.certification_type == certification_type)
+        if q:
+            pattern = f"%{q.strip()}%"
+            filters.append(
+                or_(
+                    OrderModel.id.like(pattern),
+                    OrderModel.sample_name.like(pattern),
+                    OrderModel.requested_projects.like(pattern),
+                    OrderModel.detection_route.like(pattern),
+                )
+            )
+
+        statement = select(OrderModel)
+        count_statement = select(func.count()).select_from(OrderModel)
+        if filters:
+            statement = statement.where(*filters)
+            count_statement = count_statement.where(*filters)
+        statement = statement.order_by(OrderModel.created_at.desc()).limit(limit).offset(offset)
+        return {
+            "items": [order_to_dict(item) for item in self.session.scalars(statement).all()],
+            "total": self.session.scalar(count_statement) or 0,
+            "limit": limit,
+            "offset": offset,
+        }
 
     def get(self, order_id: str) -> OrderResponse | None:
         model = self.session.get(OrderModel, order_id)
