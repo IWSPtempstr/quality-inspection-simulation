@@ -53,6 +53,7 @@ class Settings:
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'simulation.db'}")
     knowledge_base_dir: Path = BASE_DIR / "rag" / "knowledge_base"
     rag_index_dir: Path = BASE_DIR / "rag" / "index"
+    equipment_catalog_path: Path | None = None
     operations_constraints_path: Path = BASE_DIR / "data" / "scenario_synthetic_center" / "operations_constraints.json"
     llm_provider: str = "openai-compatible"
     llm_api_key: str | None = None
@@ -95,6 +96,7 @@ def get_settings() -> Settings:
         database_url=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'simulation.db'}"),
         knowledge_base_dir=Path(os.getenv("KNOWLEDGE_BASE_DIR", str(BASE_DIR / "rag" / "knowledge_base"))),
         rag_index_dir=Path(os.getenv("RAG_INDEX_DIR", str(BASE_DIR / "rag" / "index"))),
+        equipment_catalog_path=Path(os.environ["EQUIPMENT_CATALOG_PATH"]) if os.getenv("EQUIPMENT_CATALOG_PATH") else None,
         operations_constraints_path=Path(
             os.getenv(
                 "OPERATIONS_CONSTRAINTS_PATH",

@@ -27,6 +27,7 @@ class ScheduleOptimizerService:
         "shortest_processing_time",
         "bottleneck_resource_first",
         "hybrid_weighted",
+        "sla_guarded_hybrid",
     ]
 
     def __init__(self, queue_service: QueueService, default_strategy: str = "hybrid_weighted") -> None:
@@ -60,6 +61,10 @@ class ScheduleOptimizerService:
     def _score_schedule(self, schedule: dict) -> float:
         metrics = schedule.get("metrics", {})
         blocked = float(metrics.get("blocked_count", 0))
+        delayed = float(metrics.get("delayed_count", 0))
+        vip_delayed = float(metrics.get("vip_delayed_count", 0))
+        urgent_delayed = float(metrics.get("urgent_delayed_count", 0))
+        normal_delayed = float(metrics.get("normal_delayed_count", 0))
         total_delay = float(metrics.get("total_delay_minutes", 0))
         vip_delay = float(metrics.get("vip_delay_minutes", 0))
         urgent_delay = float(metrics.get("urgent_delay_minutes", 0))
@@ -69,10 +74,14 @@ class ScheduleOptimizerService:
         personnel_blocked = float(metrics.get("personnel_blocked_count", 0))
         transfer_wait = float(metrics.get("transfer_wait_minutes", 0))
         return (
-            blocked * 1_000_000
-            + vip_delay * 1_000
-            + urgent_delay * 500
-            + normal_delay * 100
+            blocked * 10_000_000
+            + vip_delayed * 5_000_000
+            + urgent_delayed * 1_000_000
+            + normal_delayed * 100_000
+            + delayed * 50_000
+            + vip_delay * 2_000
+            + urgent_delay * 800
+            + normal_delay * 50
             + total_delay * 20
             + average_wait * 10
             + equipment_idle * 50
@@ -345,6 +354,11 @@ class SchedulingCoordinatorService:
                 "urgent_delay_minutes": metrics.get("urgent_delay_minutes", 0),
                 "normal_delay_minutes": metrics.get("normal_delay_minutes", 0),
                 "on_time_rate": metrics.get("on_time_rate", 0),
+                "vip_sla_rate": metrics.get("vip_sla_rate", 0),
+                "urgent_delay_rate": metrics.get("urgent_delay_rate", 0),
+                "delayed_count": metrics.get("delayed_count", 0),
+                "vip_delayed_count": metrics.get("vip_delayed_count", 0),
+                "urgent_delayed_count": metrics.get("urgent_delayed_count", 0),
                 "average_wait_minutes": metrics.get("average_wait_minutes", 0),
                 "personnel_blocked_count": metrics.get("personnel_blocked_count", 0),
                 "transfer_wait_minutes": metrics.get("transfer_wait_minutes", 0),
@@ -386,6 +400,15 @@ class SchedulingCoordinatorService:
         metrics = selected.get("metrics", {})
         utilization = metrics.get("equipment_utilization", {})
         bottlenecks = sorted(utilization.items(), key=lambda item: item[1], reverse=True)[:5]
+        capacity_analysis = metrics.get("capacity_analysis", {})
+        over_capacity = [
+            {
+                "equipment_type": equipment_type,
+                **analysis,
+            }
+            for equipment_type, analysis in capacity_analysis.items()
+            if float(analysis.get("load_factor", 0)) > 1.0
+        ]
         delayed_orders = [
             {
                 "order_id": order["id"],
@@ -414,6 +437,17 @@ class SchedulingCoordinatorService:
                 "blocked_count": len(selected.get("blocked_orders", [])),
                 "blocked_reason_distribution": metrics.get("blocked_reason_distribution", {}),
                 "personnel_blocked_count": metrics.get("personnel_blocked_count", 0),
+            },
+            "capacity_risks": {
+                "over_capacity_resources": over_capacity,
+                "expansion_recommendations": [
+                    {
+                        "equipment_type": item["equipment_type"],
+                        "current_instances": item.get("instances", 0),
+                        "recommended_instances": item.get("recommended_instances_for_90pct", 0),
+                    }
+                    for item in over_capacity
+                ],
             },
         }
 

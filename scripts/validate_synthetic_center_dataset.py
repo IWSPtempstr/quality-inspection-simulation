@@ -15,6 +15,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from scripts.scheduling_optimization_utils import capacity_report_for_dataset
+
 DATASET_DIR = PROJECT_ROOT / "data" / "scenario_synthetic_center"
 
 REQUIRED_FILES = [
@@ -125,6 +127,13 @@ def validate_dataset(
             _rag_knowledge_ok(dataset_path / "knowledge_base"),
             {"knowledge_files": sorted(path.name for path in (dataset_path / "knowledge_base").glob("*"))},
         )
+        capacity_report = capacity_report_for_dataset(dataset_path)
+        _record(
+            checks,
+            "capacity_report",
+            bool(capacity_report.get("equipment")),
+            capacity_report,
+        )
         integration_orders = orders[:integration_order_limit] if integration_order_limit else orders
         _run_integration_checks(
             dataset_path,
@@ -152,6 +161,8 @@ def _run_integration_checks(
 ) -> None:
     env_updates = {
         "DATABASE_URL": f"sqlite:///{db_path}",
+        "EQUIPMENT_CATALOG_PATH": str(dataset_path / "equipment_catalog.json"),
+        "OPERATIONS_CONSTRAINTS_PATH": str(dataset_path / "operations_constraints.json"),
         "KNOWLEDGE_BASE_DIR": str(dataset_path / "knowledge_base"),
         "RAG_INDEX_DIR": str(index_path),
         "EMBEDDING_PROVIDER": "deterministic",

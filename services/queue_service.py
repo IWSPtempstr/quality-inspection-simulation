@@ -36,7 +36,12 @@ class QueueService:
             ),
         )
 
-    def rebuild_schedule(self, orders: Iterable[dict], strategy: str = "hybrid_weighted") -> dict:
+    def rebuild_schedule(
+        self,
+        orders: Iterable[dict],
+        strategy: str = "hybrid_weighted",
+        rolling_horizon_days: int | None = None,
+    ) -> dict:
         self.simulation.reset_runtime_state()
         active_orders = [
             order
@@ -44,6 +49,26 @@ class QueueService:
             if self._enum_value(order.get("status", QueueStatus.PENDING)) != QueueStatus.CANCELLED.value
         ]
         schedule_origin = self._schedule_origin(active_orders)
+        forecast_orders: list[dict] = []
+        if rolling_horizon_days is not None:
+            horizon_end = schedule_origin + timedelta(days=rolling_horizon_days)
+            forecast_orders = [
+                self._serialize_order(order)
+                for order in active_orders
+                if self._order_release_time(order, schedule_origin) > horizon_end
+            ]
+            active_orders = [
+                order
+                for order in active_orders
+                if self._order_release_time(order, schedule_origin) <= horizon_end
+            ]
+        if strategy == "sla_guarded_hybrid":
+            return self._rebuild_step_pool_schedule(
+                active_orders=active_orders,
+                forecast_orders=forecast_orders,
+                schedule_origin=schedule_origin,
+                strategy=strategy,
+            )
         availability: dict[str, datetime] = {
             item["id"]: schedule_origin
             for item in self.simulation.list_equipment()
@@ -205,9 +230,11 @@ class QueueService:
             schedule_origin=schedule_origin,
             strategy=strategy,
         )
+        metrics["forecast_count"] = len(forecast_orders)
         self.last_schedule = {
             "scheduled_orders": scheduled_orders,
             "blocked_orders": blocked_orders,
+            "forecast_orders": forecast_orders,
             "equipment_status": self.simulation.equipment_status_summary(),
             "metrics": metrics,
         }
@@ -227,7 +254,590 @@ class QueueService:
             "equipment_load": self.last_schedule.get("equipment_status", self.simulation.equipment_status_summary()),
             "scheduled_orders": scheduled,
             "blocked_orders": blocked,
+            "forecast_orders": self.last_schedule.get("forecast_orders", []),
             "metrics": self.last_schedule.get("metrics", {}),
+        }
+
+    def _rebuild_step_pool_schedule(
+        self,
+        active_orders: list[dict],
+        forecast_orders: list[dict],
+        schedule_origin: datetime,
+        strategy: str,
+    ) -> dict:
+        availability: dict[str, datetime] = {
+            item["id"]: schedule_origin
+            for item in self.simulation.list_equipment()
+            if self._enum_value(item["status"]) != "offline"
+        }
+        resource_availability = self._initial_resource_availability(schedule_origin)
+        employee_assignments: dict[str, list[dict]] = {
+            employee["employee_id"]: [] for employee in self.simulation.employee_instances()
+        }
+        consumable_usage: Counter[tuple[str, str]] = Counter()
+        busy_minutes: Counter[str] = Counter()
+        scheduled_orders: list[dict] = []
+        blocked_orders: list[dict] = []
+        states: dict[str, dict] = {}
+
+        for order in active_orders:
+            flow = self._detection_flow_for_order(order)
+            if not flow:
+                blocked_orders.append(
+                    {
+                        **self._serialize_order(order),
+                        "status": QueueStatus.BLOCKED,
+                        "reason": f"no detection flow for {self._enum_value(order['certification_type'])}",
+                    }
+                )
+                continue
+            release_time = self._next_work_start(self._order_release_time(order, schedule_origin))
+            states[order["id"]] = {
+                "order": order,
+                "flow": flow,
+                "next_index": 0,
+                "steps": [],
+                "previous_end_time": release_time,
+                "previous_lab_area": None,
+                "previous_lab_area_explicit": False,
+                "preprocessing_pending": bool(order.get("preprocessing_profile")),
+            }
+
+        while states:
+            entries: list[dict] = []
+            blocked_state_ids: list[tuple[str, str]] = []
+            completed_state_ids: list[str] = []
+            candidate_state_ids = self._step_pool_candidate_state_ids(states, availability, schedule_origin)
+            for order_id in candidate_state_ids:
+                state = states[order_id]
+                if self._step_pool_state_completed(state):
+                    completed_state_ids.append(order_id)
+                    continue
+                entry = self._next_step_pool_entry(
+                    state=state,
+                    availability=availability,
+                    employee_assignments=employee_assignments,
+                    consumable_usage=consumable_usage,
+                    resource_availability=resource_availability,
+                    schedule_origin=schedule_origin,
+                )
+                if entry is None:
+                    next_project = self._state_next_project(state)
+                    reason = "required equipment, personnel or consumable unavailable"
+                    if next_project:
+                        reason = f"{reason}: {next_project['equipment_type']}"
+                    blocked_state_ids.append((order_id, reason))
+                else:
+                    entries.append(entry)
+
+            for order_id in completed_state_ids:
+                state = states.pop(order_id)
+                scheduled_orders.append(self._finalize_step_pool_order(state, schedule_origin))
+            for order_id, reason in blocked_state_ids:
+                state = states.pop(order_id, None)
+                if state:
+                    blocked_orders.append({**self._serialize_order(state["order"]), "status": QueueStatus.BLOCKED, "reason": reason})
+
+            if not states:
+                break
+            if not entries and (completed_state_ids or blocked_state_ids):
+                continue
+            if not entries:
+                if candidate_state_ids and len(candidate_state_ids) < len(states):
+                    candidate_state_ids = list(states.keys())
+                    fallback_completed_ids: list[str] = []
+                    for order_id in candidate_state_ids:
+                        state = states[order_id]
+                        if self._step_pool_state_completed(state):
+                            fallback_completed_ids.append(order_id)
+                            continue
+                        entry = self._next_step_pool_entry(
+                            state=state,
+                            availability=availability,
+                            employee_assignments=employee_assignments,
+                            consumable_usage=consumable_usage,
+                            resource_availability=resource_availability,
+                            schedule_origin=schedule_origin,
+                        )
+                        if entry:
+                            entries.append(entry)
+                    for order_id in fallback_completed_ids:
+                        state = states.pop(order_id, None)
+                        if state:
+                            scheduled_orders.append(self._finalize_step_pool_order(state, schedule_origin))
+                    if not states:
+                        break
+                    if not entries:
+                        for state in states.values():
+                            blocked_orders.append(
+                                {
+                                    **self._serialize_order(state["order"]),
+                                    "status": QueueStatus.BLOCKED,
+                                    "reason": "no schedulable detection step",
+                                }
+                            )
+                        states.clear()
+                        break
+                else:
+                    for state in states.values():
+                        blocked_orders.append(
+                            {
+                                **self._serialize_order(state["order"]),
+                                "status": QueueStatus.BLOCKED,
+                                "reason": "no schedulable detection step",
+                            }
+                        )
+                    states.clear()
+                    break
+
+            entry = self._select_step_pool_entry(entries, schedule_origin)
+            state = states.get(entry["order_id"])
+            if not state:
+                continue
+            committed = self._commit_step_pool_entry(
+                entry=entry,
+                state=state,
+                availability=availability,
+                employee_assignments=employee_assignments,
+                resource_availability=resource_availability,
+                consumable_usage=consumable_usage,
+                busy_minutes=busy_minutes,
+                schedule_origin=schedule_origin,
+            )
+            if not committed:
+                blocked_orders.append(
+                    {
+                        **self._serialize_order(state["order"]),
+                        "status": QueueStatus.BLOCKED,
+                        "reason": entry.get("blocked_reason") or "selected step became unavailable",
+                    }
+                )
+                states.pop(entry["order_id"], None)
+
+        metrics = self._build_metrics(
+            scheduled_orders=scheduled_orders,
+            blocked_orders=blocked_orders,
+            busy_minutes=busy_minutes,
+            schedule_origin=schedule_origin,
+            strategy=strategy,
+        )
+        metrics["forecast_count"] = len(forecast_orders)
+        metrics["step_level_scheduling"] = True
+        self.last_schedule = {
+            "scheduled_orders": scheduled_orders,
+            "blocked_orders": blocked_orders,
+            "forecast_orders": forecast_orders,
+            "equipment_status": self.simulation.equipment_status_summary(),
+            "metrics": metrics,
+        }
+        return self.last_schedule
+
+    def _step_pool_state_completed(self, state: dict) -> bool:
+        return (not state.get("preprocessing_pending")) and int(state["next_index"]) >= len(state["flow"])
+
+    def _step_pool_candidate_state_ids(
+        self,
+        states: dict[str, dict],
+        availability: dict[str, datetime],
+        schedule_origin: datetime,
+    ) -> list[str]:
+        if not states:
+            return []
+        scored = [
+            (
+                self._step_pool_candidate_lower_bound(state, availability, schedule_origin),
+                self._step_pool_state_sla_rescue_key(state, schedule_origin),
+                order_id,
+            )
+            for order_id, state in states.items()
+        ]
+        decision_time = min(item[0] for item in scored)
+        window_end = decision_time + timedelta(hours=4)
+        window = [item for item in scored if item[0] <= window_end or item[1][0] <= 1]
+        return [item[2] for item in sorted(window, key=lambda item: (item[0], item[1], item[2]))[:64]]
+
+    def _step_pool_candidate_lower_bound(
+        self,
+        state: dict,
+        availability: dict[str, datetime],
+        schedule_origin: datetime,
+    ) -> datetime:
+        if self._step_pool_state_completed(state):
+            return state["previous_end_time"]
+        if state.get("preprocessing_pending"):
+            return state["previous_end_time"]
+        project = self._state_next_project(state)
+        if not project:
+            return state["previous_end_time"]
+        lab_area = self._project_lab_area(project)
+        if (
+            state.get("previous_lab_area")
+            and state.get("previous_lab_area") != lab_area
+            and state.get("previous_lab_area_explicit")
+            and project.get("lab_area_explicit")
+            and self.simulation.transfer_rule(state["previous_lab_area"], lab_area)
+        ):
+            return state["previous_end_time"]
+        starts = []
+        for equipment in self.simulation.equipment_instances_for(project["equipment_type"]):
+            starts.append(max(state["previous_end_time"], availability.get(equipment["id"], schedule_origin)))
+        return min(starts) if starts else state["previous_end_time"]
+
+    def _step_pool_state_sla_rescue_key(self, state: dict, schedule_origin: datetime) -> tuple[int, int, int]:
+        order = state["order"]
+        priority = self.PRIORITY[self._order_type(order["order_type"])]
+        promised = self._order_promised_finish_time(order)
+        if promised is None:
+            return (4, priority, 10**9)
+        remaining = self._remaining_state_duration(state)
+        projected_finish = state["previous_end_time"] + timedelta(minutes=remaining)
+        slack_minutes = int((promised - projected_finish).total_seconds() // 60)
+        if 0 <= slack_minutes <= 4 * 60:
+            bucket = 0
+        elif -8 * 60 <= slack_minutes < 0:
+            bucket = 1
+        elif slack_minutes > 4 * 60:
+            bucket = 2
+        else:
+            bucket = 3
+        return (bucket, priority, slack_minutes)
+
+    def _remaining_state_duration(self, state: dict) -> int:
+        remaining = 0
+        if state.get("preprocessing_pending"):
+            preprocessing = state["order"].get("preprocessing_profile") or {}
+            remaining += int(preprocessing.get("required_minutes", 0) or 0)
+        for project in state["flow"][int(state["next_index"]):]:
+            remaining += self._project_duration_for_order(state["order"], project)
+        return remaining
+
+    def _state_next_project(self, state: dict) -> dict | None:
+        if int(state["next_index"]) >= len(state["flow"]):
+            return None
+        return state["flow"][int(state["next_index"])]
+
+    def _next_step_pool_entry(
+        self,
+        state: dict,
+        availability: dict[str, datetime],
+        employee_assignments: dict[str, list[dict]],
+        consumable_usage: Counter[tuple[str, str]],
+        resource_availability: dict[str, datetime],
+        schedule_origin: datetime,
+    ) -> dict | None:
+        order = state["order"]
+        if state.get("preprocessing_pending"):
+            preprocessing = order.get("preprocessing_profile")
+            if not preprocessing:
+                state["preprocessing_pending"] = False
+                return self._next_step_pool_entry(
+                    state,
+                    availability,
+                    employee_assignments,
+                    consumable_usage,
+                    resource_availability,
+                    schedule_origin,
+                )
+            step = self._preview_support_step(
+                order=order,
+                step_kind="preprocessing",
+                project_type="preprocessing",
+                earliest_start=state["previous_end_time"],
+                duration_minutes=int(preprocessing["required_minutes"]),
+                lab_area=preprocessing.get("lab_area", "intake"),
+                required_roles=preprocessing.get("required_roles", ["sample_operator"]),
+                required_operator_count=int(preprocessing.get("required_operator_count", 1)),
+                resource_bucket="preprocessing_resources",
+                resource_type=preprocessing.get("resource_type", "prep_station"),
+                employee_assignments=employee_assignments,
+                resource_availability=resource_availability,
+                schedule_origin=schedule_origin,
+                sequence=0,
+            )
+            if step is None:
+                return None
+            return {
+                "order_id": order["id"],
+                "state": state,
+                "step_kind": "preprocessing",
+                "step": step,
+                "project": None,
+                "project_index": None,
+                "project_start": self._parse_datetime(step["start_time"]),
+                "project_end": self._parse_datetime(step["end_time"]),
+            }
+
+        project = self._state_next_project(state)
+        if project is None:
+            return None
+        lab_area = self._project_lab_area(project)
+        lab_area_explicit = bool(project.get("lab_area_explicit"))
+        previous_lab_area = state.get("previous_lab_area")
+        if previous_lab_area and previous_lab_area != lab_area and state.get("previous_lab_area_explicit") and lab_area_explicit:
+            transfer_rule = self.simulation.transfer_rule(previous_lab_area, lab_area)
+            if transfer_rule:
+                step = self._preview_support_step(
+                    order=order,
+                    step_kind="transfer",
+                    project_type="sample_transfer",
+                    earliest_start=state["previous_end_time"],
+                    duration_minutes=int(transfer_rule.get("duration_minutes", 10)),
+                    lab_area=lab_area,
+                    required_roles=transfer_rule.get("required_roles", ["transfer_operator"]),
+                    required_operator_count=int(transfer_rule.get("required_operator_count", 1)),
+                    resource_bucket="transfer_resources",
+                    resource_type=transfer_rule.get("resource_type", "transfer_cart"),
+                    employee_assignments=employee_assignments,
+                    resource_availability=resource_availability,
+                    schedule_origin=schedule_origin,
+                    sequence=int(project["sequence"]),
+                    constraint_detail={"from_lab_area": previous_lab_area, "to_lab_area": lab_area},
+                )
+                if step is None:
+                    return None
+                return {
+                    "order_id": order["id"],
+                    "state": state,
+                    "step_kind": "transfer",
+                    "step": step,
+                    "project": project,
+                    "project_index": int(state["next_index"]),
+                    "project_start": self._parse_datetime(step["start_time"]),
+                    "project_end": self._parse_datetime(step["end_time"]),
+                }
+
+        candidate = self._select_detection_candidate(
+            order=order,
+            project={**project, "lab_area": lab_area},
+            availability=availability,
+            earliest_start=state["previous_end_time"],
+            employee_assignments=employee_assignments,
+            consumable_usage=consumable_usage,
+            schedule_origin=schedule_origin,
+        )
+        if candidate is None:
+            return None
+        step = candidate["step"]
+        return {
+            "order_id": order["id"],
+            "state": state,
+            "step_kind": "detection",
+            "step": step,
+            "project": {**project, "lab_area": lab_area},
+            "project_index": int(state["next_index"]),
+            "project_start": self._parse_datetime(step["start_time"]),
+            "project_end": self._parse_datetime(step["end_time"]),
+        }
+
+    def _preview_support_step(
+        self,
+        order: dict,
+        step_kind: str,
+        project_type: str,
+        earliest_start: datetime,
+        duration_minutes: int,
+        lab_area: str,
+        required_roles: list[str],
+        required_operator_count: int,
+        resource_bucket: str,
+        resource_type: str,
+        employee_assignments: dict[str, list[dict]],
+        resource_availability: dict[str, datetime],
+        schedule_origin: datetime,
+        sequence: int,
+        constraint_detail: dict | None = None,
+    ) -> dict | None:
+        resources = self.simulation.resources_for(resource_bucket, resource_type)
+        if not resources:
+            return None
+        current = earliest_start
+        synthetic_project = {
+            "project_type": project_type,
+            "equipment_type": resource_type,
+            "lab_area": lab_area,
+            "operator_requirements": {
+                "required_operator_count": required_operator_count,
+                "required_roles": required_roles,
+                "supervision_mode": "exclusive",
+                "staff_phase": "full",
+            },
+        }
+        for _ in range(1000):
+            resource = min(resources, key=lambda item: resource_availability.get(item["resource_id"], earliest_start))
+            start_time = max(current, resource_availability.get(resource["resource_id"], earliest_start))
+            start_time = self._next_slot_start(start_time, duration_minutes, project_type)
+            end_time = start_time + timedelta(minutes=duration_minutes)
+            employee_ids = self._find_employee_assignment(
+                project=synthetic_project,
+                start_time=start_time,
+                end_time=end_time,
+                employee_assignments=employee_assignments,
+            )
+            if employee_ids:
+                detail = {
+                    "operator_requirements": synthetic_project["operator_requirements"],
+                    "resource_type": resource_type,
+                    **(constraint_detail or {}),
+                }
+                return {
+                    "step_kind": step_kind,
+                    "project_id": None,
+                    "project_type": project_type,
+                    "equipment_type": None,
+                    "equipment_id": None,
+                    "lab_area": lab_area,
+                    "assigned_employee_ids": employee_ids,
+                    "resource_ids": [resource["resource_id"]],
+                    "constraint_detail": detail,
+                    "setup_minutes": 0,
+                    "staff_role": required_roles[0] if required_roles else None,
+                    "consumable_type": None,
+                    "consumable_units": 0,
+                    "sequence": sequence,
+                    "start_minute": int((start_time - schedule_origin).total_seconds() // 60),
+                    "start_time": start_time.isoformat(),
+                    "duration_minutes": duration_minutes,
+                    "end_minute": int((end_time - schedule_origin).total_seconds() // 60),
+                    "end_time": end_time.isoformat(),
+                    "batch_count": None,
+                    "required_batches": None,
+                }
+            next_release = self._next_employee_release(synthetic_project, start_time, employee_assignments)
+            if next_release is None:
+                return None
+            current = max(next_release, start_time + timedelta(minutes=1))
+        return None
+
+    def _select_step_pool_entry(self, entries: list[dict], schedule_origin: datetime) -> dict:
+        return min(entries, key=lambda entry: self._step_pool_sort_key(entry, schedule_origin))
+
+    def _step_pool_sort_key(self, entry: dict, schedule_origin: datetime):
+        state = entry["state"]
+        order = state["order"]
+        priority = self.PRIORITY[self._order_type(order["order_type"])]
+        promised = self._order_promised_finish_time(order)
+        projected_finish = self._projected_step_pool_finish(entry, schedule_origin)
+        if promised is None:
+            slack_minutes = 10**9
+            rescue_bucket = 4
+        else:
+            slack_minutes = int((promised - projected_finish).total_seconds() // 60)
+            if 0 <= slack_minutes <= 4 * 60:
+                rescue_bucket = 0
+            elif -8 * 60 <= slack_minutes < 0:
+                rescue_bucket = 1
+            elif slack_minutes > 4 * 60:
+                rescue_bucket = 2
+            else:
+                rescue_bucket = 3
+        bottleneck = 0.0
+        project = entry.get("project")
+        if project:
+            equipment_count = len(self.simulation.equipment_instances_for(project["equipment_type"]))
+            bottleneck = 1 / max(1, equipment_count)
+        return (
+            rescue_bucket,
+            priority,
+            slack_minutes,
+            entry["project_start"],
+            -bottleneck,
+            self._order_arrival_time(order),
+            order["id"],
+            entry["step"].get("sequence") or 0,
+        )
+
+    def _projected_step_pool_finish(self, entry: dict, schedule_origin: datetime) -> datetime:
+        state = entry["state"]
+        remaining_minutes = 0
+        next_index = int(state["next_index"])
+        if entry["step_kind"] == "detection":
+            next_index += 1
+        for project in state["flow"][next_index:]:
+            remaining_minutes += self._project_duration_for_order(state["order"], project)
+        return entry["project_end"] + timedelta(minutes=remaining_minutes)
+
+    def _project_duration_for_order(self, order: dict, project: dict) -> int:
+        capacity = max(1, self.simulation.equipment_capacity(project["equipment_type"]))
+        required_batches = ceil(int(order["sample_quantity"]) / capacity)
+        duration = int(project["duration_minutes"])
+        if not project.get("duration_is_total"):
+            duration *= required_batches
+        duration += int(project.get("setup_minutes", 0) or 0) if project.get("duration_is_total") else 0
+        return duration
+
+    def _commit_step_pool_entry(
+        self,
+        entry: dict,
+        state: dict,
+        availability: dict[str, datetime],
+        employee_assignments: dict[str, list[dict]],
+        resource_availability: dict[str, datetime],
+        consumable_usage: Counter[tuple[str, str]],
+        busy_minutes: Counter[str],
+        schedule_origin: datetime,
+    ) -> bool:
+        step = entry["step"]
+        start_time = self._parse_datetime(step["start_time"])
+        end_time = self._parse_datetime(step["end_time"])
+        if entry["step_kind"] in {"preprocessing", "transfer"}:
+            for resource_id in step.get("resource_ids", []):
+                resource_availability[resource_id] = end_time
+            self._commit_employee_assignments(
+                employee_assignments=employee_assignments,
+                employee_ids=step["assigned_employee_ids"],
+                start_time=start_time,
+                end_time=end_time,
+                lab_area=step["lab_area"],
+                project_type=step["project_type"],
+                equipment_type=step.get("equipment_type") or step["constraint_detail"].get("resource_type") or "support_resource",
+                mode="exclusive",
+            )
+            state["steps"].append(step)
+            state["previous_end_time"] = end_time
+            state["previous_lab_area"] = step["lab_area"]
+            state["previous_lab_area_explicit"] = True
+            if entry["step_kind"] == "preprocessing":
+                state["preprocessing_pending"] = False
+            return True
+
+        project = entry["project"]
+        if not project:
+            return False
+        equipment_id = step["equipment_id"]
+        availability[equipment_id] = end_time
+        busy_minutes[equipment_id] += int(step["duration_minutes"])
+        self._commit_employee_assignments(
+            employee_assignments=employee_assignments,
+            employee_ids=step["assigned_employee_ids"],
+            start_time=self._parse_datetime(step["staff_start_time"]),
+            end_time=self._parse_datetime(step["staff_end_time"]),
+            lab_area=project["lab_area"],
+            project_type=project["project_type"],
+            equipment_type=project["equipment_type"],
+            mode=step["constraint_detail"]["operator_requirements"]["supervision_mode"],
+        )
+        self._commit_consumables(consumable_usage, step)
+        state["previous_end_time"] = end_time
+        state["previous_lab_area"] = project["lab_area"]
+        state["previous_lab_area_explicit"] = bool(project.get("lab_area_explicit"))
+        state["next_index"] = int(state["next_index"]) + 1
+        state["steps"].append({key: value for key, value in step.items() if key not in {"staff_start_time", "staff_end_time"}})
+        return True
+
+    def _finalize_step_pool_order(self, state: dict, schedule_origin: datetime) -> dict:
+        order = state["order"]
+        finish_time = state["previous_end_time"]
+        promised_finish_time = self._order_promised_finish_time(order)
+        return {
+            **self._serialize_order(order),
+            "status": QueueStatus.SCHEDULED,
+            "steps": state["steps"],
+            "arrival_time": self._order_arrival_time(order).isoformat(),
+            "promised_finish_time": promised_finish_time.isoformat() if promised_finish_time else None,
+            "estimated_finish_minute": int((finish_time - schedule_origin).total_seconds() // 60),
+            "estimated_finish_time": finish_time.isoformat(),
+            "sla_status": self._sla_status(finish_time, promised_finish_time),
+            "delay_minutes": self._delay_minutes(finish_time, promised_finish_time),
         }
 
     def _select_detection_candidate(
@@ -652,9 +1262,43 @@ class QueueService:
             for order in orders
             if self._order_release_time(order, schedule_origin) <= decision_time
         ]
+        if strategy == "sla_guarded_hybrid":
+            candidates = self._include_imminent_sla_risk_orders(
+                orders=orders,
+                candidates=candidates,
+                decision_time=decision_time,
+                schedule_origin=schedule_origin,
+            )
         if not candidates:
             candidates = orders
         return min(candidates, key=lambda order: self._strategy_key(order, strategy, earliest_by_order, availability, schedule_origin))
+
+    def _include_imminent_sla_risk_orders(
+        self,
+        orders: list[dict],
+        candidates: list[dict],
+        decision_time: datetime,
+        schedule_origin: datetime,
+    ) -> list[dict]:
+        candidate_ids = {order["id"] for order in candidates}
+        lookahead_end = decision_time + timedelta(hours=4)
+        expanded = list(candidates)
+        for order in orders:
+            if order["id"] in candidate_ids:
+                continue
+            priority = self.PRIORITY[self._order_type(order["order_type"])]
+            if priority > self.PRIORITY[OrderType.URGENT]:
+                continue
+            release_time = self._order_release_time(order, schedule_origin)
+            if release_time > lookahead_end:
+                continue
+            promised = self._order_promised_finish_time(order)
+            if promised is None:
+                continue
+            slack_minutes = int((promised - release_time).total_seconds() // 60) - self._estimate_order_duration(order)
+            if slack_minutes <= 8 * 60:
+                expanded.append(order)
+        return expanded
 
     def _strategy_key(
         self,
@@ -676,6 +1320,11 @@ class QueueService:
             return (duration, priority, promised, earliest_ready, arrival, order["id"])
         if strategy == "bottleneck_resource_first":
             return (-bottleneck, priority, promised, earliest_ready, arrival, order["id"])
+        if strategy == "sla_guarded_hybrid":
+            due_minutes = max(0, int((promised - schedule_origin).total_seconds() // 60)) if promised.year < 9000 else 10**9
+            slack_minutes = due_minutes - self._estimate_order_duration(order)
+            guarded = priority * 10_000_000 + slack_minutes * 100 - bottleneck * 5_000
+            return (guarded, promised, earliest_ready, arrival, order["id"], duration)
         if strategy == "hybrid_weighted":
             due_minutes = max(0, int((promised - schedule_origin).total_seconds() // 60)) if promised.year < 9000 else 10**9
             weighted = priority * 1_000_000 + due_minutes * 10 + bottleneck * 1_000
@@ -890,6 +1539,10 @@ class QueueService:
         vip_delay_minutes = sum(int(order.get("delay_minutes") or 0) for order in vip_orders)
         urgent_delay_minutes = sum(int(order.get("delay_minutes") or 0) for order in urgent_orders)
         normal_delay_minutes = sum(int(order.get("delay_minutes") or 0) for order in normal_orders)
+        delayed_orders = [order for order in scheduled_orders if int(order.get("delay_minutes") or 0) > 0]
+        vip_delayed = [order for order in vip_orders if int(order.get("delay_minutes") or 0) > 0]
+        urgent_delayed = [order for order in urgent_orders if int(order.get("delay_minutes") or 0) > 0]
+        normal_delayed = [order for order in normal_orders if int(order.get("delay_minutes") or 0) > 0]
         promised_orders = [order for order in scheduled_orders if order.get("promised_finish_time")]
         total_equipment_count = max(
             1,
@@ -915,6 +1568,10 @@ class QueueService:
             "vip_delay_minutes": vip_delay_minutes,
             "urgent_delay_minutes": urgent_delay_minutes,
             "normal_delay_minutes": normal_delay_minutes,
+            "delayed_count": len(delayed_orders),
+            "vip_delayed_count": len(vip_delayed),
+            "urgent_delayed_count": len(urgent_delayed),
+            "normal_delayed_count": len(normal_delayed),
             "on_time_rate": self._sla_rate(promised_orders),
             "equipment_idle_penalty": equipment_idle_penalty,
             "personnel_blocked_count": personnel_blocked_count,

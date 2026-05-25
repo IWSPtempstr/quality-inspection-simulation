@@ -1,0 +1,176 @@
+{
+  "description": "合成检测项目目录，t_min/t_mode/t_max 为仿真假设耗时分钟数。",
+  "certification_flows": [
+    {
+      "certification_type": "ccc",
+      "steps": [
+        {
+          "project_id": "ccc-safety",
+          "project_type": "safety_check",
+          "equipment_type": "safety_tester",
+          "sequence": 1,
+          "t_min": 35,
+          "t_mode": 45,
+          "t_max": 70,
+          "staff_role": "safety_engineer",
+          "lab_area": "safety_lab",
+          "setup_minutes": 5,
+          "operator_requirements": {
+            "required_operator_count": 1,
+            "required_roles": [
+              "safety_engineer"
+            ],
+            "supervision_mode": "shared_supervision",
+            "staff_phase": "running"
+          },
+          "consumable_type": "safety_probe",
+          "consumable_units_per_batch": 1
+        },
+        {
+          "project_id": "ccc-emc",
+          "project_type": "emc_check",
+          "equipment_type": "emc_tester",
+          "sequence": 2,
+          "t_min": 90,
+          "t_mode": 120,
+          "t_max": 180,
+          "staff_role": "emc_engineer",
+          "lab_area": "emc_lab",
+          "setup_minutes": 10,
+          "operator_requirements": {
+            "required_operator_count": 3,
+            "required_roles": [
+              "emc_engineer",
+              "assistant_operator"
+            ],
+            "supervision_mode": "exclusive",
+            "staff_phase": "running"
+          },
+          "consumable_type": "emc_fixture",
+          "consumable_units_per_batch": 1
+        }
+      ]
+    },
+    {
+      "certification_type": "cvc",
+      "steps": [
+        {
+          "project_id": "cvc-performance",
+          "project_type": "performance_check",
+          "equipment_type": "performance_bench",
+          "sequence": 1,
+          "t_min": 45,
+          "t_mode": 60,
+          "t_max": 100,
+          "staff_role": "performance_engineer",
+          "lab_area": "performance_lab",
+          "setup_minutes": 5,
+          "operator_requirements": {
+            "required_operator_count": 1,
+            "required_roles": [
+              "performance_engineer"
+            ],
+            "supervision_mode": "shared_supervision",
+            "staff_phase": "running"
+          },
+          "consumable_type": "load_fixture",
+          "consumable_units_per_batch": 1
+        },
+        {
+          "project_id": "cvc-environment",
+          "project_type": "environmental_check",
+          "equipment_type": "environmental_chamber",
+          "sequence": 2,
+          "t_min": 120,
+          "t_mode": 180,
+          "t_max": 360,
+          "staff_role": "environmental_engineer",
+          "lab_area": "environmental_lab",
+          "setup_minutes": 15,
+          "operator_requirements": {
+            "required_operator_count": 1,
+            "required_roles": [
+              "environmental_engineer"
+            ],
+            "supervision_mode": "setup_only",
+            "staff_phase": "setup"
+          },
+          "consumable_type": "environmental_tag",
+          "consumable_units_per_batch": 1
+        }
+      ]
+    },
+    {
+      "certification_type": "international",
+      "steps": [
+        {
+          "project_id": "international-safety",
+          "project_type": "safety_check",
+          "equipment_type": "safety_tester",
+          "sequence": 1,
+          "t_min": 35,
+          "t_mode": 50,
+          "t_max": 80,
+          "staff_role": "safety_engineer",
+          "lab_area": "safety_lab",
+          "setup_minutes": 5,
+          "operator_requirements": {
+            "required_operator_count": 1,
+            "required_roles": [
+              "safety_engineer"
+            ],
+            "supervision_mode": "shared_supervision",
+            "staff_phase": "running"
+          },
+          "consumable_type": "safety_probe",
+          "consumable_units_per_batch": 1
+        },
+        {
+          "project_id": "international-emc",
+          "project_type": "emc_check",
+          "equipment_type": "emc_tester",
+          "sequence": 2,
+          "t_min": 100,
+          "t_mode": 150,
+          "t_max": 220,
+          "staff_role": "emc_engineer",
+          "lab_area": "emc_lab",
+          "setup_minutes": 10,
+          "operator_requirements": {
+            "required_operator_count": 3,
+            "required_roles": [
+              "emc_engineer",
+              "assistant_operator"
+            ],
+            "supervision_mode": "exclusive",
+            "staff_phase": "running"
+          },
+          "consumable_type": "emc_fixture",
+          "consumable_units_per_batch": 1
+        },
+        {
+          "project_id": "international-cb",
+          "project_type": "cb_review",
+          "equipment_type": "international_protocol_bench",
+          "sequence": 3,
+          "t_min": 50,
+          "t_mode": 80,
+          "t_max": 130,
+          "staff_role": "certification_reviewer",
+          "lab_area": "review_lab",
+          "setup_minutes": 0,
+          "operator_requirements": {
+            "required_operator_count": 1,
+            "required_roles": [
+              "certification_reviewer"
+            ],
+            "supervision_mode": "exclusive",
+            "staff_phase": "running"
+          },
+          "consumable_type": "review_sheet",
+          "consumable_units_per_batch": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,817 @@
+{
+  "balanced_5000": {
+    "dataset": "scenario_synthetic_center_balanced_5000",
+    "scenario_label": "normal_load",
+    "created_orders": 500,
+    "integration_order_limit": 500,
+    "sample_mode": "spread",
+    "selected_strategy": "priority_fifo",
+    "strategy_results": {
+      "priority_fifo": {
+        "status_code": 200,
+        "latency_ms": 9719,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 16.38,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1054,
+            "emc_tester-10": 0.0729,
+            "emc_tester-11": 0.0316,
+            "emc_tester-12": 0.0087,
+            "emc_tester-13": 0.0005,
+            "environmental_chamber-1": 0.1346,
+            "environmental_chamber-10": 0.0916,
+            "environmental_chamber-11": 0.062,
+            "environmental_chamber-12": 0.0188,
+            "environmental_chamber-13": 0.0039,
+            "international_protocol_bench-1": 0.0218,
+            "international_protocol_bench-2": 0.0019,
+            "performance_bench-1": 0.051,
+            "performance_bench-2": 0.0192,
+            "performance_bench-3": 0.0022,
+            "safety_tester-1": 0.0402,
+            "safety_tester-2": 0.0414,
+            "safety_tester-3": 0.011,
+            "safety_tester-4": 0.0014
+          },
+          "vip_sla_rate": 1.0,
+          "urgent_delay_rate": 0.0,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 0,
+          "vip_delay_minutes": 0,
+          "urgent_delay_minutes": 0,
+          "normal_delay_minutes": 0,
+          "delayed_count": 0,
+          "vip_delayed_count": 0,
+          "urgent_delayed_count": 0,
+          "normal_delayed_count": 0,
+          "on_time_rate": 1.0,
+          "equipment_idle_penalty": 10948782,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16842,
+          "selected_strategy": "priority_fifo",
+          "candidate_scores": {
+            "priority_fifo": 548281363.8
+          },
+          "forecast_count": 0
+        }
+      },
+      "sla_guarded_hybrid": {
+        "status_code": 200,
+        "latency_ms": 13495,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 16.38,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1111,
+            "emc_tester-10": 0.0683,
+            "emc_tester-11": 0.0306,
+            "emc_tester-12": 0.0086,
+            "emc_tester-13": 0.0005,
+            "environmental_chamber-1": 0.1274,
+            "environmental_chamber-10": 0.0953,
+            "environmental_chamber-11": 0.0634,
+            "environmental_chamber-12": 0.0211,
+            "environmental_chamber-13": 0.0037,
+            "international_protocol_bench-1": 0.0221,
+            "international_protocol_bench-2": 0.0016,
+            "performance_bench-1": 0.0506,
+            "performance_bench-2": 0.0187,
+            "performance_bench-3": 0.0031,
+            "safety_tester-1": 0.0614,
+            "safety_tester-2": 0.0255,
+            "safety_tester-3": 0.006,
+            "safety_tester-4": 0.001
+          },
+          "vip_sla_rate": 1.0,
+          "urgent_delay_rate": 0.0,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 0,
+          "vip_delay_minutes": 0,
+          "urgent_delay_minutes": 0,
+          "normal_delay_minutes": 0,
+          "delayed_count": 0,
+          "vip_delayed_count": 0,
+          "urgent_delayed_count": 0,
+          "normal_delayed_count": 0,
+          "on_time_rate": 1.0,
+          "equipment_idle_penalty": 10948782,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16842,
+          "selected_strategy": "sla_guarded_hybrid",
+          "candidate_scores": {
+            "sla_guarded_hybrid": 548281363.8
+          },
+          "forecast_count": 0,
+          "step_level_scheduling": true
+        }
+      }
+    },
+    "capacity_report": {
+      "dataset": "scenario_synthetic_center_balanced_5000",
+      "scenario_label": "normal_load",
+      "order_count": 5000,
+      "period": {
+        "start": "2026-06-01T09:12:44+08:00",
+        "end": "2026-11-30T17:54:34+08:00",
+        "workdays": 131
+      },
+      "effective_hours_per_workday": 8,
+      "average_load_factor": 0.6563,
+      "equipment": {
+        "safety_tester": {
+          "instances": 5,
+          "demand_hours": 3715.38,
+          "capacity_hours": 5240,
+          "load_factor": 0.709,
+          "step_count": 4399,
+          "recommended_instances_for_90pct": 4
+        },
+        "emc_tester": {
+          "instances": 13,
+          "demand_hours": 8740.3,
+          "capacity_hours": 13624,
+          "load_factor": 0.6415,
+          "step_count": 3833,
+          "recommended_instances_for_90pct": 10
+        },
+        "performance_bench": {
+          "instances": 4,
+          "demand_hours": 3243.42,
+          "capacity_hours": 4192,
+          "load_factor": 0.7737,
+          "step_count": 2845,
+          "recommended_instances_for_90pct": 4
+        },
+        "environmental_chamber": {
+          "instances": 18,
+          "demand_hours": 13074.88,
+          "capacity_hours": 18864,
+          "load_factor": 0.6931,
+          "step_count": 3587,
+          "recommended_instances_for_90pct": 14
+        },
+        "international_protocol_bench": {
+          "instances": 2,
+          "demand_hours": 972.78,
+          "capacity_hours": 2096,
+          "load_factor": 0.4641,
+          "step_count": 671,
+          "recommended_instances_for_90pct": 2
+        }
+      }
+    },
+    "bottleneck_resources": [],
+    "comparison": {
+      "sla_on_time_rate_delta": 0.0,
+      "total_delay_reduction_ratio": 0.0,
+      "rebuild_latency_avg_ms": 11607,
+      "rebuild_latency_p95_ms": 13495
+    },
+    "agent_handoff": {
+      "status_code": 200,
+      "visited_agents": [
+        "orchestrator",
+        "queue_scheduler",
+        "equipment_monitor"
+      ],
+      "handoffs": [
+        {
+          "from": "queue_scheduler",
+          "to": "equipment_monitor",
+          "reason": "request current simulated equipment status"
+        }
+      ]
+    }
+  },
+  "highload_5000": {
+    "dataset": "scenario_synthetic_center_highload_5000",
+    "scenario_label": "high_load",
+    "created_orders": 500,
+    "integration_order_limit": 500,
+    "sample_mode": "spread",
+    "selected_strategy": "priority_fifo",
+    "strategy_results": {
+      "priority_fifo": {
+        "status_code": 200,
+        "latency_ms": 8631,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 16.38,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1054,
+            "emc_tester-10": 0.0722,
+            "emc_tester-2": 0.0314,
+            "emc_tester-3": 0.0095,
+            "emc_tester-4": 0.0005,
+            "environmental_chamber-1": 0.1328,
+            "environmental_chamber-10": 0.0942,
+            "environmental_chamber-11": 0.0616,
+            "environmental_chamber-12": 0.0192,
+            "environmental_chamber-13": 0.0032,
+            "international_protocol_bench-1": 0.0238,
+            "performance_bench-1": 0.0515,
+            "performance_bench-2": 0.019,
+            "performance_bench-3": 0.0019,
+            "safety_tester-1": 0.04,
+            "safety_tester-2": 0.0422,
+            "safety_tester-3": 0.0112,
+            "safety_tester-4": 0.0006
+          },
+          "vip_sla_rate": 1.0,
+          "urgent_delay_rate": 0.0,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 0,
+          "vip_delay_minutes": 0,
+          "urgent_delay_minutes": 0,
+          "normal_delay_minutes": 0,
+          "delayed_count": 0,
+          "vip_delayed_count": 0,
+          "urgent_delayed_count": 0,
+          "normal_delayed_count": 0,
+          "on_time_rate": 1.0,
+          "equipment_idle_penalty": 8561685,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16842,
+          "selected_strategy": "priority_fifo",
+          "candidate_scores": {
+            "priority_fifo": 428926513.8
+          },
+          "forecast_count": 0
+        }
+      },
+      "sla_guarded_hybrid": {
+        "status_code": 200,
+        "latency_ms": 12028,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 16.38,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1105,
+            "emc_tester-10": 0.0694,
+            "emc_tester-2": 0.0306,
+            "emc_tester-3": 0.008,
+            "emc_tester-4": 0.0005,
+            "environmental_chamber-1": 0.1273,
+            "environmental_chamber-10": 0.0963,
+            "environmental_chamber-11": 0.0615,
+            "environmental_chamber-12": 0.0221,
+            "environmental_chamber-13": 0.0037,
+            "international_protocol_bench-1": 0.0238,
+            "performance_bench-1": 0.0509,
+            "performance_bench-2": 0.0191,
+            "performance_bench-3": 0.0024,
+            "safety_tester-1": 0.0606,
+            "safety_tester-2": 0.0271,
+            "safety_tester-3": 0.0057,
+            "safety_tester-4": 0.0006
+          },
+          "vip_sla_rate": 1.0,
+          "urgent_delay_rate": 0.0,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 0,
+          "vip_delay_minutes": 0,
+          "urgent_delay_minutes": 0,
+          "normal_delay_minutes": 0,
+          "delayed_count": 0,
+          "vip_delayed_count": 0,
+          "urgent_delayed_count": 0,
+          "normal_delayed_count": 0,
+          "on_time_rate": 1.0,
+          "equipment_idle_penalty": 8561685,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16842,
+          "selected_strategy": "sla_guarded_hybrid",
+          "candidate_scores": {
+            "sla_guarded_hybrid": 428926513.8
+          },
+          "forecast_count": 0,
+          "step_level_scheduling": true
+        }
+      }
+    },
+    "capacity_report": {
+      "dataset": "scenario_synthetic_center_highload_5000",
+      "scenario_label": "high_load",
+      "order_count": 5000,
+      "period": {
+        "start": "2026-06-01T09:12:44+08:00",
+        "end": "2026-11-30T17:54:34+08:00",
+        "workdays": 131
+      },
+      "effective_hours_per_workday": 8,
+      "average_load_factor": 0.8627,
+      "equipment": {
+        "safety_tester": {
+          "instances": 4,
+          "demand_hours": 3715.38,
+          "capacity_hours": 4192,
+          "load_factor": 0.8863,
+          "step_count": 4399,
+          "recommended_instances_for_90pct": 4
+        },
+        "emc_tester": {
+          "instances": 10,
+          "demand_hours": 8740.3,
+          "capacity_hours": 10480,
+          "load_factor": 0.834,
+          "step_count": 3833,
+          "recommended_instances_for_90pct": 10
+        },
+        "performance_bench": {
+          "instances": 4,
+          "demand_hours": 3243.42,
+          "capacity_hours": 4192,
+          "load_factor": 0.7737,
+          "step_count": 2845,
+          "recommended_instances_for_90pct": 4
+        },
+        "environmental_chamber": {
+          "instances": 14,
+          "demand_hours": 13074.88,
+          "capacity_hours": 14672,
+          "load_factor": 0.8911,
+          "step_count": 3587,
+          "recommended_instances_for_90pct": 14
+        },
+        "international_protocol_bench": {
+          "instances": 1,
+          "demand_hours": 972.78,
+          "capacity_hours": 1048,
+          "load_factor": 0.9282,
+          "step_count": 671,
+          "recommended_instances_for_90pct": 2
+        }
+      }
+    },
+    "bottleneck_resources": [
+      {
+        "equipment_type": "international_protocol_bench",
+        "instances": 1,
+        "demand_hours": 972.78,
+        "capacity_hours": 1048,
+        "load_factor": 0.9282,
+        "step_count": 671,
+        "recommended_instances_for_90pct": 2
+      }
+    ],
+    "comparison": {
+      "sla_on_time_rate_delta": 0.0,
+      "total_delay_reduction_ratio": 0.0,
+      "rebuild_latency_avg_ms": 10329.5,
+      "rebuild_latency_p95_ms": 12028
+    },
+    "agent_handoff": {
+      "status_code": 200,
+      "visited_agents": [
+        "orchestrator",
+        "queue_scheduler",
+        "equipment_monitor"
+      ],
+      "handoffs": [
+        {
+          "from": "queue_scheduler",
+          "to": "equipment_monitor",
+          "reason": "request current simulated equipment status"
+        }
+      ]
+    }
+  },
+  "highload_peak_500": {
+    "dataset": "scenario_synthetic_center_highload_5000",
+    "scenario_label": "high_load",
+    "created_orders": 500,
+    "integration_order_limit": 500,
+    "sample_mode": "head",
+    "selected_strategy": "sla_guarded_hybrid",
+    "strategy_results": {
+      "priority_fifo": {
+        "status_code": 200,
+        "latency_ms": 9029,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 5872.56,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1129,
+            "emc_tester-10": 0.0955,
+            "emc_tester-2": 0.0617,
+            "emc_tester-3": 0.0282,
+            "emc_tester-4": 0.013,
+            "emc_tester-5": 0.0065,
+            "emc_tester-6": 0.0048,
+            "emc_tester-7": 0.0036,
+            "emc_tester-8": 0.0006,
+            "emc_tester-9": 0.0012,
+            "environmental_chamber-1": 0.1572,
+            "environmental_chamber-10": 0.1236,
+            "environmental_chamber-11": 0.0805,
+            "environmental_chamber-12": 0.0464,
+            "environmental_chamber-13": 0.0286,
+            "environmental_chamber-14": 0.0208,
+            "environmental_chamber-2": 0.0131,
+            "environmental_chamber-3": 0.0094,
+            "environmental_chamber-4": 0.0096,
+            "environmental_chamber-5": 0.0071,
+            "environmental_chamber-6": 0.0054,
+            "environmental_chamber-7": 0.005,
+            "environmental_chamber-8": 0.0025,
+            "environmental_chamber-9": 0.0012,
+            "international_protocol_bench-1": 0.0328,
+            "performance_bench-1": 0.0709,
+            "performance_bench-2": 0.0379,
+            "performance_bench-3": 0.0138,
+            "performance_bench-4": 0.0055,
+            "safety_tester-1": 0.0707,
+            "safety_tester-2": 0.0456,
+            "safety_tester-3": 0.0234,
+            "safety_tester-4": 0.0058
+          },
+          "vip_sla_rate": 0.129,
+          "urgent_delay_rate": 0.8966,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 36625191,
+          "vip_delay_minutes": 1387821,
+          "urgent_delay_minutes": 4078388,
+          "normal_delay_minutes": 31158982,
+          "delayed_count": 457,
+          "vip_delayed_count": 27,
+          "urgent_delayed_count": 78,
+          "normal_delayed_count": 352,
+          "on_time_rate": 0.086,
+          "equipment_idle_penalty": 5334522,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16916,
+          "selected_strategy": "priority_fifo",
+          "candidate_scores": {
+            "priority_fifo": 8867485945.6
+          },
+          "forecast_count": 0
+        }
+      },
+      "sla_guarded_hybrid": {
+        "status_code": 200,
+        "latency_ms": 68625,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 38.38,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1421,
+            "emc_tester-10": 0.1319,
+            "emc_tester-2": 0.119,
+            "emc_tester-3": 0.1178,
+            "emc_tester-4": 0.1084,
+            "emc_tester-5": 0.0946,
+            "emc_tester-6": 0.0803,
+            "emc_tester-7": 0.065,
+            "emc_tester-8": 0.058,
+            "emc_tester-9": 0.0531,
+            "environmental_chamber-1": 0.1019,
+            "environmental_chamber-10": 0.1195,
+            "environmental_chamber-11": 0.1183,
+            "environmental_chamber-12": 0.1224,
+            "environmental_chamber-13": 0.1124,
+            "environmental_chamber-14": 0.1223,
+            "environmental_chamber-2": 0.1106,
+            "environmental_chamber-3": 0.1066,
+            "environmental_chamber-4": 0.1025,
+            "environmental_chamber-5": 0.1067,
+            "environmental_chamber-6": 0.0979,
+            "environmental_chamber-7": 0.1048,
+            "environmental_chamber-8": 0.0936,
+            "environmental_chamber-9": 0.0899,
+            "international_protocol_bench-1": 0.0971,
+            "performance_bench-1": 0.0841,
+            "performance_bench-2": 0.0962,
+            "performance_bench-3": 0.0944,
+            "performance_bench-4": 0.1038,
+            "safety_tester-1": 0.1259,
+            "safety_tester-2": 0.1123,
+            "safety_tester-3": 0.0945,
+            "safety_tester-4": 0.0978
+          },
+          "vip_sla_rate": 1.0,
+          "urgent_delay_rate": 0.0,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 1246238,
+          "vip_delay_minutes": 0,
+          "urgent_delay_minutes": 0,
+          "normal_delay_minutes": 1246238,
+          "delayed_count": 67,
+          "vip_delayed_count": 0,
+          "urgent_delayed_count": 0,
+          "normal_delayed_count": 67,
+          "on_time_rate": 0.866,
+          "equipment_idle_penalty": 1676868,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16916,
+          "selected_strategy": "sla_guarded_hybrid",
+          "candidate_scores": {
+            "sla_guarded_hybrid": 181976243.8
+          },
+          "forecast_count": 0,
+          "step_level_scheduling": true
+        }
+      }
+    },
+    "capacity_report": {
+      "dataset": "scenario_synthetic_center_highload_5000",
+      "scenario_label": "high_load",
+      "order_count": 5000,
+      "period": {
+        "start": "2026-06-01T09:12:44+08:00",
+        "end": "2026-11-30T17:54:34+08:00",
+        "workdays": 131
+      },
+      "effective_hours_per_workday": 8,
+      "average_load_factor": 0.8627,
+      "equipment": {
+        "safety_tester": {
+          "instances": 4,
+          "demand_hours": 3715.38,
+          "capacity_hours": 4192,
+          "load_factor": 0.8863,
+          "step_count": 4399,
+          "recommended_instances_for_90pct": 4
+        },
+        "emc_tester": {
+          "instances": 10,
+          "demand_hours": 8740.3,
+          "capacity_hours": 10480,
+          "load_factor": 0.834,
+          "step_count": 3833,
+          "recommended_instances_for_90pct": 10
+        },
+        "performance_bench": {
+          "instances": 4,
+          "demand_hours": 3243.42,
+          "capacity_hours": 4192,
+          "load_factor": 0.7737,
+          "step_count": 2845,
+          "recommended_instances_for_90pct": 4
+        },
+        "environmental_chamber": {
+          "instances": 14,
+          "demand_hours": 13074.88,
+          "capacity_hours": 14672,
+          "load_factor": 0.8911,
+          "step_count": 3587,
+          "recommended_instances_for_90pct": 14
+        },
+        "international_protocol_bench": {
+          "instances": 1,
+          "demand_hours": 972.78,
+          "capacity_hours": 1048,
+          "load_factor": 0.9282,
+          "step_count": 671,
+          "recommended_instances_for_90pct": 2
+        }
+      }
+    },
+    "bottleneck_resources": [
+      {
+        "equipment_type": "international_protocol_bench",
+        "instances": 1,
+        "demand_hours": 972.78,
+        "capacity_hours": 1048,
+        "load_factor": 0.9282,
+        "step_count": 671,
+        "recommended_instances_for_90pct": 2
+      }
+    ],
+    "comparison": {
+      "sla_on_time_rate_delta": 0.78,
+      "total_delay_reduction_ratio": 0.966,
+      "rebuild_latency_avg_ms": 38827,
+      "rebuild_latency_p95_ms": 68625
+    },
+    "agent_handoff": {
+      "status_code": 200,
+      "visited_agents": [
+        "orchestrator",
+        "queue_scheduler",
+        "equipment_monitor"
+      ],
+      "handoffs": [
+        {
+          "from": "queue_scheduler",
+          "to": "equipment_monitor",
+          "reason": "request current simulated equipment status"
+        }
+      ]
+    }
+  },
+  "stress_load": {
+    "dataset": "scenario_synthetic_center_large",
+    "scenario_label": "stress_load",
+    "created_orders": 500,
+    "integration_order_limit": 500,
+    "sample_mode": "spread",
+    "selected_strategy": "sla_guarded_hybrid",
+    "strategy_results": {
+      "priority_fifo": {
+        "status_code": 200,
+        "latency_ms": 5873,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 22852.65,
+          "equipment_utilization": {
+            "emc_tester-1": 0.0916,
+            "emc_tester-2": 0.0306,
+            "environmental_chamber-1": 0.126,
+            "environmental_chamber-2": 0.0474,
+            "international_protocol_bench-1": 0.0133,
+            "performance_bench-1": 0.0388,
+            "performance_bench-2": 0.0016,
+            "safety_tester-1": 0.0397,
+            "safety_tester-2": 0.0122,
+            "safety_tester-3": 0.0006
+          },
+          "vip_sla_rate": 0.075,
+          "urgent_delay_rate": 0.8696,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 32004365,
+          "vip_delay_minutes": 1331496,
+          "urgent_delay_minutes": 2136866,
+          "normal_delay_minutes": 28536003,
+          "delayed_count": 427,
+          "vip_delayed_count": 37,
+          "urgent_delayed_count": 60,
+          "normal_delayed_count": 330,
+          "on_time_rate": 0.146,
+          "equipment_idle_penalty": 5513352,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16842,
+          "selected_strategy": "priority_fifo",
+          "candidate_scores": {
+            "priority_fifo": 7015460476.5
+          },
+          "forecast_count": 0
+        }
+      },
+      "sla_guarded_hybrid": {
+        "status_code": 200,
+        "latency_ms": 9774,
+        "metrics": {
+          "scheduled_count": 500,
+          "blocked_count": 0,
+          "average_wait_minutes": 19.75,
+          "equipment_utilization": {
+            "emc_tester-1": 0.1281,
+            "emc_tester-2": 0.091,
+            "environmental_chamber-1": 0.1642,
+            "environmental_chamber-2": 0.1467,
+            "international_protocol_bench-1": 0.0238,
+            "performance_bench-1": 0.0526,
+            "performance_bench-2": 0.0172,
+            "performance_bench-3": 0.0026,
+            "safety_tester-1": 0.0584,
+            "safety_tester-2": 0.0283,
+            "safety_tester-3": 0.006,
+            "safety_tester-4": 0.0013
+          },
+          "vip_sla_rate": 1.0,
+          "urgent_delay_rate": 0.0,
+          "blocked_reason_distribution": {},
+          "total_delay_minutes": 0,
+          "vip_delay_minutes": 0,
+          "urgent_delay_minutes": 0,
+          "normal_delay_minutes": 0,
+          "delayed_count": 0,
+          "vip_delayed_count": 0,
+          "urgent_delayed_count": 0,
+          "normal_delayed_count": 0,
+          "on_time_rate": 1.0,
+          "equipment_idle_penalty": 2991792,
+          "personnel_blocked_count": 0,
+          "transfer_wait_minutes": 16842,
+          "selected_strategy": "sla_guarded_hybrid",
+          "candidate_scores": {
+            "sla_guarded_hybrid": 150431897.5
+          },
+          "forecast_count": 0,
+          "step_level_scheduling": true
+        }
+      }
+    },
+    "capacity_report": {
+      "dataset": "scenario_synthetic_center_large",
+      "scenario_label": "stress_load",
+      "order_count": 5000,
+      "period": {
+        "start": "2026-06-01T09:12:44+08:00",
+        "end": "2026-11-30T17:54:34+08:00",
+        "workdays": 131
+      },
+      "effective_hours_per_workday": 8,
+      "average_load_factor": 2.6508,
+      "equipment": {
+        "safety_tester": {
+          "instances": 4,
+          "demand_hours": 3715.38,
+          "capacity_hours": 4192,
+          "load_factor": 0.8863,
+          "step_count": 4399,
+          "recommended_instances_for_90pct": 4
+        },
+        "emc_tester": {
+          "instances": 2,
+          "demand_hours": 8740.3,
+          "capacity_hours": 2096,
+          "load_factor": 4.17,
+          "step_count": 3833,
+          "recommended_instances_for_90pct": 10
+        },
+        "performance_bench": {
+          "instances": 3,
+          "demand_hours": 3243.42,
+          "capacity_hours": 3144,
+          "load_factor": 1.0316,
+          "step_count": 2845,
+          "recommended_instances_for_90pct": 4
+        },
+        "environmental_chamber": {
+          "instances": 2,
+          "demand_hours": 13074.88,
+          "capacity_hours": 2096,
+          "load_factor": 6.238,
+          "step_count": 3587,
+          "recommended_instances_for_90pct": 14
+        },
+        "international_protocol_bench": {
+          "instances": 1,
+          "demand_hours": 972.78,
+          "capacity_hours": 1048,
+          "load_factor": 0.9282,
+          "step_count": 671,
+          "recommended_instances_for_90pct": 2
+        }
+      }
+    },
+    "bottleneck_resources": [
+      {
+        "equipment_type": "emc_tester",
+        "instances": 2,
+        "demand_hours": 8740.3,
+        "capacity_hours": 2096,
+        "load_factor": 4.17,
+        "step_count": 3833,
+        "recommended_instances_for_90pct": 10
+      },
+      {
+        "equipment_type": "performance_bench",
+        "instances": 3,
+        "demand_hours": 3243.42,
+        "capacity_hours": 3144,
+        "load_factor": 1.0316,
+        "step_count": 2845,
+        "recommended_instances_for_90pct": 4
+      },
+      {
+        "equipment_type": "environmental_chamber",
+        "instances": 2,
+        "demand_hours": 13074.88,
+        "capacity_hours": 2096,
+        "load_factor": 6.238,
+        "step_count": 3587,
+        "recommended_instances_for_90pct": 14
+      },
+      {
+        "equipment_type": "international_protocol_bench",
+        "instances": 1,
+        "demand_hours": 972.78,
+        "capacity_hours": 1048,
+        "load_factor": 0.9282,
+        "step_count": 671,
+        "recommended_instances_for_90pct": 2
+      }
+    ],
+    "comparison": {
+      "sla_on_time_rate_delta": 0.854,
+      "total_delay_reduction_ratio": 1.0,
+      "rebuild_latency_avg_ms": 7823.5,
+      "rebuild_latency_p95_ms": 9774
+    },
+    "agent_handoff": {
+      "status_code": 200,
+      "visited_agents": [
+        "orchestrator",
+        "queue_scheduler",
+        "equipment_monitor"
+      ],
+      "handoffs": [
+        {
+          "from": "queue_scheduler",
+          "to": "equipment_monitor",
+          "reason": "request current simulated equipment status"
+        }
+      ]
+    }
+  }
+}

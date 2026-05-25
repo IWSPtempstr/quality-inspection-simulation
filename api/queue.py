@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from api.dependencies import get_db
@@ -26,7 +26,11 @@ def get_queue(request: Request, session: Session = Depends(get_db)) -> DataRespo
 
 
 @router.post("/rebuild", response_model=DataResponse)
-def rebuild_queue(request: Request, session: Session = Depends(get_db)) -> DataResponse:
+def rebuild_queue(
+    request: Request,
+    strategy: str | None = Query(default=None),
+    session: Session = Depends(get_db),
+) -> DataResponse:
     request.app.state.permission_service.require(request, "schedule:write")
     event = request.app.state.scheduling_event_service.record_event(
         SchedulingEventCreate(
@@ -40,6 +44,7 @@ def rebuild_queue(request: Request, session: Session = Depends(get_db)) -> DataR
     )
     result = request.app.state.scheduling_coordinator.rebuild(
         trigger_source="api",
+        requested_strategy=strategy,
         extra_payload={"event_id": event["id"]},
     )
     data = format_schedule_detail(result["run"])

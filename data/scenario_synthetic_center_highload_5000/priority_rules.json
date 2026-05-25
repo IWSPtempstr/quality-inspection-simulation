@@ -1,0 +1,19 @@
+{
+  "rule_set": "non_preemptive_priority_v1",
+  "priority_order": [
+    "vip",
+    "urgent",
+    "normal"
+  ],
+  "preemption": false,
+  "description": "非抢占式优先级规则：已开始检测任务不中断，VIP/加急只调整未开始任务的排序。",
+  "sla_working_days": {
+    "normal": 7,
+    "urgent": 3,
+    "vip": 2
+  },
+  "tie_breakers": [
+    "arrival_time",
+    "order_id"
+  ]
+}

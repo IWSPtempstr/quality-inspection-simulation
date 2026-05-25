@@ -11,8 +11,8 @@ from domain.schemas import CertificationType, EquipmentStatus
 class SimulationService:
     """In-memory simulation of laboratory equipment and certification flows."""
 
-    def __init__(self, operations_constraints: dict | None = None) -> None:
-        self.equipment = self._build_default_equipment()
+    def __init__(self, equipment_catalog: dict | None = None, operations_constraints: dict | None = None) -> None:
+        self.equipment = self._build_equipment_from_catalog(equipment_catalog) if equipment_catalog else self._build_default_equipment()
         self.projects = self._build_default_projects()
         self.operations_constraints = self._build_operations_constraints(operations_constraints or {})
         self.reservations: list[dict] = []
@@ -40,6 +40,26 @@ class SimulationService:
                     }
                 )
         return equipment
+
+    def _build_equipment_from_catalog(self, equipment_catalog: dict) -> list[dict]:
+        equipment: list[dict] = []
+        for definition in equipment_catalog.get("equipment_types", []):
+            supported_projects = definition.get("supported_project_types") or definition.get("supported_projects") or []
+            display_name = definition.get("display_name") or definition["equipment_type"]
+            for index, instance in enumerate(definition.get("instances", []), start=1):
+                equipment_id = instance.get("equipment_id") or instance.get("id") or f"{definition['equipment_type']}-{index}"
+                equipment.append(
+                    {
+                        "id": equipment_id,
+                        "equipment_type": instance.get("equipment_type", definition["equipment_type"]),
+                        "name": instance.get("name") or f"{display_name} #{index}",
+                        "capacity": int(instance.get("capacity") or instance.get("capacity_n") or definition.get("capacity_n", 1)),
+                        "supported_projects": instance.get("supported_projects") or supported_projects,
+                        "lab_area": instance.get("lab_area") or definition.get("lab_area", "lab"),
+                        "status": EquipmentStatus(instance.get("status", EquipmentStatus.IDLE.value)),
+                    }
+                )
+        return equipment or self._build_default_equipment()
 
     def _build_default_projects(self) -> list[dict]:
         return [

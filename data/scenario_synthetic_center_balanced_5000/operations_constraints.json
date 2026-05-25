@@ -1,0 +1,1750 @@
+{
+  "lab_areas": [
+    {
+      "lab_area": "intake",
+      "display_name": "样品接收与前处理区"
+    },
+    {
+      "lab_area": "safety_lab",
+      "display_name": "安全实验室"
+    },
+    {
+      "lab_area": "emc_lab",
+      "display_name": "电磁兼容实验室"
+    },
+    {
+      "lab_area": "performance_lab",
+      "display_name": "性能实验室"
+    },
+    {
+      "lab_area": "environmental_lab",
+      "display_name": "环境实验室"
+    },
+    {
+      "lab_area": "review_lab",
+      "display_name": "国际认证评审区"
+    }
+  ],
+  "calendar": {
+    "timezone": "Asia/Shanghai",
+    "working_days": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+    ],
+    "closed_days": [
+      "saturday",
+      "sunday"
+    ]
+  },
+  "shifts": [
+    {
+      "shift_id": "intake_morning",
+      "start": "09:00",
+      "end": "12:00",
+      "available_for": [
+        "sample_intake",
+        "preparation"
+      ]
+    },
+    {
+      "shift_id": "lab_day",
+      "start": "09:00",
+      "end": "18:00",
+      "available_for": [
+        "safety_check",
+        "emc_check",
+        "performance_check",
+        "cb_review"
+      ]
+    },
+    {
+      "shift_id": "environment_continuous",
+      "start": "09:00",
+      "end": "18:00",
+      "available_for": [
+        "environmental_check"
+      ],
+      "can_continue_during_lunch": true
+    }
+  ],
+  "breaks": [
+    {
+      "name": "lunch",
+      "start": "12:00",
+      "end": "13:00",
+      "staff_available": false
+    }
+  ],
+  "staff_roles": [
+    {
+      "role": "safety_engineer",
+      "staff_count": 4,
+      "skills": [
+        "safety_check"
+      ]
+    },
+    {
+      "role": "emc_engineer",
+      "staff_count": 4,
+      "skills": [
+        "emc_check"
+      ]
+    },
+    {
+      "role": "assistant_operator",
+      "staff_count": 4,
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ]
+    },
+    {
+      "role": "performance_engineer",
+      "staff_count": 3,
+      "skills": [
+        "performance_check"
+      ]
+    },
+    {
+      "role": "environmental_engineer",
+      "staff_count": 2,
+      "skills": [
+        "environmental_check"
+      ]
+    },
+    {
+      "role": "certification_reviewer",
+      "staff_count": 2,
+      "skills": [
+        "cb_review"
+      ]
+    },
+    {
+      "role": "sample_operator",
+      "staff_count": 3,
+      "skills": [
+        "preprocessing"
+      ]
+    },
+    {
+      "role": "transfer_operator",
+      "staff_count": 3,
+      "skills": [
+        "sample_transfer"
+      ]
+    }
+  ],
+  "employees": [
+    {
+      "employee_id": "emp-safety-1",
+      "name": "安全工程师1",
+      "roles": [
+        "safety_engineer"
+      ],
+      "skills": [
+        "safety_check",
+        "safety_tester"
+      ],
+      "lab_areas": [
+        "safety_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 2
+    },
+    {
+      "employee_id": "emp-safety-2",
+      "name": "安全工程师2",
+      "roles": [
+        "safety_engineer"
+      ],
+      "skills": [
+        "safety_check",
+        "safety_tester"
+      ],
+      "lab_areas": [
+        "safety_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 2
+    },
+    {
+      "employee_id": "emp-safety-3",
+      "name": "安全工程师3",
+      "roles": [
+        "safety_engineer"
+      ],
+      "skills": [
+        "safety_check",
+        "safety_tester"
+      ],
+      "lab_areas": [
+        "safety_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 2
+    },
+    {
+      "employee_id": "emp-safety-4",
+      "name": "安全工程师4",
+      "roles": [
+        "safety_engineer"
+      ],
+      "skills": [
+        "safety_check",
+        "safety_tester"
+      ],
+      "lab_areas": [
+        "safety_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 2
+    },
+    {
+      "employee_id": "emp-emc-1",
+      "name": "EMC工程师1",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-2",
+      "name": "EMC工程师2",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-3",
+      "name": "EMC工程师3",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-1",
+      "name": "助理操作员1",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-2",
+      "name": "助理操作员2",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-3",
+      "name": "助理操作员3",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-performance-1",
+      "name": "性能工程师1",
+      "roles": [
+        "performance_engineer"
+      ],
+      "skills": [
+        "performance_check",
+        "performance_bench"
+      ],
+      "lab_areas": [
+        "performance_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 2
+    },
+    {
+      "employee_id": "emp-performance-2",
+      "name": "性能工程师2",
+      "roles": [
+        "performance_engineer"
+      ],
+      "skills": [
+        "performance_check",
+        "performance_bench"
+      ],
+      "lab_areas": [
+        "performance_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 2
+    },
+    {
+      "employee_id": "emp-environment-1",
+      "name": "环境工程师1",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-2",
+      "name": "环境工程师2",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-review-1",
+      "name": "认证评审员1",
+      "roles": [
+        "certification_reviewer"
+      ],
+      "skills": [
+        "cb_review"
+      ],
+      "lab_areas": [
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-review-2",
+      "name": "认证评审员2",
+      "roles": [
+        "certification_reviewer"
+      ],
+      "skills": [
+        "cb_review"
+      ],
+      "lab_areas": [
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-1",
+      "name": "样品前处理员1",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-2",
+      "name": "样品前处理员2",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-3",
+      "name": "样品前处理员3",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-1",
+      "name": "转运员1",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-2",
+      "name": "转运员2",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-3",
+      "name": "转运员3",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-4",
+      "name": "emc_engineer-4",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-5",
+      "name": "emc_engineer-5",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-6",
+      "name": "emc_engineer-6",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-7",
+      "name": "emc_engineer-7",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-8",
+      "name": "emc_engineer-8",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-9",
+      "name": "emc_engineer-9",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-10",
+      "name": "emc_engineer-10",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-11",
+      "name": "emc_engineer-11",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-12",
+      "name": "emc_engineer-12",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-emc-13",
+      "name": "emc_engineer-13",
+      "roles": [
+        "emc_engineer"
+      ],
+      "skills": [
+        "emc_check",
+        "emc_tester"
+      ],
+      "lab_areas": [
+        "emc_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-environment-3",
+      "name": "environmental_engineer-3",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-4",
+      "name": "environmental_engineer-4",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-5",
+      "name": "environmental_engineer-5",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-6",
+      "name": "environmental_engineer-6",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-assistant-4",
+      "name": "助理操作员4",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-5",
+      "name": "助理操作员5",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-6",
+      "name": "助理操作员6",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-7",
+      "name": "助理操作员7",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-8",
+      "name": "助理操作员8",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-9",
+      "name": "助理操作员9",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-10",
+      "name": "助理操作员10",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-11",
+      "name": "助理操作员11",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-12",
+      "name": "助理操作员12",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-13",
+      "name": "助理操作员13",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-14",
+      "name": "助理操作员14",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-15",
+      "name": "助理操作员15",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-16",
+      "name": "助理操作员16",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-17",
+      "name": "助理操作员17",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-18",
+      "name": "助理操作员18",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-19",
+      "name": "助理操作员19",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-20",
+      "name": "助理操作员20",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-21",
+      "name": "助理操作员21",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-22",
+      "name": "助理操作员22",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-23",
+      "name": "助理操作员23",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-24",
+      "name": "助理操作员24",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-25",
+      "name": "助理操作员25",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-assistant-26",
+      "name": "助理操作员26",
+      "roles": [
+        "assistant_operator"
+      ],
+      "skills": [
+        "emc_check",
+        "performance_check",
+        "environmental_check"
+      ],
+      "lab_areas": [
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-4",
+      "name": "emp-prep-4",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-5",
+      "name": "emp-prep-5",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-6",
+      "name": "emp-prep-6",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-7",
+      "name": "emp-prep-7",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-8",
+      "name": "emp-prep-8",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-9",
+      "name": "emp-prep-9",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-10",
+      "name": "emp-prep-10",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-11",
+      "name": "emp-prep-11",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-4",
+      "name": "emp-transfer-4",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-5",
+      "name": "emp-transfer-5",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-6",
+      "name": "emp-transfer-6",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-7",
+      "name": "emp-transfer-7",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-8",
+      "name": "emp-transfer-8",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-9",
+      "name": "emp-transfer-9",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    }
+  ],
+  "preprocessing_resources": [
+    {
+      "resource_id": "prep-1",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-2",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-3",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-4",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-5",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-6",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-7",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-8",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-9",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-10",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-11",
+      "resource_type": "prep_station"
+    }
+  ],
+  "preprocessing_rules": {
+    "default": {
+      "required_minutes": 15,
+      "lab_area": "intake",
+      "required_roles": [
+        "sample_operator"
+      ],
+      "resource_type": "prep_station",
+      "required_operator_count": 1
+    }
+  },
+  "transfer_resources": [
+    {
+      "resource_id": "cart-1",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-2",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-3",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-4",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-5",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-6",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-7",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-8",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-9",
+      "resource_type": "transfer_cart"
+    }
+  ],
+  "transfer_matrix": {
+    "intake->safety_lab": {
+      "duration_minutes": 8,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "intake->emc_lab": {
+      "duration_minutes": 10,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "intake->performance_lab": {
+      "duration_minutes": 10,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "intake->environmental_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "intake->review_lab": {
+      "duration_minutes": 8,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "safety_lab->emc_lab": {
+      "duration_minutes": 10,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "safety_lab->performance_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "safety_lab->environmental_lab": {
+      "duration_minutes": 14,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "safety_lab->review_lab": {
+      "duration_minutes": 15,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "emc_lab->safety_lab": {
+      "duration_minutes": 10,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "emc_lab->performance_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "emc_lab->environmental_lab": {
+      "duration_minutes": 14,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "emc_lab->review_lab": {
+      "duration_minutes": 10,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "performance_lab->safety_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "performance_lab->emc_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "performance_lab->environmental_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "performance_lab->review_lab": {
+      "duration_minutes": 15,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "environmental_lab->safety_lab": {
+      "duration_minutes": 14,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "environmental_lab->emc_lab": {
+      "duration_minutes": 14,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "environmental_lab->performance_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "environmental_lab->review_lab": {
+      "duration_minutes": 15,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "review_lab->safety_lab": {
+      "duration_minutes": 12,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "review_lab->emc_lab": {
+      "duration_minutes": 10,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "review_lab->performance_lab": {
+      "duration_minutes": 15,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    },
+    "review_lab->environmental_lab": {
+      "duration_minutes": 15,
+      "required_roles": [
+        "transfer_operator"
+      ],
+      "resource_type": "transfer_cart",
+      "required_operator_count": 1
+    }
+  },
+  "consumables": {
+    "safety_probe": {
+      "daily_capacity": 80
+    },
+    "emc_fixture": {
+      "daily_capacity": 45
+    },
+    "load_fixture": {
+      "daily_capacity": 70
+    },
+    "environmental_tag": {
+      "daily_capacity": 65
+    },
+    "review_sheet": {
+      "daily_capacity": 60
+    }
+  },
+  "maintenance_windows": [
+    {
+      "event_id": "maint-emc-001",
+      "equipment_id": "emc_tester-1",
+      "start": "2026-06-10T14:00:00+08:00",
+      "end": "2026-06-10T17:00:00+08:00",
+      "event_type": "planned_maintenance"
+    },
+    {
+      "event_id": "maint-env-001",
+      "equipment_id": "environmental_chamber-2",
+      "start": "2026-06-17T09:00:00+08:00",
+      "end": "2026-06-17T12:00:00+08:00",
+      "event_type": "planned_maintenance"
+    },
+    {
+      "event_id": "maint-safety-001",
+      "equipment_id": "safety_tester-3",
+      "start": "2026-06-24T15:00:00+08:00",
+      "end": "2026-06-24T18:00:00+08:00",
+      "event_type": "planned_maintenance"
+    }
+  ],
+  "failure_events": [
+    {
+      "event_id": "fail-cb-001",
+      "equipment_id": "international_protocol_bench-1",
+      "start": "2026-06-19T10:00:00+08:00",
+      "end": "2026-06-19T12:00:00+08:00",
+      "event_type": "simulated_failure"
+    }
+  ]
+}

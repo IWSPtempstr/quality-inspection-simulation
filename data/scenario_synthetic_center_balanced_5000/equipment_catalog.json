@@ -1,0 +1,406 @@
+{
+  "description": "合成设备台账，字段 d 表示设备数量，capacity_n 表示单台设备单次批处理容量。",
+  "equipment_types": [
+    {
+      "equipment_type": "safety_tester",
+      "display_name": "安全性能测试台",
+      "d": 5,
+      "capacity_n": 3,
+      "lab_area": "safety_lab",
+      "supported_project_types": [
+        "safety_check"
+      ],
+      "maintenance_group": "electrical_safety",
+      "instances": [
+        {
+          "equipment_id": "safety_tester-1",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "lab_area": "safety_lab",
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-2",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "lab_area": "safety_lab",
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-3",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "lab_area": "safety_lab",
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-4",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "lab_area": "safety_lab",
+          "maintenance_group": "electrical_safety"
+        },
+        {
+          "equipment_id": "safety_tester-5",
+          "equipment_type": "safety_tester",
+          "status": "idle",
+          "capacity_n": 3,
+          "lab_area": "safety_lab",
+          "maintenance_group": "electrical_safety"
+        }
+      ]
+    },
+    {
+      "equipment_type": "emc_tester",
+      "display_name": "电磁兼容测试系统",
+      "d": 13,
+      "capacity_n": 1,
+      "lab_area": "emc_lab",
+      "supported_project_types": [
+        "emc_check"
+      ],
+      "maintenance_group": "emc",
+      "instances": [
+        {
+          "equipment_id": "emc_tester-1",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-2",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-3",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-4",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-5",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-6",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-7",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-8",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-9",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-10",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-11",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-12",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        },
+        {
+          "equipment_id": "emc_tester-13",
+          "equipment_type": "emc_tester",
+          "status": "idle",
+          "capacity_n": 1,
+          "lab_area": "emc_lab",
+          "maintenance_group": "emc"
+        }
+      ]
+    },
+    {
+      "equipment_type": "performance_bench",
+      "display_name": "性能测试台",
+      "d": 4,
+      "capacity_n": 4,
+      "lab_area": "performance_lab",
+      "supported_project_types": [
+        "performance_check"
+      ],
+      "maintenance_group": "performance",
+      "instances": [
+        {
+          "equipment_id": "performance_bench-1",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "lab_area": "performance_lab",
+          "maintenance_group": "performance"
+        },
+        {
+          "equipment_id": "performance_bench-2",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "lab_area": "performance_lab",
+          "maintenance_group": "performance"
+        },
+        {
+          "equipment_id": "performance_bench-3",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "lab_area": "performance_lab",
+          "maintenance_group": "performance"
+        },
+        {
+          "equipment_id": "performance_bench-4",
+          "equipment_type": "performance_bench",
+          "status": "idle",
+          "capacity_n": 4,
+          "lab_area": "performance_lab",
+          "maintenance_group": "performance"
+        }
+      ]
+    },
+    {
+      "equipment_type": "environmental_chamber",
+      "display_name": "环境试验箱",
+      "d": 18,
+      "capacity_n": 6,
+      "lab_area": "environmental_lab",
+      "supported_project_types": [
+        "environmental_check"
+      ],
+      "maintenance_group": "environmental",
+      "instances": [
+        {
+          "equipment_id": "environmental_chamber-1",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-2",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-3",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-4",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-5",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-6",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-7",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-8",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-9",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-10",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-11",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-12",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-13",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-14",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-15",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-16",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-17",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-18",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        }
+      ]
+    },
+    {
+      "equipment_type": "international_protocol_bench",
+      "display_name": "国际认证资料评审台",
+      "d": 2,
+      "capacity_n": 2,
+      "lab_area": "review_lab",
+      "supported_project_types": [
+        "cb_review"
+      ],
+      "maintenance_group": "certification_review",
+      "instances": [
+        {
+          "equipment_id": "international_protocol_bench-1",
+          "equipment_type": "international_protocol_bench",
+          "status": "idle",
+          "capacity_n": 2,
+          "lab_area": "review_lab",
+          "maintenance_group": "certification_review"
+        },
+        {
+          "equipment_id": "international_protocol_bench-2",
+          "equipment_type": "international_protocol_bench",
+          "status": "idle",
+          "capacity_n": 2,
+          "lab_area": "review_lab",
+          "maintenance_group": "certification_review"
+        }
+      ]
+    }
+  ]
+}

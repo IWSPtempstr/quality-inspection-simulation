@@ -1,0 +1,13 @@
+{
+  "dataset_name": "scenario_synthetic_center_balanced_5000",
+  "dataset_version": "0.4.0-large-balanced",
+  "scenario_label": "normal_load",
+  "synthetic": true,
+  "seed": 20260522,
+  "period": {
+    "start_date": "2026-06-01",
+    "end_date": "2026-11-30"
+  },
+  "order_count": 5000,
+  "usage_boundary": "合成数据，仅用于正常/高负载调度机制验证，不代表真实机构参数。"
+}

@@ -13,6 +13,8 @@
 - `data/mechanism_validation/`：最小机制验证数据集，用于验证订单、队列、RAG、MCP 和 Agent 链路是否连通。
 - `data/scenario_synthetic_center/`：500 单合成拟真数据集，用于常规机制验证和指标输出；订单中包含 `detection_route`，用于表达订单级检测路线和共享设备冲突。
 - `data/scenario_synthetic_center_large/`：5000 单合成拟真数据集，用于较大样本压力验证；验证脚本默认对全量数据做静态校验，并抽取前 500 单跑通 API、RAG、排程和 Agent 链路。
+- `data/scenario_synthetic_center_balanced_5000/`：由 5000 单压力数据派生的正常负载场景，设备平均负载约 65.63%，用于验证合理产能下的 SLA 达标能力。
+- `data/scenario_synthetic_center_highload_5000/`：由 5000 单压力数据派生的高负载场景，设备平均负载约 86.27%，用于验证峰值订单窗口下的步骤级调度和 SLA 可救性排序。
 
 数据集均为合成仿真数据，不代表任何真实检测中心的设备数量、检测耗时、订单分布或插队规则。
 
@@ -71,7 +73,7 @@ Agent Layer
 
 Service Layer
   ├─ SimulationService   设备与检测项目仿真
-  ├─ QueueService        优先级排序与排程
+  ├─ QueueService        优先级排序、步骤级调度与排程
   ├─ SchedulingEventService 排程事件写入、去重与查询
   ├─ SchedulerHeartbeatService 心跳触发与后台消费
   ├─ SchedulingCoordinatorService queue_scheduler 统一排程入口
@@ -118,6 +120,9 @@ DB Layer
 - 首个检测步骤前可插入样品前处理步骤；相邻步骤跨实验室区域时自动插入样品转运步骤。
 - 设备准备/换型时间、维护窗口、模拟故障窗口、周末、午休、工作日结束时间和耗材日配额会参与排程避让。
 - 系统输出 `sla_status`、`delay_minutes`、平均等待时间、设备利用率、VIP SLA 达成率、加急延误率、人员阻塞、转运等待和阻塞原因分布。
+- `sla_guarded_hybrid` 已升级为步骤级调度策略。该策略不再一次性排完整个订单，而是维护跨订单的 ready step 池，让不同订单的前处理、转运和检测步骤按资源可用性逐步竞争。
+- 步骤级排序引入 SLA 可救性判断：先计算 `projected_finish_time` 与 `promised_finish_time` 的 slack，将“当前仍可准时完成或轻微延期可救回”的步骤放入更高优先级分桶，再结合订单类型、瓶颈设备稀缺度、步骤可开始时间和到达时间排序。
+- `sla_guarded_hybrid` 的排程指标会输出 `step_level_scheduling=true`，便于与 `priority_fifo` 等订单级 baseline 区分。
 
 该排程仍属于规则仿真和候选策略评分，不声明全局数学最优；默认采用非抢占式重排，已开始检测步骤在业务定义上不应被中断，当前代码层面的自动重排主要面向未开始订单和未开始步骤。
 
@@ -127,7 +132,7 @@ DB Layer
 
 事件使用 `fingerprint` 和防抖窗口做合并处理，默认 30 秒内的同类事件会被标记为 `ignored`。`SchedulerHeartbeatService` 提供手动触发 API，也会在 FastAPI 启动时按 `SCHEDULER_HEARTBEAT_ENABLED` 和 `SCHEDULER_HEARTBEAT_INTERVAL_SECONDS` 启动后台心跳。高严重度事件（默认 `critical,high`）通过事件 API 写入后会立即触发一次心跳处理。
 
-`queue_scheduler` 是统一排程入口。它读取待处理事件和当前订单，调用 `ScheduleOptimizerService` 生成候选策略，包括 `priority_fifo`、`earliest_due_date`、`shortest_processing_time`、`bottleneck_resource_first` 和 `hybrid_weighted`。候选排程按阻塞订单数、VIP/加急/普通延期分钟、平均等待、设备空闲惩罚、人员阻塞和转运等待进行评分，默认选择评分最低的方案并持久化为 `schedule_runs` 和 `schedule_steps`。
+`queue_scheduler` 是统一排程入口。它读取待处理事件和当前订单，调用 `ScheduleOptimizerService` 生成候选策略，包括 `priority_fifo`、`earliest_due_date`、`shortest_processing_time`、`bottleneck_resource_first`、`hybrid_weighted` 和 `sla_guarded_hybrid`。候选排程按阻塞订单数、VIP/加急/普通延期订单数、VIP/加急/普通延期分钟、平均等待、设备空闲惩罚、人员阻塞和转运等待进行评分，默认选择评分最低的方案并持久化为 `schedule_runs` 和 `schedule_steps`。
 
 ## 数据集按时间回放
 
@@ -182,7 +187,9 @@ project/
 │   ├── evaluation/                    # Agent 离线评测 JSONL
 │   ├── mechanism_validation/          # 最小机制验证数据集
 │   ├── scenario_synthetic_center/     # 500 单合成拟真数据集
-│   └── scenario_synthetic_center_large/ # 5000 单大样本合成数据集
+│   ├── scenario_synthetic_center_large/ # 5000 单压力合成数据集
+│   ├── scenario_synthetic_center_balanced_5000/ # 5000 单正常负载派生数据集
+│   └── scenario_synthetic_center_highload_5000/ # 5000 单高负载派生数据集
 ├── docs/                # 算法路线和项目设计文档
 ├── tests/               # pytest 测试
 ├── web/                 # Jinja2 管理页
@@ -464,6 +471,18 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/validate_large_synthetic_center_dataset.py
 ```
 
+生成并评估 5000 单优化场景：
+
+```bash
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/generate_optimized_synthetic_center_datasets.py
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/evaluate_optimized_scheduling.py
+```
+
+评估报告输出到：
+
+- `data/evaluation_reports/scheduling_optimization_report.json`
+- `data/evaluation_reports/scheduling_optimization_summary.md`
+
 大样本数据集位于 `data/scenario_synthetic_center_large/`，包含 2026-06-01 至 2026-11-30 周期内的 5000 条合成订单。大样本验证脚本会对 5000 条订单做静态一致性校验，并默认抽取前 500 条跑通 API、RAG、排程和 Agent 链路。
 
 最近一次本地验证命令：
@@ -472,7 +491,18 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
 ```
 
-验证结果为 `63 passed, 3 warnings`。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
+验证结果为 `72 passed, 3 warnings`，总耗时约 210.90 秒。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
+
+最近一次 5000 单优化评测结果：
+
+| 场景 | 抽样 | 优化策略 SLA | VIP SLA | 加急延期率 | SLA 相对 baseline 提升 | 总延期分钟下降 | 重排 P95 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `balanced_5000` | spread 500 | 1.000 | 1.000 | 0.000 | 0.000 | 0.000 | 13495ms |
+| `highload_5000` | spread 500 | 1.000 | 1.000 | 0.000 | 0.000 | 0.000 | 12028ms |
+| `highload_peak_500` | head 500 | 0.866 | 1.000 | 0.000 | 0.780 | 0.966 | 68625ms |
+| `stress_load` | spread 500 | 1.000 | 1.000 | 0.000 | 0.854 | 1.000 | 9774ms |
+
+其中 `highload_peak_500` 用于验证订单集中到达时的步骤级排程与 SLA 可救性排序；该场景下 `sla_guarded_hybrid` 相较 `priority_fifo` 显著降低延期，但 P95 重排耗时偏高，后续可通过候选窗口缓存、滚动时域和 CP-SAT/启发式混合求解继续优化。
 
 当前测试覆盖：
 
@@ -493,6 +523,9 @@ cd /home/work/workproject2/project
 - FastAPI 订单创建与队列重建
 - LangGraph Orchestrator 到子 Agent 的 handoff 轨迹
 - 设备实例级并行排程
+- `sla_guarded_hybrid` 步骤级 ready step 池调度
+- SLA 可救性排序：基于 `projected_finish_time`、`promised_finish_time` 和 slack 分桶选择下一步骤
+- 5000 单派生数据集生成与调度优化评测
 - 到达时间感知的非抢占式优先级、维护窗口避让、工作日结束时间约束、SLA 状态和延期分钟数
 - 排程指标：平均等待、设备利用率、VIP SLA 达成率、加急延误率、阻塞原因分布
 - 人员实例约束、多人设备、共享监管、样品前处理、跨实验室转运、设备准备时间和耗材日配额
@@ -514,6 +547,8 @@ cd /home/work/workproject2/project
 - 检测设备仿真与认证项目仿真流程
 - 队列排序、队列重建、阻塞识别
 - 设备实例级排程：排程步骤记录具体 `equipment_id`，同类多台设备可并行处理
+- 步骤级调度：`sla_guarded_hybrid` 维护跨订单 ready step 池，使不同订单的检测步骤可围绕共享设备、人员和转运资源交错排程
+- SLA 可救性排序：按 slack 分桶优先处理仍可准时或轻微延期可救回的步骤，再结合订单优先级、瓶颈设备稀缺度和到达时间排序
 - 运营约束接入：订单到达时间、承诺完成时间、人员实例、班次、午休、维护/故障窗口、工作日结束时间、前处理、转运、准备时间和耗材日配额参与排程
 - SLA 与运营指标：准时/延期状态、延期分钟数、等待时间、设备利用率、人员阻塞、转运等待和阻塞原因分布
 - 排程事件队列：订单变化和突发状况写入 `scheduling_events`，支持去重、防抖、状态追踪和关联排程批次
@@ -541,6 +576,7 @@ cd /home/work/workproject2/project
 - 合成数据集用于机制验证和压力测试，不代表某真实检测中心的设备数量、检测耗时、订单到达分布或插队规则。
 - 数据集回放验证的是订单释放、事件触发和心跳重排机制，不代表真实检测中心的实时接单节奏或生产排程效果。
 - 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间，但仍是规则排程与候选评分，不是数学优化求解器。
+- `sla_guarded_hybrid` 在 500 单峰值高负载样本中能明显改善 SLA，但步骤级候选试排开销较高，当前 `highload_peak_500` P95 重排耗时约 68.6 秒，不适合作为生产级实时优化器。
 - 非抢占式约束已覆盖运行中步骤锁定和未开始任务重排；暂停、续跑、人工复核审批流仍是后续扩展。
 - 高严重度事件通过 API 写入后会立即触发一次心跳；后台周期心跳只在 FastAPI 生命周期启动后运行，测试和脚本仍以手动触发为主，以保证验证结果确定。
 - MCP stdio 服务已可独立启动，但需要共享应用状态的工具当前仍通过应用内 fallback 执行；真实外部 MCP 服务适配需要单独设计状态同步或数据库访问边界。

@@ -44,6 +44,12 @@ def _load_operations_constraints(path) -> dict:
     return {}
 
 
+def _load_equipment_catalog(path) -> dict | None:
+    if path and path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return None
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
@@ -63,6 +69,7 @@ def create_app() -> FastAPI:
     create_tables(session_factory)
 
     simulation_service = SimulationService(
+        equipment_catalog=_load_equipment_catalog(settings.equipment_catalog_path),
         operations_constraints=_load_operations_constraints(settings.operations_constraints_path)
     )
     queue_service = QueueService(simulation_service)
