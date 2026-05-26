@@ -5,5 +5,8 @@ data/*.db
 data/_validation_tmp/
 data/_synthetic_validation_tmp/
 data/_synthetic_large_validation_tmp/
+data/_optimized_scheduling_eval_tmp/
 rag/index/
 .env
+# Added by code-review-graph
+.code-review-graph/

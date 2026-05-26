@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections import Counter
 from datetime import datetime, time, timedelta, timezone
 from math import ceil
@@ -41,6 +42,7 @@ class QueueService:
         orders: Iterable[dict],
         strategy: str = "hybrid_weighted",
         rolling_horizon_days: int | None = None,
+        locked_steps: list[dict] | None = None,
     ) -> dict:
         self.simulation.reset_runtime_state()
         active_orders = [
@@ -50,6 +52,8 @@ class QueueService:
         ]
         schedule_origin = self._schedule_origin(active_orders)
         forecast_orders: list[dict] = []
+        if strategy == "cp_sat_rolling" and rolling_horizon_days is None:
+            rolling_horizon_days = int(os.getenv("CP_SAT_ROLLING_HORIZON_DAYS", "7"))
         if rolling_horizon_days is not None:
             horizon_end = schedule_origin + timedelta(days=rolling_horizon_days)
             forecast_orders = [
@@ -68,6 +72,15 @@ class QueueService:
                 forecast_orders=forecast_orders,
                 schedule_origin=schedule_origin,
                 strategy=strategy,
+            )
+        if strategy == "cp_sat_rolling":
+            from services.cp_sat_schedule_service import CpSatScheduleService
+
+            return CpSatScheduleService(self).solve(
+                orders=active_orders,
+                schedule_origin=schedule_origin,
+                forecast_orders=forecast_orders,
+                locked_steps=locked_steps or [],
             )
         availability: dict[str, datetime] = {
             item["id"]: schedule_origin
@@ -195,7 +208,7 @@ class QueueService:
                 previous_end_time = self._parse_datetime(step["end_time"])
                 previous_lab_area = lab_area
                 previous_lab_area_explicit = lab_area_explicit
-                steps.append({key: value for key, value in step.items() if key not in {"staff_start_time", "staff_end_time"}})
+                steps.append(step)
 
             if blocked_reason:
                 blocked_orders.append(
@@ -762,8 +775,13 @@ class QueueService:
         duration = int(project["duration_minutes"])
         if not project.get("duration_is_total"):
             duration *= required_batches
-        duration += int(project.get("setup_minutes", 0) or 0) if project.get("duration_is_total") else 0
+        if project.get("duration_is_total") and not project.get("continuous_operation"):
+            duration += int(project.get("setup_minutes", 0) or 0)
         return duration
+
+    def _duration_for_equipment(self, duration_minutes: int, equipment: dict) -> int:
+        factor = float(equipment.get("performance_factor", 1.0) or 1.0)
+        return max(1, int(round(duration_minutes * factor)))
 
     def _commit_step_pool_entry(
         self,
@@ -821,7 +839,7 @@ class QueueService:
         state["previous_lab_area"] = project["lab_area"]
         state["previous_lab_area_explicit"] = bool(project.get("lab_area_explicit"))
         state["next_index"] = int(state["next_index"]) + 1
-        state["steps"].append({key: value for key, value in step.items() if key not in {"staff_start_time", "staff_end_time"}})
+        state["steps"].append(step)
         return True
 
     def _finalize_step_pool_order(self, state: dict, schedule_origin: datetime) -> dict:
@@ -896,7 +914,9 @@ class QueueService:
         duration_is_total = bool(project.get("duration_is_total"))
         detection_minutes = duration_base if duration_is_total else duration_base * required_batches
         setup_minutes = int(project.get("setup_minutes", 0)) if duration_is_total else 0
-        duration_minutes = detection_minutes + setup_minutes
+        performance_factor = float(equipment.get("performance_factor", 1.0) or 1.0)
+        equipment_minutes = detection_minutes if project.get("continuous_operation") else detection_minutes + setup_minutes
+        duration_minutes = max(1, int(round(equipment_minutes * performance_factor)))
         consumable_units = int(project.get("consumable_units_per_batch", 0) or 0) * required_batches
         consumable_capacity = self.simulation.consumable_capacity(project.get("consumable_type"))
         if consumable_capacity is not None and consumable_units > consumable_capacity:
@@ -904,8 +924,21 @@ class QueueService:
 
         current = max(earliest_start, equipment_available_at)
         for _ in range(1000):
-            start_time = self._next_slot_start(current, duration_minutes, project["project_type"])
-            start_time = self._avoid_maintenance(equipment["id"], start_time, duration_minutes, project["project_type"])
+            start_time = self._next_slot_start(
+                current,
+                duration_minutes,
+                project["project_type"],
+                continuous_operation=bool(project.get("continuous_operation")),
+                can_cross_workday=bool(project.get("can_cross_workday")),
+            )
+            start_time = self._avoid_maintenance(
+                equipment["id"],
+                start_time,
+                duration_minutes,
+                project["project_type"],
+                continuous_operation=bool(project.get("continuous_operation")),
+                can_cross_workday=bool(project.get("can_cross_workday")),
+            )
             start_time = self._apply_consumable_window(
                 start_time=start_time,
                 duration_minutes=duration_minutes,
@@ -913,6 +946,8 @@ class QueueService:
                 consumable_type=project.get("consumable_type"),
                 consumable_units=consumable_units,
                 consumable_usage=consumable_usage,
+                continuous_operation=bool(project.get("continuous_operation")),
+                can_cross_workday=bool(project.get("can_cross_workday")),
             )
             end_time = start_time + timedelta(minutes=duration_minutes)
             staff_start, staff_end = self._staff_interval(start_time, end_time, project)
@@ -936,6 +971,9 @@ class QueueService:
                         "constraint_detail": {
                             "operator_requirements": self._operator_requirements(project),
                             "consumable_checked": bool(project.get("consumable_type")),
+                            "equipment_performance_factor": performance_factor,
+                            "continuous_operation": bool(project.get("continuous_operation")),
+                            "can_cross_workday": bool(project.get("can_cross_workday")),
                         },
                         "setup_minutes": setup_minutes,
                         "staff_role": project.get("staff_role"),
@@ -1115,6 +1153,10 @@ class QueueService:
         mode: str,
         employee_assignments: dict[str, list[dict]],
     ) -> bool:
+        if not self._employee_within_shift(employee, start_time, end_time):
+            return False
+        if self._employee_unavailable(employee, start_time, end_time):
+            return False
         overlapping = [
             assignment
             for assignment in employee_assignments.get(employee["employee_id"], [])
@@ -1130,6 +1172,47 @@ class QueueService:
             return False
         max_parallel = int(employee.get("max_parallel_assignments", 1))
         return len(overlapping) + 1 <= max_parallel
+
+    def _employee_within_shift(self, employee: dict, start_time: datetime, end_time: datetime) -> bool:
+        shift_id = employee.get("shift_id")
+        shifts = {
+            shift.get("shift_id"): shift
+            for shift in self.simulation.operations_constraints.get("shifts", [])
+            if shift.get("shift_id")
+        }
+        shift = shifts.get(shift_id)
+        if not shift:
+            return True
+        shift_start = self._parse_time(shift.get("start", "00:00"))
+        shift_end = self._parse_time(shift.get("end", "23:59"))
+        cursor = start_time
+        while cursor < end_time:
+            window_start = datetime.combine(cursor.date(), shift_start, tzinfo=cursor.tzinfo)
+            window_end = datetime.combine(cursor.date(), shift_end, tzinfo=cursor.tzinfo)
+            if window_end <= window_start:
+                window_end += timedelta(days=1)
+            if cursor < window_start or min(end_time, window_end) <= cursor:
+                return False
+            cursor = min(end_time, window_end)
+            if cursor < end_time:
+                cursor = datetime.combine(cursor.date() + timedelta(days=1), shift_start, tzinfo=cursor.tzinfo)
+        return True
+
+    def _employee_unavailable(self, employee: dict, start_time: datetime, end_time: datetime) -> bool:
+        windows = [
+            *employee.get("unavailable_windows", []),
+            *[
+                window
+                for window in self.simulation.operations_constraints.get("employee_unavailable_windows", [])
+                if window.get("employee_id") == employee.get("employee_id")
+            ],
+        ]
+        for window in windows:
+            window_start = self._parse_datetime(window["start"])
+            window_end = self._parse_datetime(window["end"])
+            if start_time < window_end and end_time > window_start:
+                return True
+        return False
 
     def _next_employee_release(
         self,
@@ -1180,8 +1263,10 @@ class QueueService:
 
     def _staff_interval(self, start_time: datetime, end_time: datetime, project: dict) -> tuple[datetime, datetime]:
         requirements = self._operator_requirements(project)
-        if requirements.get("staff_phase") == "setup":
+        if requirements.get("staff_phase") in {"setup", "setup_unload"}:
             setup_minutes = int(project.get("setup_minutes", 0))
+            if setup_minutes <= 0 and requirements.get("staff_phase") == "setup_unload":
+                setup_minutes = 30
             if setup_minutes > 0:
                 return start_time, min(end_time, start_time + timedelta(minutes=setup_minutes))
         return start_time, end_time
@@ -1216,6 +1301,8 @@ class QueueService:
         consumable_type: str | None,
         consumable_units: int,
         consumable_usage: Counter[tuple[str, str]],
+        continuous_operation: bool = False,
+        can_cross_workday: bool = False,
     ) -> datetime:
         capacity = self.simulation.consumable_capacity(consumable_type)
         if not consumable_type or capacity is None or consumable_units <= 0:
@@ -1226,6 +1313,8 @@ class QueueService:
                 datetime.combine(current.date() + timedelta(days=1), time(9, 0), tzinfo=current.tzinfo),
                 duration_minutes,
                 project_type,
+                continuous_operation=continuous_operation,
+                can_cross_workday=can_cross_workday,
             )
         return current
 
@@ -1344,7 +1433,8 @@ class QueueService:
             duration = int(project["duration_minutes"])
             if not project.get("duration_is_total"):
                 duration *= required_batches
-            duration += int(project.get("setup_minutes", 0) or 0) if project.get("duration_is_total") else 0
+            if project.get("duration_is_total") and not project.get("continuous_operation"):
+                duration += int(project.get("setup_minutes", 0) or 0)
             total += duration
         preprocessing = order.get("preprocessing_profile")
         if preprocessing:
@@ -1374,14 +1464,24 @@ class QueueService:
             capacity = int(equipment["capacity"])
             required_batches = ceil(int(order["sample_quantity"]) / capacity)
             duration_minutes = project["duration_minutes"] if project.get("duration_is_total") else project["duration_minutes"] * required_batches
-            duration_minutes += int(project.get("setup_minutes", 0)) if project.get("duration_is_total") else 0
+            if project.get("duration_is_total") and not project.get("continuous_operation"):
+                duration_minutes += int(project.get("setup_minutes", 0))
+            duration_minutes = self._duration_for_equipment(duration_minutes, equipment)
             candidate = max(arrival_time, availability.get(equipment["id"], arrival_time))
-            candidate = self._next_slot_start(candidate, duration_minutes, project["project_type"])
+            candidate = self._next_slot_start(
+                candidate,
+                duration_minutes,
+                project["project_type"],
+                continuous_operation=bool(project.get("continuous_operation")),
+                can_cross_workday=bool(project.get("can_cross_workday")),
+            )
             candidate = self._avoid_maintenance(
                 equipment["id"],
                 candidate,
                 duration_minutes,
                 project["project_type"],
+                continuous_operation=bool(project.get("continuous_operation")),
+                can_cross_workday=bool(project.get("can_cross_workday")),
             )
             starts.append(candidate)
         return min(starts) if starts else arrival_time
@@ -1407,6 +1507,8 @@ class QueueService:
                         "operator_requirements": step.get("operator_requirements", {}),
                         "consumable_type": step.get("consumable_type"),
                         "consumable_units_per_batch": int(step.get("consumable_units_per_batch", 0) or 0),
+                        "continuous_operation": bool(step.get("continuous_operation")),
+                        "can_cross_workday": bool(step.get("can_cross_workday")),
                     }
                 )
             return sorted(normalized, key=lambda item: item["sequence"])
@@ -1418,7 +1520,15 @@ class QueueService:
             )
         ]
 
-    def _avoid_maintenance(self, equipment_id: str, start_time: datetime, duration_minutes: int, project_type: str) -> datetime:
+    def _avoid_maintenance(
+        self,
+        equipment_id: str,
+        start_time: datetime,
+        duration_minutes: int,
+        project_type: str,
+        continuous_operation: bool = False,
+        can_cross_workday: bool = False,
+    ) -> datetime:
         current = start_time
         duration = timedelta(minutes=duration_minutes)
         changed = True
@@ -1426,13 +1536,28 @@ class QueueService:
             changed = False
             for window in self.simulation.maintenance_windows_for(equipment_id):
                 if current < window["end_dt"] and current + duration > window["start_dt"]:
-                    current = self._next_slot_start(window["end_dt"], duration_minutes, project_type)
+                    current = self._next_slot_start(
+                        window["end_dt"],
+                        duration_minutes,
+                        project_type,
+                        continuous_operation=continuous_operation,
+                        can_cross_workday=can_cross_workday,
+                    )
                     changed = True
                     break
         return current
 
-    def _next_slot_start(self, value: datetime, duration_minutes: int, project_type: str) -> datetime:
+    def _next_slot_start(
+        self,
+        value: datetime,
+        duration_minutes: int,
+        project_type: str,
+        continuous_operation: bool = False,
+        can_cross_workday: bool = False,
+    ) -> datetime:
         current = self._next_work_start(value)
+        if continuous_operation or can_cross_workday:
+            return current
         duration = timedelta(minutes=duration_minutes)
         while True:
             day_end = datetime.combine(current.date(), time(18, 0), tzinfo=current.tzinfo)
@@ -1487,6 +1612,10 @@ class QueueService:
         if isinstance(value, str):
             return self._ensure_tz(datetime.fromisoformat(value))
         return datetime.now(self.DEFAULT_TZ)
+
+    def _parse_time(self, value: str) -> time:
+        hour, minute = value.split(":", 1)
+        return time(int(hour), int(minute))
 
     def _ensure_tz(self, value: datetime) -> datetime:
         if value.tzinfo is None:
@@ -1556,6 +1685,17 @@ class QueueService:
             for step in order.get("steps", [])
             if step.get("step_kind") == "transfer"
         )
+        all_steps = [step for order in scheduled_orders for step in order.get("steps", [])]
+        continuous_step_count = sum(
+            1
+            for step in all_steps
+            if step.get("constraint_detail", {}).get("continuous_operation") or step.get("constraint_detail", {}).get("can_cross_workday")
+        )
+        equipment_heterogeneity_applied_count = sum(
+            1
+            for step in all_steps
+            if float(step.get("constraint_detail", {}).get("equipment_performance_factor", 1.0) or 1.0) != 1.0
+        )
         return {
             "scheduled_count": len(scheduled_orders),
             "blocked_count": len(blocked_orders),
@@ -1576,6 +1716,15 @@ class QueueService:
             "equipment_idle_penalty": equipment_idle_penalty,
             "personnel_blocked_count": personnel_blocked_count,
             "transfer_wait_minutes": transfer_wait_minutes,
+            "shift_violation_count": 0,
+            "continuous_step_count": continuous_step_count,
+            "equipment_heterogeneity_applied_count": equipment_heterogeneity_applied_count,
+            "solver_used": "rules",
+            "solver_status": "not_applicable",
+            "solver_latency_ms": 0,
+            "fallback_used": False,
+            "fallback_reason": None,
+            "locked_step_count": 0,
             "selected_strategy": strategy,
             "candidate_scores": {strategy: 0.0},
         }

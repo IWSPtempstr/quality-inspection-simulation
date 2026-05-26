@@ -1,0 +1,184 @@
+{
+  "description": "合成订单生命周期事件；用于验证取消、修改、检测失败和重测触发的重排机制。",
+  "events": [
+    {
+      "event_id": "life-0001",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0018",
+      "event_time": "2026-06-01T18:59:17+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0012",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0043",
+      "event_time": "2026-06-03T15:23:27+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0013",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0043",
+      "event_time": "2026-06-04T17:23:27+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-0499",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0009",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0274",
+      "event_time": "2026-06-17T15:28:08+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0008",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0284",
+      "event_time": "2026-06-17T16:55:51+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0004",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0345",
+      "event_time": "2026-06-19T21:14:59+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0002",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0367",
+      "event_time": "2026-06-22T21:43:07+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0005",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0371",
+      "event_time": "2026-06-23T13:26:50+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0003",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0422",
+      "event_time": "2026-06-25T19:44:07+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0007",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0434",
+      "event_time": "2026-06-26T16:10:50+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 7,
+        "new_value": 8,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0006",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0436",
+      "event_time": "2026-06-26T16:35:40+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0010",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0470",
+      "event_time": "2026-06-30T17:24:52+08:00",
+      "payload": {
+        "failed_project_id": "cvc-performance",
+        "failed_project_type": "performance_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0014",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0476",
+      "event_time": "2026-07-01T09:27:02+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0011",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0470",
+      "event_time": "2026-07-01T19:24:52+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-0498",
+        "failed_project_id": "cvc-performance",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0015",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0476",
+      "event_time": "2026-07-02T11:27:02+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-0500",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    }
+  ]
+}

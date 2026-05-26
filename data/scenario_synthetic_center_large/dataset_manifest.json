@@ -16,15 +16,19 @@
     },
     {
       "path": "equipment_catalog.json",
-      "sha256": "4f2df507d0b8847876179ca6c6a0f892f3c4b9f4ec5cf05978e3c2224a0128b3"
+      "sha256": "d46638c6e9e55280728607667143ac1bac37b135f8f39c87df82b03094234651"
     },
     {
       "path": "project_catalog.json",
-      "sha256": "4ba510f4c83cf2d5f3e1b0c043b95ef4cb0cdf490adfda3aa81fad7fac885b71"
+      "sha256": "49e5cd81406d4d3cfe086f55ea0e237a9ba95bf4ebddb87d3b444fcf3fce8471"
     },
     {
       "path": "order_arrivals.json",
-      "sha256": "d72ed5a8e4c4090a37c1bf04c49cf9248abdf869af538701e007678d7307253a"
+      "sha256": "7b6fabc2cabb207c466f584de72e00615c1930af9a87fc24c7c0e68d429aafac"
+    },
+    {
+      "path": "order_lifecycle_events.json",
+      "sha256": "f0393b1b8a6c9f56ebeebfb7867e31a012c4968a2abbd1c34ff49c6395b57c26"
     },
     {
       "path": "priority_rules.json",
@@ -32,7 +36,7 @@
     },
     {
       "path": "operations_constraints.json",
-      "sha256": "8f92a94fdc8809371bf9f2da2fc664d723d98ba6c0e5deeb1354a4e25a42fbe2"
+      "sha256": "003560a24a740cebc7bec7c9efb0939ce92902e6abcf548d4343768e05a41fc2"
     },
     {
       "path": "knowledge_base/certification_flows.md",
@@ -52,7 +56,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "c6ac0fa86e699b5b652b7a74642d80552a91ffc5dd15047bd52c9b03a77d8e14"
+      "sha256": "db7af623003e7eb88f8401193b6f082a67f39d8573d2e2a5218b6dc3b3cb60d2"
     }
   ]
 }

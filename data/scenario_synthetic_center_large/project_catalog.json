@@ -83,7 +83,7 @@
           "sequence": 2,
           "t_min": 120,
           "t_mode": 180,
-          "t_max": 360,
+          "t_max": 4320,
           "staff_role": "environmental_engineer",
           "lab_area": "environmental_lab",
           "setup_minutes": 15,
@@ -93,10 +93,17 @@
               "environmental_engineer"
             ],
             "supervision_mode": "setup_only",
-            "staff_phase": "setup"
+            "staff_phase": "setup_unload"
           },
           "consumable_type": "environmental_tag",
-          "consumable_units_per_batch": 1
+          "consumable_units_per_batch": 1,
+          "continuous_capable": true,
+          "continuous_duration_profile": {
+            "t_min": 1440,
+            "t_mode": 2880,
+            "t_max": 4320
+          },
+          "can_cross_workday": true
         }
       ]
     },

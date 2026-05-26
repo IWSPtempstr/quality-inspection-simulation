@@ -22,7 +22,7 @@ SCENARIO_CONFIG = {
             "safety_tester": 5,
             "emc_tester": 13,
             "performance_bench": 4,
-            "environmental_chamber": 18,
+            "environmental_chamber": 66,
             "international_protocol_bench": 2,
         },
         "sla_buffer_days": {"vip": 3, "urgent": 5, "normal": 12},
@@ -34,7 +34,7 @@ SCENARIO_CONFIG = {
             "safety_tester": 4,
             "emc_tester": 10,
             "performance_bench": 4,
-            "environmental_chamber": 14,
+            "environmental_chamber": 55,
             "international_protocol_bench": 1,
         },
         "sla_buffer_days": {"vip": 2, "urgent": 4, "normal": 9},
@@ -150,7 +150,7 @@ def evaluate_dataset(
     from fastapi.testclient import TestClient
 
     dataset_path = Path(dataset_dir).resolve()
-    strategies = strategies or ["priority_fifo", "sla_guarded_hybrid"]
+    strategies = strategies or ["priority_fifo", "sla_guarded_hybrid", "cp_sat_rolling"]
     working_dir = PROJECT_ROOT / "data" / "_optimized_scheduling_eval_tmp" / dataset_path.name
     working_dir.mkdir(parents=True, exist_ok=True)
     db_path = working_dir / "evaluation.db"

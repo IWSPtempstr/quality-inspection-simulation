@@ -50,6 +50,15 @@
       ]
     },
     {
+      "shift_id": "lab_early",
+      "start": "07:00",
+      "end": "15:00",
+      "available_for": [
+        "safety_check",
+        "performance_check"
+      ]
+    },
+    {
       "shift_id": "lab_day",
       "start": "09:00",
       "end": "18:00",
@@ -61,9 +70,18 @@
       ]
     },
     {
+      "shift_id": "lab_late",
+      "start": "13:00",
+      "end": "21:00",
+      "available_for": [
+        "emc_check",
+        "sample_transfer"
+      ]
+    },
+    {
       "shift_id": "environment_continuous",
-      "start": "09:00",
-      "end": "18:00",
+      "start": "08:00",
+      "end": "20:00",
       "available_for": [
         "environmental_check"
       ],
@@ -233,7 +251,14 @@
         "emc_lab"
       ],
       "shift_id": "lab_day",
-      "max_parallel_assignments": 1
+      "max_parallel_assignments": 1,
+      "unavailable_windows": [
+        {
+          "start": "2026-06-09T09:00:00+08:00",
+          "end": "2026-06-09T12:00:00+08:00",
+          "reason": "training"
+        }
+      ]
     },
     {
       "employee_id": "emp-emc-3",
@@ -498,6 +523,14 @@
       ],
       "shift_id": "lab_day",
       "max_parallel_assignments": 1
+    }
+  ],
+  "employee_unavailable_windows": [
+    {
+      "employee_id": "emp-environment-1",
+      "start": "2026-06-16T13:00:00+08:00",
+      "end": "2026-06-16T18:00:00+08:00",
+      "reason": "calibration_support"
     }
   ],
   "preprocessing_resources": [

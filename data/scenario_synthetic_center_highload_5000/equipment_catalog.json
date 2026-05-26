@@ -187,7 +187,7 @@
     {
       "equipment_type": "environmental_chamber",
       "display_name": "环境试验箱",
-      "d": 14,
+      "d": 55,
       "capacity_n": 6,
       "lab_area": "environmental_lab",
       "supported_project_types": [
@@ -301,6 +301,334 @@
         },
         {
           "equipment_id": "environmental_chamber-14",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-15",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-16",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-17",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-18",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-19",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-20",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-21",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-22",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-23",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-24",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-25",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-26",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-27",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-28",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-29",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-30",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-31",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-32",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-33",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-34",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-35",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-36",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-37",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-38",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-39",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-40",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-41",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-42",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-43",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-44",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-45",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-46",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-47",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-48",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-49",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-50",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-51",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-52",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-53",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-54",
+          "equipment_type": "environmental_chamber",
+          "status": "idle",
+          "capacity_n": 6,
+          "lab_area": "environmental_lab",
+          "maintenance_group": "environmental"
+        },
+        {
+          "equipment_id": "environmental_chamber-55",
           "equipment_type": "environmental_chamber",
           "status": "idle",
           "capacity_n": 6,

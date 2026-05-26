@@ -85,6 +85,7 @@ def generate_dataset(dataset_dir: Path | str = DATASET_DIR, config: dict[str, An
     priority_rules = _build_priority_rules()
     operations_constraints = _build_operations_constraints()
     order_arrivals = _build_order_arrivals(config, project_catalog)
+    lifecycle_events = _build_order_lifecycle_events(config, order_arrivals)
 
     _write_json(config_path, config)
     _write_json(output_dir / "equipment_catalog.json", equipment_catalog)
@@ -92,6 +93,7 @@ def generate_dataset(dataset_dir: Path | str = DATASET_DIR, config: dict[str, An
     _write_json(output_dir / "priority_rules.json", priority_rules)
     _write_json(output_dir / "operations_constraints.json", operations_constraints)
     _write_json(output_dir / "order_arrivals.json", order_arrivals)
+    _write_json(output_dir / "order_lifecycle_events.json", lifecycle_events)
     _write_knowledge_base(output_dir / "knowledge_base")
     _write_readme(output_dir / "README.md", config)
     manifest = _build_manifest(output_dir, config, order_arrivals)
@@ -162,6 +164,9 @@ def _build_equipment_catalog() -> dict[str, Any]:
                 "capacity_n": definition["capacity_n"],
                 "lab_area": definition["lab_area"],
                 "maintenance_group": definition["maintenance_group"],
+                "performance_factor": round(0.88 + ((index - 1) % 3) * 0.12, 2),
+                "calibration_status": "valid" if index % 4 else "due_soon",
+                "failure_rate": round(0.005 + (index % 3) * 0.003, 3),
             }
             for index in range(1, definition["d"] + 1)
         ]
@@ -197,9 +202,12 @@ def _build_project_catalog() -> dict[str, Any]:
         "environmental_check": {
             "lab_area": "environmental_lab",
             "setup_minutes": 15,
-            "operator_requirements": _operator_requirements(1, ["environmental_engineer"], "setup_only", "setup"),
+            "operator_requirements": _operator_requirements(1, ["environmental_engineer"], "setup_only", "setup_unload"),
             "consumable_type": "environmental_tag",
             "consumable_units_per_batch": 1,
+            "continuous_capable": True,
+            "continuous_duration_profile": {"t_min": 1440, "t_mode": 2880, "t_max": 4320},
+            "can_cross_workday": True,
         },
         "cb_review": {
             "lab_area": "review_lab",
@@ -216,7 +224,7 @@ def _build_project_catalog() -> dict[str, Any]:
         ],
         "cvc": [
             ("cvc-performance", "performance_check", "performance_bench", 1, 45, 60, 100, "performance_engineer"),
-            ("cvc-environment", "environmental_check", "environmental_chamber", 2, 120, 180, 360, "environmental_engineer"),
+            ("cvc-environment", "environmental_check", "environmental_chamber", 2, 120, 180, 4320, "environmental_engineer"),
         ],
         "international": [
             ("international-safety", "safety_check", "safety_tester", 1, 35, 50, 80, "safety_engineer"),
@@ -286,8 +294,10 @@ def _build_operations_constraints() -> dict[str, Any]:
         },
         "shifts": [
             {"shift_id": "intake_morning", "start": "09:00", "end": "12:00", "available_for": ["sample_intake", "preparation"]},
+            {"shift_id": "lab_early", "start": "07:00", "end": "15:00", "available_for": ["safety_check", "performance_check"]},
             {"shift_id": "lab_day", "start": "09:00", "end": "18:00", "available_for": ["safety_check", "emc_check", "performance_check", "cb_review"]},
-            {"shift_id": "environment_continuous", "start": "09:00", "end": "18:00", "available_for": ["environmental_check"], "can_continue_during_lunch": True},
+            {"shift_id": "lab_late", "start": "13:00", "end": "21:00", "available_for": ["emc_check", "sample_transfer"]},
+            {"shift_id": "environment_continuous", "start": "08:00", "end": "20:00", "available_for": ["environmental_check"], "can_continue_during_lunch": True},
         ],
         "breaks": [
             {"name": "lunch", "start": "12:00", "end": "13:00", "staff_available": False}
@@ -308,7 +318,7 @@ def _build_operations_constraints() -> dict[str, Any]:
             {"employee_id": "emp-safety-3", "name": "安全工程师3", "roles": ["safety_engineer"], "skills": ["safety_check", "safety_tester"], "lab_areas": ["safety_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
             {"employee_id": "emp-safety-4", "name": "安全工程师4", "roles": ["safety_engineer"], "skills": ["safety_check", "safety_tester"], "lab_areas": ["safety_lab"], "shift_id": "lab_day", "max_parallel_assignments": 2},
             {"employee_id": "emp-emc-1", "name": "EMC工程师1", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
-            {"employee_id": "emp-emc-2", "name": "EMC工程师2", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+            {"employee_id": "emp-emc-2", "name": "EMC工程师2", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1, "unavailable_windows": [{"start": "2026-06-09T09:00:00+08:00", "end": "2026-06-09T12:00:00+08:00", "reason": "training"}]},
             {"employee_id": "emp-emc-3", "name": "EMC工程师3", "roles": ["emc_engineer"], "skills": ["emc_check", "emc_tester"], "lab_areas": ["emc_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
             {"employee_id": "emp-assistant-1", "name": "助理操作员1", "roles": ["assistant_operator"], "skills": ["emc_check", "performance_check"], "lab_areas": ["emc_lab", "performance_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
             {"employee_id": "emp-assistant-2", "name": "助理操作员2", "roles": ["assistant_operator"], "skills": ["emc_check", "environmental_check"], "lab_areas": ["emc_lab", "environmental_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
@@ -325,6 +335,9 @@ def _build_operations_constraints() -> dict[str, Any]:
             {"employee_id": "emp-transfer-1", "name": "转运员1", "roles": ["transfer_operator"], "skills": ["sample_transfer"], "lab_areas": ["intake", "safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
             {"employee_id": "emp-transfer-2", "name": "转运员2", "roles": ["transfer_operator"], "skills": ["sample_transfer"], "lab_areas": ["intake", "safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
             {"employee_id": "emp-transfer-3", "name": "转运员3", "roles": ["transfer_operator"], "skills": ["sample_transfer"], "lab_areas": ["intake", "safety_lab", "emc_lab", "performance_lab", "environmental_lab", "review_lab"], "shift_id": "lab_day", "max_parallel_assignments": 1},
+        ],
+        "employee_unavailable_windows": [
+            {"employee_id": "emp-environment-1", "start": "2026-06-16T13:00:00+08:00", "end": "2026-06-16T18:00:00+08:00", "reason": "calibration_support"},
         ],
         "preprocessing_resources": [
             {"resource_id": "prep-1", "resource_type": "prep_station"},
@@ -509,7 +522,23 @@ def _build_detection_route(
     route = []
     for sequence, project_id in enumerate(template, start=1):
         profile = project_profiles[project_id]
-        duration_minutes = int(round(rng.triangular(profile["t_min"], profile["t_max"], profile["t_mode"])))
+        continuous_operation = False
+        if profile["project_type"] == "environmental_check" and rng.random() < 0.22:
+            continuous_profile = profile.get("continuous_duration_profile", {"t_min": 1440, "t_mode": 2880, "t_max": 4320})
+            duration_minutes = int(
+                round(
+                    rng.triangular(
+                        continuous_profile["t_min"],
+                        continuous_profile["t_max"],
+                        continuous_profile["t_mode"],
+                    )
+                )
+            )
+            continuous_operation = True
+        elif profile["project_type"] == "environmental_check":
+            duration_minutes = int(round(rng.triangular(120, 360, 180)))
+        else:
+            duration_minutes = int(round(rng.triangular(profile["t_min"], profile["t_max"], profile["t_mode"])))
         duration_minutes = max(profile["t_min"], min(profile["t_max"], duration_minutes))
         route.append(
             {
@@ -529,9 +558,102 @@ def _build_detection_route(
                 "operator_requirements": profile["operator_requirements"],
                 "consumable_type": profile["consumable_type"],
                 "consumable_units_per_batch": profile["consumable_units_per_batch"],
+                "continuous_operation": continuous_operation,
+                "can_cross_workday": bool(continuous_operation and profile.get("can_cross_workday")),
             }
         )
     return route
+
+
+def _build_order_lifecycle_events(config: dict[str, Any], order_arrivals: dict[str, Any]) -> dict[str, Any]:
+    rng = random.Random(int(config["seed"]) + 909)
+    orders = order_arrivals["orders"]
+    if not orders:
+        return {"description": "合成订单生命周期事件。", "events": []}
+
+    order_by_id = {order["order_id"]: order for order in orders}
+    events: list[dict[str, Any]] = []
+
+    def add_event(event_type: str, order: dict[str, Any], offset_hours: int, payload: dict[str, Any]) -> None:
+        event_time = datetime.fromisoformat(order["arrival_time"]) + timedelta(hours=offset_hours)
+        events.append(
+            {
+                "event_id": f"life-{len(events) + 1:04d}",
+                "event_type": event_type,
+                "order_id": order["order_id"],
+                "event_time": event_time.isoformat(),
+                "payload": payload,
+                "synthetic": True,
+            }
+        )
+
+    cancellation_count = max(1, len(orders) // 100)
+    update_count = max(1, len(orders) // 125)
+    retest_count = max(1, len(orders) // 160)
+    candidates = orders[5:]
+
+    for order in rng.sample(candidates, min(cancellation_count, len(candidates))):
+        add_event("order_cancelled", order, 4, {"reason": "client_request", "applies_to": "not_started_steps"})
+
+    for order in rng.sample(candidates, min(update_count, len(candidates))):
+        add_event(
+            "order_updated",
+            order,
+            6,
+            {
+                "field": "sample_quantity",
+                "old_value": order["sample_quantity"],
+                "new_value": order["sample_quantity"] + 1,
+                "applies_to": "not_started_steps",
+            },
+        )
+
+    retest_targets = rng.sample(candidates, min(retest_count, len(candidates)))
+    available_retest_orders = [order for order in orders if not order.get("parent_order_id")][len(orders) - len(retest_targets):]
+    for parent, retest in zip(retest_targets, available_retest_orders):
+        failed_step = rng.choice(parent.get("detection_route") or [{"project_id": None, "project_type": "unknown"}])
+        add_event(
+            "detection_failed",
+            parent,
+            24,
+            {
+                "failed_project_id": failed_step.get("project_id"),
+                "failed_project_type": failed_step.get("project_type"),
+                "reason": "sample_result_out_of_tolerance",
+            },
+        )
+        retest["parent_order_id"] = parent["order_id"]
+        retest["retest_reason"] = "sample_result_out_of_tolerance"
+        retest["source_failed_project_id"] = failed_step.get("project_id")
+        retest["source_failed_project_type"] = failed_step.get("project_type")
+        retest["arrival_time"] = (datetime.fromisoformat(parent["arrival_time"]) + timedelta(days=2, hours=2)).isoformat()
+        retest["detection_route"] = [
+            {**step, "sequence": index + 1}
+            for index, step in enumerate(
+                parent.get("detection_route", [])[
+                    max(0, next((i for i, step in enumerate(parent.get("detection_route", [])) if step.get("project_id") == failed_step.get("project_id")), 0)) :
+                ]
+            )
+        ] or retest["detection_route"]
+        add_event(
+            "retest_created",
+            parent,
+            50,
+            {
+                "retest_order_id": retest["order_id"],
+                "failed_project_id": failed_step.get("project_id"),
+                "reason": retest["retest_reason"],
+            },
+        )
+
+    # Keep deterministic ordering after retest arrival adjustments.
+    orders.sort(key=lambda item: (item["arrival_time"], item["order_id"]))
+    assert set(order_by_id) == {order["order_id"] for order in orders}
+    events.sort(key=lambda item: (item["event_time"], item["event_id"]))
+    return {
+        "description": "合成订单生命周期事件；用于验证取消、修改、检测失败和重测触发的重排机制。",
+        "events": events,
+    }
 
 
 def _preprocessing_profile(sample_quantity: int, rng: random.Random) -> dict[str, Any]:
@@ -678,6 +800,7 @@ def _write_readme(path: Path, config: dict[str, Any]) -> None:
 - `equipment_catalog.json`：设备类型、设备数量 d、设备实例、单台批处理容量 n。
 - `project_catalog.json`：认证流程、检测步骤、设备需求、耗时分布 t、实验室区域、人员需求、准备时间和耗材需求。
 - `order_arrivals.json`：合成订单到达记录；每个订单包含 `detection_route`、`preprocessing_profile` 和转运需求，用于表达订单级检测路线、共享设备类型和按 `t_min/t_mode/t_max` 抽样得到的步骤耗时。
+- `order_lifecycle_events.json`：取消、修改、检测失败和重测创建事件，用于验证订单生命周期变化对重排的影响。
 - `priority_rules.json`：非抢占式 VIP/加急优先规则。
 - `operations_constraints.json`：班次、员工实例、前处理资源、转运资源、耗材日配额、维护和模拟故障。
 - `knowledge_base/`：用于 RAG 检索的拟真知识文本。
@@ -698,6 +821,7 @@ def _build_manifest(output_dir: Path, config: dict[str, Any], order_arrivals: di
         "equipment_catalog.json",
         "project_catalog.json",
         "order_arrivals.json",
+        "order_lifecycle_events.json",
         "priority_rules.json",
         "operations_constraints.json",
         "knowledge_base/certification_flows.md",

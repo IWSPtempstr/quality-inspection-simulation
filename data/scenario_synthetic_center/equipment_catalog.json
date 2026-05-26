@@ -18,7 +18,10 @@
           "status": "idle",
           "capacity_n": 3,
           "lab_area": "safety_lab",
-          "maintenance_group": "electrical_safety"
+          "maintenance_group": "electrical_safety",
+          "performance_factor": 0.88,
+          "calibration_status": "valid",
+          "failure_rate": 0.008
         },
         {
           "equipment_id": "safety_tester-2",
@@ -26,7 +29,10 @@
           "status": "idle",
           "capacity_n": 3,
           "lab_area": "safety_lab",
-          "maintenance_group": "electrical_safety"
+          "maintenance_group": "electrical_safety",
+          "performance_factor": 1.0,
+          "calibration_status": "valid",
+          "failure_rate": 0.011
         },
         {
           "equipment_id": "safety_tester-3",
@@ -34,7 +40,10 @@
           "status": "idle",
           "capacity_n": 3,
           "lab_area": "safety_lab",
-          "maintenance_group": "electrical_safety"
+          "maintenance_group": "electrical_safety",
+          "performance_factor": 1.12,
+          "calibration_status": "valid",
+          "failure_rate": 0.005
         },
         {
           "equipment_id": "safety_tester-4",
@@ -42,7 +51,10 @@
           "status": "idle",
           "capacity_n": 3,
           "lab_area": "safety_lab",
-          "maintenance_group": "electrical_safety"
+          "maintenance_group": "electrical_safety",
+          "performance_factor": 0.88,
+          "calibration_status": "due_soon",
+          "failure_rate": 0.008
         }
       ]
     },
@@ -63,7 +75,10 @@
           "status": "idle",
           "capacity_n": 1,
           "lab_area": "emc_lab",
-          "maintenance_group": "emc"
+          "maintenance_group": "emc",
+          "performance_factor": 0.88,
+          "calibration_status": "valid",
+          "failure_rate": 0.008
         },
         {
           "equipment_id": "emc_tester-2",
@@ -71,7 +86,10 @@
           "status": "idle",
           "capacity_n": 1,
           "lab_area": "emc_lab",
-          "maintenance_group": "emc"
+          "maintenance_group": "emc",
+          "performance_factor": 1.0,
+          "calibration_status": "valid",
+          "failure_rate": 0.011
         }
       ]
     },
@@ -92,7 +110,10 @@
           "status": "idle",
           "capacity_n": 4,
           "lab_area": "performance_lab",
-          "maintenance_group": "performance"
+          "maintenance_group": "performance",
+          "performance_factor": 0.88,
+          "calibration_status": "valid",
+          "failure_rate": 0.008
         },
         {
           "equipment_id": "performance_bench-2",
@@ -100,7 +121,10 @@
           "status": "idle",
           "capacity_n": 4,
           "lab_area": "performance_lab",
-          "maintenance_group": "performance"
+          "maintenance_group": "performance",
+          "performance_factor": 1.0,
+          "calibration_status": "valid",
+          "failure_rate": 0.011
         },
         {
           "equipment_id": "performance_bench-3",
@@ -108,7 +132,10 @@
           "status": "idle",
           "capacity_n": 4,
           "lab_area": "performance_lab",
-          "maintenance_group": "performance"
+          "maintenance_group": "performance",
+          "performance_factor": 1.12,
+          "calibration_status": "valid",
+          "failure_rate": 0.005
         }
       ]
     },
@@ -129,7 +156,10 @@
           "status": "idle",
           "capacity_n": 6,
           "lab_area": "environmental_lab",
-          "maintenance_group": "environmental"
+          "maintenance_group": "environmental",
+          "performance_factor": 0.88,
+          "calibration_status": "valid",
+          "failure_rate": 0.008
         },
         {
           "equipment_id": "environmental_chamber-2",
@@ -137,7 +167,10 @@
           "status": "idle",
           "capacity_n": 6,
           "lab_area": "environmental_lab",
-          "maintenance_group": "environmental"
+          "maintenance_group": "environmental",
+          "performance_factor": 1.0,
+          "calibration_status": "valid",
+          "failure_rate": 0.011
         }
       ]
     },
@@ -158,7 +191,10 @@
           "status": "idle",
           "capacity_n": 2,
           "lab_area": "review_lab",
-          "maintenance_group": "certification_review"
+          "maintenance_group": "certification_review",
+          "performance_factor": 0.88,
+          "calibration_status": "valid",
+          "failure_rate": 0.008
         }
       ]
     }

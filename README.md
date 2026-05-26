@@ -6,15 +6,15 @@
 
 ## 当前版本快照
 
-当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、设备实例级调度、人员实例约束、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、结构化调度解释、通知 Agent、操作审计、排程批次持久化、数据集按时间回放导入、Agent 离线评测与在线 Trace、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
+当前版本已经从“接口可演示原型”推进到“可验证的拟真排程原型”。系统支持订单 CRUD、复检订单、订单级检测路线、多日连续检测、订单生命周期事件、设备实例级调度、设备性能差异、人员班次与不可用窗口、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、OR-Tools CP-SAT 滚动窗口候选策略、结构化调度解释、通知 Agent、操作审计、排程批次持久化、数据集按时间回放导入、Agent 离线评测与在线 Trace、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
 
 本仓库包含三组验证数据：
 
 - `data/mechanism_validation/`：最小机制验证数据集，用于验证订单、队列、RAG、MCP 和 Agent 链路是否连通。
 - `data/scenario_synthetic_center/`：500 单合成拟真数据集，用于常规机制验证和指标输出；订单中包含 `detection_route`，用于表达订单级检测路线和共享设备冲突。
 - `data/scenario_synthetic_center_large/`：5000 单合成拟真数据集，用于较大样本压力验证；验证脚本默认对全量数据做静态校验，并抽取前 500 单跑通 API、RAG、排程和 Agent 链路。
-- `data/scenario_synthetic_center_balanced_5000/`：由 5000 单压力数据派生的正常负载场景，设备平均负载约 65.63%，用于验证合理产能下的 SLA 达标能力。
-- `data/scenario_synthetic_center_highload_5000/`：由 5000 单压力数据派生的高负载场景，设备平均负载约 86.27%，用于验证峰值订单窗口下的步骤级调度和 SLA 可救性排序。
+- `data/scenario_synthetic_center_balanced_5000/`：由 5000 单压力数据派生的正常负载场景，设备平均负载约 66.17%，用于验证合理产能下的 SLA 达标能力。
+- `data/scenario_synthetic_center_highload_5000/`：由 5000 单压力数据派生的高负载场景，设备平均负载约 85.84%，用于验证峰值订单窗口下的步骤级调度和 SLA 可救性排序。
 
 数据集均为合成仿真数据，不代表任何真实检测中心的设备数量、检测耗时、订单分布或插队规则。
 
@@ -39,6 +39,7 @@
 - RAG：OpenAI 兼容 Embedding + FAISS 优先索引 + 本地确定性 fallback
 - 工具接入：独立 MCP stdio 服务 + 本地工具 fallback
 - LLM：OpenAI 兼容 Chat API，可按 Agent 单独配置；当前仅异常分析 Agent 可选调用
+- 数学优化：OR-Tools CP-SAT，可作为滚动窗口候选排程策略；超出窗口、超出规模或求解失败时回退到规则排程
 - 前端页面：Jinja2 服务端渲染管理页
 - 测试：pytest
 - 运行环境：WSL2 Conda 环境 `agent-learning`
@@ -74,6 +75,7 @@ Agent Layer
 Service Layer
   ├─ SimulationService   设备与检测项目仿真
   ├─ QueueService        优先级排序、步骤级调度与排程
+  ├─ CpSatScheduleService OR-Tools CP-SAT 滚动窗口候选排程
   ├─ SchedulingEventService 排程事件写入、去重与查询
   ├─ SchedulerHeartbeatService 心跳触发与后台消费
   ├─ SchedulingCoordinatorService queue_scheduler 统一排程入口
@@ -116,15 +118,19 @@ DB Layer
 - 单台设备单次容量 `n` 会影响 `required_batches` 和步骤持续时间。
 - 检测步骤按 `sequence` 顺序执行，后续步骤不能早于前序步骤完成。
 - 人员采用具体员工实例建模，每个检测步骤至少分配 1 名符合技能、角色和实验室区域要求的员工；部分步骤可配置 3 名及以上员工同时在场。
+- 员工分配会校验班次、请假/培训等不可用窗口；设备空闲但无合格人员时，步骤会后移或进入阻塞解释。
 - 支持 `exclusive`、`shared_supervision`、`setup_only` 三类人员占用模式。共享监管限定在同一实验室区域、同技能范围和员工并行上限内。
+- 环境类检测可配置 24-72 小时连续运行。连续步骤允许设备跨工作日和自然日占用，人员仅按配置参与上样、巡检或下样阶段。
+- 同类型设备可配置实例级性能系数、校准状态和故障风险；排程会按具体设备实例修正步骤耗时。
 - 首个检测步骤前可插入样品前处理步骤；相邻步骤跨实验室区域时自动插入样品转运步骤。
 - 设备准备/换型时间、维护窗口、模拟故障窗口、周末、午休、工作日结束时间和耗材日配额会参与排程避让。
 - 系统输出 `sla_status`、`delay_minutes`、平均等待时间、设备利用率、VIP SLA 达成率、加急延误率、人员阻塞、转运等待和阻塞原因分布。
 - `sla_guarded_hybrid` 已升级为步骤级调度策略。该策略不再一次性排完整个订单，而是维护跨订单的 ready step 池，让不同订单的前处理、转运和检测步骤按资源可用性逐步竞争。
 - 步骤级排序引入 SLA 可救性判断：先计算 `projected_finish_time` 与 `promised_finish_time` 的 slack，将“当前仍可准时完成或轻微延期可救回”的步骤放入更高优先级分桶，再结合订单类型、瓶颈设备稀缺度、步骤可开始时间和到达时间排序。
 - `sla_guarded_hybrid` 的排程指标会输出 `step_level_scheduling=true`，便于与 `priority_fifo` 等订单级 baseline 区分。
+- `cp_sat_rolling` 将 OR-Tools CP-SAT 作为排程 Agent 的工具层候选策略。v2 已把前处理、跨实验室转运、检测步骤、多阶段人员占用、耗材容量窗口、运行中资源锁定和滚动窗口预测纳入模型；当窗口内订单过多、求解超时或无可行解时，会记录 fallback 原因并回退到规则排程。
 
-该排程仍属于规则仿真和候选策略评分，不声明全局数学最优；默认采用非抢占式重排，已开始检测步骤在业务定义上不应被中断，当前代码层面的自动重排主要面向未开始订单和未开始步骤。
+该排程仍属于规则仿真、候选策略评分和滚动窗口优化的组合，不声明全局数学最优；默认采用非抢占式重排，已开始检测步骤在业务定义上不应被中断，当前代码层面的自动重排主要面向未开始订单和未开始步骤。
 
 ## 事件驱动重排
 
@@ -257,6 +263,10 @@ export SCHEDULER_HEARTBEAT_INTERVAL_SECONDS=30
 export SCHEDULER_DEBOUNCE_SECONDS=30
 export SCHEDULER_IMMEDIATE_SEVERITIES=critical,high
 export SCHEDULER_DEFAULT_STRATEGY=hybrid_weighted
+export CP_SAT_TIME_LIMIT_SECONDS=10
+export CP_SAT_ROLLING_HORIZON_DAYS=7
+export CP_SAT_NUM_WORKERS=4
+export CP_SAT_MAX_ACTIVE_ORDERS=80
 ```
 
 关键配置说明：
@@ -267,6 +277,7 @@ export SCHEDULER_DEFAULT_STRATEGY=hybrid_weighted
 - `OPERATIONS_CONSTRAINTS_PATH`：合成拟真数据集中的班次、维护、停机等运营约束文件。
 - `MCP_ADAPTER_TYPE`：MCP 工具适配器标签，当前可用值以 `simulation` 为主，真实 LIMS/设备台账适配器仍是后续扩展。
 - `SCHEDULER_*`：排程事件防抖、后台心跳、立即触发严重度和默认候选策略配置。
+- `CP_SAT_*`：OR-Tools 滚动窗口求解配置，包括单次求解时间上限、滚动窗口天数、并行 worker 数和窗口内最大精排订单数。
 
 对于 Qwen 推理模型，若通过普通 chat completion 接口返回业务 JSON 或短文本，建议将对应 Agent 的 `*_ENABLE_THINKING=false`。本项目只在模型名称包含 `qwen` 时向请求体写入 `enable_thinking` 字段。
 
@@ -575,7 +586,7 @@ cd /home/work/workproject2/project
 - `MCP_ADAPTER_TYPE` 当前是适配器类型标识，不代表已经连通真实 LIMS、设备台账或工时系统。
 - 合成数据集用于机制验证和压力测试，不代表某真实检测中心的设备数量、检测耗时、订单到达分布或插队规则。
 - 数据集回放验证的是订单释放、事件触发和心跳重排机制，不代表真实检测中心的实时接单节奏或生产排程效果。
-- 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间，但仍是规则排程与候选评分，不是数学优化求解器。
+- 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间；CP-SAT 采用滚动窗口候选求解，不做 5000 单全量一次性精排。
 - `sla_guarded_hybrid` 在 500 单峰值高负载样本中能明显改善 SLA，但步骤级候选试排开销较高，当前 `highload_peak_500` P95 重排耗时约 68.6 秒，不适合作为生产级实时优化器。
 - 非抢占式约束已覆盖运行中步骤锁定和未开始任务重排；暂停、续跑、人工复核审批流仍是后续扩展。
 - 高严重度事件通过 API 写入后会立即触发一次心跳；后台周期心跳只在 FastAPI 生命周期启动后运行，测试和脚本仍以手动触发为主，以保证验证结果确定。
@@ -588,7 +599,7 @@ cd /home/work/workproject2/project
 
 ## 后续步骤
 
-1. 将 CP-SAT/滚动时域求解器接入 `ScheduleOptimizerService`，与当前规则 baseline 并行对比。
-2. 增加检测执行层面的暂停、续跑、返工审批、报告复核等更完整闭环。
-3. 将 MCP 工具替换为真实设备台账、LIMS、检测标准库、人员考勤和工时服务适配器，并明确状态同步方式。
-4. 增加权限模型的真实登录、角色管理和操作审计导出。
+1. 增加检测执行层面的暂停、续跑、返工审批、报告复核等更完整闭环。
+2. 将 MCP 工具替换为真实设备台账、LIMS、检测标准库、人员考勤和工时服务适配器，并明确状态同步方式。
+3. 增加权限模型的真实登录、角色管理和操作审计导出。
+4. 基于真实历史工时或专家标注样本校准 CP-SAT 目标函数权重、滚动窗口长度和大样本截断阈值。

@@ -25,6 +25,7 @@ REQUIRED_FILES = [
     "equipment_catalog.json",
     "project_catalog.json",
     "order_arrivals.json",
+    "order_lifecycle_events.json",
     "priority_rules.json",
     "operations_constraints.json",
     "README.md",
@@ -90,6 +91,7 @@ def validate_dataset(
         equipment_catalog = _read_json(dataset_path / "equipment_catalog.json")
         project_catalog = _read_json(dataset_path / "project_catalog.json")
         order_arrivals = _read_json(dataset_path / "order_arrivals.json")
+        lifecycle_events = _read_json(dataset_path / "order_lifecycle_events.json")
         operations = _read_json(dataset_path / "operations_constraints.json")
         priority_rules = _read_json(dataset_path / "priority_rules.json")
 
@@ -108,6 +110,12 @@ def validate_dataset(
             "catalog_references",
             _catalog_references_ok(equipment_catalog, project_catalog, orders, operations),
             _catalog_reference_evidence(equipment_catalog, project_catalog, orders, operations),
+        )
+        _record(
+            checks,
+            "credibility_scenario_fields",
+            _credibility_scenario_fields_ok(equipment_catalog, project_catalog, orders, operations, lifecycle_events),
+            _credibility_scenario_fields_evidence(equipment_catalog, project_catalog, orders, operations, lifecycle_events),
         )
         _record(
             checks,
@@ -290,6 +298,9 @@ def _distribution_evidence(orders: list[dict[str, Any]]) -> dict[str, Any]:
 def _step_within_workday(step: dict[str, Any]) -> bool:
     start = datetime.fromisoformat(step["start_time"])
     end = datetime.fromisoformat(step["end_time"])
+    detail = step.get("constraint_detail", {})
+    if detail.get("continuous_operation") or detail.get("can_cross_workday"):
+        return start.weekday() < 5 and 9 <= start.hour < 18 and end > start
     if start.weekday() >= 5 or end.weekday() >= 5:
         return False
     return 9 <= start.hour < 18 and (end.hour < 18 or (end.hour == 18 and end.minute == 0 and end.second == 0))
@@ -377,6 +388,74 @@ def _catalog_reference_evidence(
         "employee_capacity_valid": employee_capacity_valid,
         "transfer_rules_valid": transfer_rules_valid,
         "preprocessing_rules_valid": preprocessing_rules_valid,
+    }
+
+
+def _credibility_scenario_fields_ok(
+    equipment_catalog: dict[str, Any],
+    project_catalog: dict[str, Any],
+    orders: list[dict[str, Any]],
+    operations: dict[str, Any],
+    lifecycle_events: dict[str, Any],
+) -> bool:
+    evidence = _credibility_scenario_fields_evidence(equipment_catalog, project_catalog, orders, operations, lifecycle_events)
+    return (
+        {"order_cancelled", "order_updated", "detection_failed", "retest_created"}.issubset(evidence["lifecycle_event_types"])
+        and evidence["retest_link_valid"]
+        and evidence["continuous_environmental_step_count"] > 0
+        and evidence["equipment_with_performance_factor_count"] > 0
+        and evidence["employee_unavailable_window_count"] > 0
+    )
+
+
+def _credibility_scenario_fields_evidence(
+    equipment_catalog: dict[str, Any],
+    project_catalog: dict[str, Any],
+    orders: list[dict[str, Any]],
+    operations: dict[str, Any],
+    lifecycle_events: dict[str, Any],
+) -> dict[str, Any]:
+    del project_catalog
+    order_ids = {order["order_id"] for order in orders}
+    retest_orders = [order for order in orders if order.get("parent_order_id")]
+    event_types = {event.get("event_type") for event in lifecycle_events.get("events", [])}
+    retest_event_targets = {
+        event.get("payload", {}).get("retest_order_id")
+        for event in lifecycle_events.get("events", [])
+        if event.get("event_type") == "retest_created"
+    }
+    lifecycle_references_valid = all(event.get("order_id") in order_ids for event in lifecycle_events.get("events", []))
+    retest_link_valid = (
+        bool(retest_orders)
+        and lifecycle_references_valid
+        and all(order.get("parent_order_id") in order_ids and order.get("retest_reason") for order in retest_orders)
+        and retest_event_targets.issubset(order_ids)
+    )
+    continuous_environmental_step_count = sum(
+        1
+        for order in orders
+        for step in order.get("detection_route", [])
+        if step.get("project_type") == "environmental_check"
+        and step.get("continuous_operation")
+        and int(step.get("duration_minutes", 0)) >= 24 * 60
+    )
+    equipment_with_performance_factor_count = sum(
+        1
+        for item in equipment_catalog.get("equipment_types", [])
+        for instance in item.get("instances", [])
+        if "performance_factor" in instance
+    )
+    employee_unavailable_window_count = sum(
+        len(employee.get("unavailable_windows", [])) for employee in operations.get("employees", [])
+    ) + len(operations.get("employee_unavailable_windows", []))
+    return {
+        "lifecycle_event_types": sorted(event_type for event_type in event_types if event_type),
+        "lifecycle_references_valid": lifecycle_references_valid,
+        "retest_order_count": len(retest_orders),
+        "retest_link_valid": retest_link_valid,
+        "continuous_environmental_step_count": continuous_environmental_step_count,
+        "equipment_with_performance_factor_count": equipment_with_performance_factor_count,
+        "employee_unavailable_window_count": employee_unavailable_window_count,
     }
 
 

@@ -1,0 +1,1819 @@
+{
+  "description": "合成订单生命周期事件；用于验证取消、修改、检测失败和重测触发的重排机制。",
+  "events": [
+    {
+      "event_id": "life-0145",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0035",
+      "event_time": "2026-06-02T16:34:21+08:00",
+      "payload": {
+        "failed_project_id": "ccc-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0050",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0070",
+      "event_time": "2026-06-02T21:57:44+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0146",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0035",
+      "event_time": "2026-06-03T18:34:21+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4997",
+        "failed_project_id": "ccc-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0023",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0096",
+      "event_time": "2026-06-03T19:46:49+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0032",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0202",
+      "event_time": "2026-06-08T17:57:44+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0059",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0199",
+      "event_time": "2026-06-08T19:13:50+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0007",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0210",
+      "event_time": "2026-06-08T19:40:22+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0129",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0181",
+      "event_time": "2026-06-09T09:25:50+08:00",
+      "payload": {
+        "failed_project_id": "ccc-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0130",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0181",
+      "event_time": "2026-06-10T11:25:50+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4989",
+        "failed_project_id": "ccc-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0109",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0321",
+      "event_time": "2026-06-12T15:39:48+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0041",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0354",
+      "event_time": "2026-06-12T19:50:57+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0069",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0346",
+      "event_time": "2026-06-12T20:11:44+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0110",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0321",
+      "event_time": "2026-06-13T17:39:48+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4979",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0025",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0379",
+      "event_time": "2026-06-15T17:54:08+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0084",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0381",
+      "event_time": "2026-06-15T20:02:41+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0085",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0458",
+      "event_time": "2026-06-18T16:36:59+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0123",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0458",
+      "event_time": "2026-06-19T10:36:59+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0124",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0458",
+      "event_time": "2026-06-20T12:36:59+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4986",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0018",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0524",
+      "event_time": "2026-06-22T14:06:09+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0099",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0598",
+      "event_time": "2026-06-24T15:34:06+08:00",
+      "payload": {
+        "failed_project_id": "cvc-performance",
+        "failed_project_type": "performance_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0060",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0622",
+      "event_time": "2026-06-24T19:36:39+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0100",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0598",
+      "event_time": "2026-06-25T17:34:06+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4974",
+        "failed_project_id": "cvc-performance",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0064",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0690",
+      "event_time": "2026-06-25T22:07:09+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0035",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0702",
+      "event_time": "2026-06-26T13:31:22+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0071",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0786",
+      "event_time": "2026-06-30T15:19:13+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0115",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-0794",
+      "event_time": "2026-07-01T10:48:36+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0116",
+      "event_type": "retest_created",
+      "order_id": "syn-order-0794",
+      "event_time": "2026-07-02T12:48:36+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4982",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0015",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0892",
+      "event_time": "2026-07-03T17:22:08+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0031",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-0893",
+      "event_time": "2026-07-03T17:38:02+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0083",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0912",
+      "event_time": "2026-07-03T23:08:45+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0086",
+      "event_type": "order_updated",
+      "order_id": "syn-order-0921",
+      "event_time": "2026-07-06T15:56:21+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0020",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1007",
+      "event_time": "2026-07-08T17:47:35+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0014",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1223",
+      "event_time": "2026-07-16T17:19:13+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0049",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1363",
+      "event_time": "2026-07-21T20:36:42+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0139",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-1340",
+      "event_time": "2026-07-22T10:27:46+08:00",
+      "payload": {
+        "failed_project_id": "ccc-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0093",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-1348",
+      "event_time": "2026-07-22T13:58:24+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0140",
+      "event_type": "retest_created",
+      "order_id": "syn-order-1340",
+      "event_time": "2026-07-23T12:27:46+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4994",
+        "failed_project_id": "ccc-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0094",
+      "event_type": "retest_created",
+      "order_id": "syn-order-1348",
+      "event_time": "2026-07-23T15:58:24+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4971",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0024",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1493",
+      "event_time": "2026-07-27T14:43:16+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0057",
+      "event_type": "order_updated",
+      "order_id": "syn-order-1555",
+      "event_time": "2026-07-28T22:44:49+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0097",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-1523",
+      "event_time": "2026-07-29T09:12:09+08:00",
+      "payload": {
+        "failed_project_id": "cvc-performance",
+        "failed_project_type": "performance_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0027",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1563",
+      "event_time": "2026-07-29T13:33:00+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0098",
+      "event_type": "retest_created",
+      "order_id": "syn-order-1523",
+      "event_time": "2026-07-30T11:12:09+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4973",
+        "failed_project_id": "cvc-performance",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0045",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1653",
+      "event_time": "2026-07-31T13:50:11+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0133",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-1687",
+      "event_time": "2026-08-04T09:09:26+08:00",
+      "payload": {
+        "failed_project_id": "cvc-performance",
+        "failed_project_type": "performance_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0065",
+      "event_type": "order_updated",
+      "order_id": "syn-order-1726",
+      "event_time": "2026-08-04T15:40:58+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0028",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1755",
+      "event_time": "2026-08-04T21:14:26+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0134",
+      "event_type": "retest_created",
+      "order_id": "syn-order-1687",
+      "event_time": "2026-08-05T11:09:26+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4991",
+        "failed_project_id": "cvc-performance",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0105",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-1757",
+      "event_time": "2026-08-06T09:01:19+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0055",
+      "event_type": "order_updated",
+      "order_id": "syn-order-1823",
+      "event_time": "2026-08-06T22:28:49+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0106",
+      "event_type": "retest_created",
+      "order_id": "syn-order-1757",
+      "event_time": "2026-08-07T11:01:19+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4977",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0068",
+      "event_type": "order_updated",
+      "order_id": "syn-order-1909",
+      "event_time": "2026-08-11T15:17:40+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0079",
+      "event_type": "order_updated",
+      "order_id": "syn-order-1911",
+      "event_time": "2026-08-11T15:45:15+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0053",
+      "event_type": "order_updated",
+      "order_id": "syn-order-1938",
+      "event_time": "2026-08-11T20:58:32+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0048",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-1946",
+      "event_time": "2026-08-11T21:07:29+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0001",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2036",
+      "event_time": "2026-08-14T14:56:01+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0061",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2052",
+      "event_time": "2026-08-14T21:22:58+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0026",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2087",
+      "event_time": "2026-08-17T17:48:05+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0075",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2106",
+      "event_time": "2026-08-18T16:01:23+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 8,
+        "new_value": 9,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0019",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2155",
+      "event_time": "2026-08-19T18:33:01+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0121",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2144",
+      "event_time": "2026-08-20T10:18:53+08:00",
+      "payload": {
+        "failed_project_id": "cvc-performance",
+        "failed_project_type": "performance_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0076",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2202",
+      "event_time": "2026-08-20T21:49:55+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0122",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2144",
+      "event_time": "2026-08-21T12:18:53+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4985",
+        "failed_project_id": "cvc-performance",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0034",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2269",
+      "event_time": "2026-08-24T17:46:16+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0039",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2382",
+      "event_time": "2026-08-27T17:24:52+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0101",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2364",
+      "event_time": "2026-08-28T09:02:43+08:00",
+      "payload": {
+        "failed_project_id": "ccc-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0042",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2410",
+      "event_time": "2026-08-28T14:45:49+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0078",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2426",
+      "event_time": "2026-08-28T20:55:03+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0102",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2364",
+      "event_time": "2026-08-29T11:02:43+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4975",
+        "failed_project_id": "ccc-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0113",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2431",
+      "event_time": "2026-08-29T15:32:49+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0114",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2431",
+      "event_time": "2026-08-30T17:32:49+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4981",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0012",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2447",
+      "event_time": "2026-08-31T14:16:34+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0016",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2484",
+      "event_time": "2026-09-01T13:50:13+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0077",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2521",
+      "event_time": "2026-09-02T15:15:34+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0040",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2581",
+      "event_time": "2026-09-03T14:47:21+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0135",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2571",
+      "event_time": "2026-09-04T10:02:21+08:00",
+      "payload": {
+        "failed_project_id": "ccc-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0136",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2571",
+      "event_time": "2026-09-05T12:02:21+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4992",
+        "failed_project_id": "ccc-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0149",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2633",
+      "event_time": "2026-09-05T15:24:36+08:00",
+      "payload": {
+        "failed_project_id": "international-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0150",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2633",
+      "event_time": "2026-09-06T17:24:36+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4999",
+        "failed_project_id": "international-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0127",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2651",
+      "event_time": "2026-09-08T09:26:18+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0128",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2651",
+      "event_time": "2026-09-09T11:26:18+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4988",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0005",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2752",
+      "event_time": "2026-09-10T13:50:39+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0008",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2776",
+      "event_time": "2026-09-10T21:07:38+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0033",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-2845",
+      "event_time": "2026-09-14T19:48:46+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0111",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2838",
+      "event_time": "2026-09-15T13:42:43+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0107",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-2879",
+      "event_time": "2026-09-16T14:44:02+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0112",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2838",
+      "event_time": "2026-09-16T15:42:43+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4980",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0058",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2926",
+      "event_time": "2026-09-16T20:43:08+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0074",
+      "event_type": "order_updated",
+      "order_id": "syn-order-2936",
+      "event_time": "2026-09-16T21:51:04+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0108",
+      "event_type": "retest_created",
+      "order_id": "syn-order-2879",
+      "event_time": "2026-09-17T16:44:02+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4978",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0052",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3070",
+      "event_time": "2026-09-21T22:05:01+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 11,
+        "new_value": 12,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0037",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3083",
+      "event_time": "2026-09-22T14:01:04+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0088",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3109",
+      "event_time": "2026-09-22T22:04:38+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0080",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3159",
+      "event_time": "2026-09-24T16:54:19+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0011",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3210",
+      "event_time": "2026-09-25T21:19:50+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0117",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3190",
+      "event_time": "2026-09-26T10:36:40+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0141",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3200",
+      "event_time": "2026-09-26T14:24:22+08:00",
+      "payload": {
+        "failed_project_id": "cvc-performance",
+        "failed_project_type": "performance_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0118",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3190",
+      "event_time": "2026-09-27T12:36:40+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4983",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0142",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3200",
+      "event_time": "2026-09-27T16:24:22+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4995",
+        "failed_project_id": "cvc-performance",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0047",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3227",
+      "event_time": "2026-09-28T18:25:29+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0009",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3304",
+      "event_time": "2026-09-30T18:20:31+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0054",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3299",
+      "event_time": "2026-09-30T19:50:18+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0082",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3321",
+      "event_time": "2026-10-01T16:00:07+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0017",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3344",
+      "event_time": "2026-10-01T19:16:09+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0067",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3348",
+      "event_time": "2026-10-01T22:03:39+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0081",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3372",
+      "event_time": "2026-10-02T19:34:06+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0103",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3367",
+      "event_time": "2026-10-03T10:46:09+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0125",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3377",
+      "event_time": "2026-10-03T14:31:27+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0104",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3367",
+      "event_time": "2026-10-04T12:46:09+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4976",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0126",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3377",
+      "event_time": "2026-10-04T16:31:27+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4987",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0073",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3431",
+      "event_time": "2026-10-05T23:25:12+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 2,
+        "new_value": 3,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0051",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3434",
+      "event_time": "2026-10-06T15:06:20+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0089",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3475",
+      "event_time": "2026-10-07T15:08:30+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0063",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3567",
+      "event_time": "2026-10-09T19:27:25+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0004",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3608",
+      "event_time": "2026-10-12T17:27:38+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0062",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3617",
+      "event_time": "2026-10-12T20:41:05+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 5,
+        "new_value": 6,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0044",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3647",
+      "event_time": "2026-10-13T18:05:00+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0147",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3635",
+      "event_time": "2026-10-14T09:39:27+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0070",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3690",
+      "event_time": "2026-10-14T21:23:27+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0148",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3635",
+      "event_time": "2026-10-15T11:39:27+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4998",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0072",
+      "event_type": "order_updated",
+      "order_id": "syn-order-3720",
+      "event_time": "2026-10-15T19:04:14+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 4,
+        "new_value": 5,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0119",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3714",
+      "event_time": "2026-10-16T10:35:51+08:00",
+      "payload": {
+        "failed_project_id": "international-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0120",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3714",
+      "event_time": "2026-10-17T12:35:51+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4984",
+        "failed_project_id": "international-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0010",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3803",
+      "event_time": "2026-10-19T18:17:51+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0137",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3836",
+      "event_time": "2026-10-21T10:38:06+08:00",
+      "payload": {
+        "failed_project_id": "ccc-emc",
+        "failed_project_type": "emc_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0138",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3836",
+      "event_time": "2026-10-22T12:38:06+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4993",
+        "failed_project_id": "ccc-emc",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0006",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-3920",
+      "event_time": "2026-10-22T17:59:37+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0095",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-3996",
+      "event_time": "2026-10-27T13:59:20+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0013",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4068",
+      "event_time": "2026-10-28T14:09:53+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0096",
+      "event_type": "retest_created",
+      "order_id": "syn-order-3996",
+      "event_time": "2026-10-28T15:59:20+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4972",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0056",
+      "event_type": "order_updated",
+      "order_id": "syn-order-4069",
+      "event_time": "2026-10-28T16:10:18+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0038",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4102",
+      "event_time": "2026-10-28T21:50:41+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0143",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-4105",
+      "event_time": "2026-10-30T09:11:31+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0144",
+      "event_type": "retest_created",
+      "order_id": "syn-order-4105",
+      "event_time": "2026-10-31T11:11:31+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4996",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0021",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4196",
+      "event_time": "2026-11-02T14:12:06+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0002",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4209",
+      "event_time": "2026-11-02T17:05:30+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0022",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4236",
+      "event_time": "2026-11-03T13:10:34+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0003",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4478",
+      "event_time": "2026-11-11T21:36:01+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0091",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-4524",
+      "event_time": "2026-11-14T09:19:48+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0151",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-4552",
+      "event_time": "2026-11-14T15:26:09+08:00",
+      "payload": {
+        "failed_project_id": "ccc-safety",
+        "failed_project_type": "safety_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0092",
+      "event_type": "retest_created",
+      "order_id": "syn-order-4524",
+      "event_time": "2026-11-15T11:19:48+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4970",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0152",
+      "event_type": "retest_created",
+      "order_id": "syn-order-4552",
+      "event_time": "2026-11-15T17:26:09+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-5000",
+        "failed_project_id": "ccc-safety",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0036",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4620",
+      "event_time": "2026-11-17T14:34:14+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0131",
+      "event_type": "detection_failed",
+      "order_id": "syn-order-4619",
+      "event_time": "2026-11-18T10:13:34+08:00",
+      "payload": {
+        "failed_project_id": "cvc-environment",
+        "failed_project_type": "environmental_check",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0132",
+      "event_type": "retest_created",
+      "order_id": "syn-order-4619",
+      "event_time": "2026-11-19T12:13:34+08:00",
+      "payload": {
+        "retest_order_id": "syn-order-4990",
+        "failed_project_id": "cvc-environment",
+        "reason": "sample_result_out_of_tolerance"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0030",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4702",
+      "event_time": "2026-11-19T17:11:37+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0029",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4705",
+      "event_time": "2026-11-19T17:42:17+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0046",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4741",
+      "event_time": "2026-11-20T17:20:58+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0043",
+      "event_type": "order_cancelled",
+      "order_id": "syn-order-4788",
+      "event_time": "2026-11-23T17:01:55+08:00",
+      "payload": {
+        "reason": "client_request",
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0066",
+      "event_type": "order_updated",
+      "order_id": "syn-order-4884",
+      "event_time": "2026-11-25T21:32:54+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 3,
+        "new_value": 4,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0090",
+      "event_type": "order_updated",
+      "order_id": "syn-order-4901",
+      "event_time": "2026-11-26T16:15:36+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 5,
+        "new_value": 6,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    },
+    {
+      "event_id": "life-0087",
+      "event_type": "order_updated",
+      "order_id": "syn-order-4941",
+      "event_time": "2026-11-27T15:48:11+08:00",
+      "payload": {
+        "field": "sample_quantity",
+        "old_value": 1,
+        "new_value": 2,
+        "applies_to": "not_started_steps"
+      },
+      "synthetic": true
+    }
+  ]
+}

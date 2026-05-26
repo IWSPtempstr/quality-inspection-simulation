@@ -57,6 +57,9 @@ class SimulationService:
                         "supported_projects": instance.get("supported_projects") or supported_projects,
                         "lab_area": instance.get("lab_area") or definition.get("lab_area", "lab"),
                         "status": EquipmentStatus(instance.get("status", EquipmentStatus.IDLE.value)),
+                        "performance_factor": float(instance.get("performance_factor", definition.get("performance_factor", 1.0))),
+                        "calibration_status": instance.get("calibration_status", definition.get("calibration_status", "valid")),
+                        "failure_rate": float(instance.get("failure_rate", definition.get("failure_rate", 0.0))),
                     }
                 )
         return equipment or self._build_default_equipment()

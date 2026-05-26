@@ -46,6 +46,7 @@ class StaffPhase(str, Enum):
     RUNNING = "running"
     FULL = "full"
     UNLOAD = "unload"
+    SETUP_UNLOAD = "setup_unload"
 
 
 class StepKind(str, Enum):
@@ -121,6 +122,8 @@ class DetectionRouteStep(BaseModel):
     operator_requirements: OperatorRequirements = Field(default_factory=OperatorRequirements)
     consumable_type: str | None = None
     consumable_units_per_batch: int = Field(default=0, ge=0)
+    continuous_operation: bool = False
+    can_cross_workday: bool = False
 
 
 class OrderCreate(BaseModel):

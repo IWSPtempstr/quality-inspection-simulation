@@ -28,24 +28,25 @@ class ScheduleOptimizerService:
         "bottleneck_resource_first",
         "hybrid_weighted",
         "sla_guarded_hybrid",
+        "cp_sat_rolling",
     ]
 
     def __init__(self, queue_service: QueueService, default_strategy: str = "hybrid_weighted") -> None:
         self.queue_service = queue_service
         self.default_strategy = default_strategy
 
-    def analyze(self, orders: list[dict], strategy: str | None = None) -> dict[str, Any]:
+    def analyze(self, orders: list[dict], strategy: str | None = None, locked_steps: list[dict] | None = None) -> dict[str, Any]:
         strategies = [strategy] if strategy else list(self.STRATEGIES)
         candidate_scores: dict[str, float] = {}
         candidates: dict[str, dict] = {}
         for item in strategies:
-            schedule = self.queue_service.rebuild_schedule(orders, strategy=item)
+            schedule = self.queue_service.rebuild_schedule(orders, strategy=item, locked_steps=locked_steps or [])
             score = self._score_schedule(schedule)
             candidate_scores[item] = score
             candidates[item] = schedule
 
         selected_strategy = min(candidate_scores, key=candidate_scores.get) if candidate_scores else self.default_strategy
-        selected_schedule = candidates[selected_strategy] if candidates else self.queue_service.rebuild_schedule(orders, strategy=self.default_strategy)
+        selected_schedule = candidates[selected_strategy] if candidates else self.queue_service.rebuild_schedule(orders, strategy=self.default_strategy, locked_steps=locked_steps or [])
         selected_schedule["metrics"] = {
             **selected_schedule.get("metrics", {}),
             "selected_strategy": selected_strategy,
@@ -73,8 +74,10 @@ class ScheduleOptimizerService:
         equipment_idle = float(metrics.get("equipment_idle_penalty", 0))
         personnel_blocked = float(metrics.get("personnel_blocked_count", 0))
         transfer_wait = float(metrics.get("transfer_wait_minutes", 0))
+        forecast = float(metrics.get("forecast_count", 0))
         return (
             blocked * 10_000_000
+            + forecast * 1_000_000_000
             + vip_delayed * 5_000_000
             + urgent_delayed * 1_000_000
             + normal_delayed * 100_000
@@ -237,9 +240,10 @@ class SchedulingCoordinatorService:
                 for order in orders
                 if self._enum_value(order.get("status")) not in {"running", "completed"}
             ]
-            analysis = self.optimizer.analyze(schedulable_orders, strategy=requested_strategy)
-            schedule = analysis["schedule"]
             locked_orders = self._locked_schedule_orders(session, locked_order_ids)
+            locked_steps = self._locked_schedule_steps(locked_orders)
+            analysis = self.optimizer.analyze(schedulable_orders, strategy=requested_strategy, locked_steps=locked_steps)
+            schedule = analysis["schedule"]
             if locked_orders:
                 schedule["scheduled_orders"] = [
                     *locked_orders,
@@ -388,6 +392,14 @@ class SchedulingCoordinatorService:
                         step["locked"] = True
                 locked.append(order)
         return locked
+
+    def _locked_schedule_steps(self, locked_orders: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            step
+            for order in locked_orders
+            for step in order.get("steps", [])
+            if step.get("locked") or step.get("execution_status") == "running"
+        ]
 
     def _build_explanation(self, analysis: dict[str, Any]) -> dict[str, Any]:
         selected_strategy = analysis["selected_strategy"]

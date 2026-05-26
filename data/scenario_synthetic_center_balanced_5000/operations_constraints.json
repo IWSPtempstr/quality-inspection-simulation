@@ -50,6 +50,15 @@
       ]
     },
     {
+      "shift_id": "lab_early",
+      "start": "07:00",
+      "end": "15:00",
+      "available_for": [
+        "safety_check",
+        "performance_check"
+      ]
+    },
+    {
       "shift_id": "lab_day",
       "start": "09:00",
       "end": "18:00",
@@ -61,9 +70,18 @@
       ]
     },
     {
+      "shift_id": "lab_late",
+      "start": "13:00",
+      "end": "21:00",
+      "available_for": [
+        "emc_check",
+        "sample_transfer"
+      ]
+    },
+    {
       "shift_id": "environment_continuous",
-      "start": "09:00",
-      "end": "18:00",
+      "start": "08:00",
+      "end": "20:00",
       "available_for": [
         "environmental_check"
       ],
@@ -233,7 +251,14 @@
         "emc_lab"
       ],
       "shift_id": "lab_day",
-      "max_parallel_assignments": 1
+      "max_parallel_assignments": 1,
+      "unavailable_windows": [
+        {
+          "start": "2026-06-09T09:00:00+08:00",
+          "end": "2026-06-09T12:00:00+08:00",
+          "reason": "training"
+        }
+      ]
     },
     {
       "employee_id": "emp-emc-3",
@@ -710,6 +735,262 @@
     {
       "employee_id": "emp-environment-6",
       "name": "environmental_engineer-6",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-7",
+      "name": "environmental_engineer-7",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-8",
+      "name": "environmental_engineer-8",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-9",
+      "name": "environmental_engineer-9",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-10",
+      "name": "environmental_engineer-10",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-11",
+      "name": "environmental_engineer-11",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-12",
+      "name": "environmental_engineer-12",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-13",
+      "name": "environmental_engineer-13",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-14",
+      "name": "environmental_engineer-14",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-15",
+      "name": "environmental_engineer-15",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-16",
+      "name": "environmental_engineer-16",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-17",
+      "name": "environmental_engineer-17",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-18",
+      "name": "environmental_engineer-18",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-19",
+      "name": "environmental_engineer-19",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-20",
+      "name": "environmental_engineer-20",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-21",
+      "name": "environmental_engineer-21",
+      "roles": [
+        "environmental_engineer"
+      ],
+      "skills": [
+        "environmental_check",
+        "environmental_chamber"
+      ],
+      "lab_areas": [
+        "environmental_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 3
+    },
+    {
+      "employee_id": "emp-environment-22",
+      "name": "environmental_engineer-22",
       "roles": [
         "environmental_engineer"
       ],
@@ -1281,6 +1562,186 @@
       "max_parallel_assignments": 1
     },
     {
+      "employee_id": "emp-prep-12",
+      "name": "emp-prep-12",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-13",
+      "name": "emp-prep-13",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-14",
+      "name": "emp-prep-14",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-15",
+      "name": "emp-prep-15",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-16",
+      "name": "emp-prep-16",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-17",
+      "name": "emp-prep-17",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-18",
+      "name": "emp-prep-18",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-19",
+      "name": "emp-prep-19",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-20",
+      "name": "emp-prep-20",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-21",
+      "name": "emp-prep-21",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-22",
+      "name": "emp-prep-22",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-prep-23",
+      "name": "emp-prep-23",
+      "roles": [
+        "sample_operator"
+      ],
+      "skills": [
+        "preprocessing"
+      ],
+      "lab_areas": [
+        "intake"
+      ],
+      "shift_id": "intake_morning",
+      "max_parallel_assignments": 1
+    },
+    {
       "employee_id": "emp-transfer-4",
       "name": "emp-transfer-4",
       "roles": [
@@ -1399,6 +1860,194 @@
       ],
       "shift_id": "lab_day",
       "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-10",
+      "name": "emp-transfer-10",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-11",
+      "name": "emp-transfer-11",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-12",
+      "name": "emp-transfer-12",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-13",
+      "name": "emp-transfer-13",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-14",
+      "name": "emp-transfer-14",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-15",
+      "name": "emp-transfer-15",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-16",
+      "name": "emp-transfer-16",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-17",
+      "name": "emp-transfer-17",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    },
+    {
+      "employee_id": "emp-transfer-18",
+      "name": "emp-transfer-18",
+      "roles": [
+        "transfer_operator"
+      ],
+      "skills": [
+        "sample_transfer"
+      ],
+      "lab_areas": [
+        "intake",
+        "safety_lab",
+        "emc_lab",
+        "performance_lab",
+        "environmental_lab",
+        "review_lab"
+      ],
+      "shift_id": "lab_day",
+      "max_parallel_assignments": 1
+    }
+  ],
+  "employee_unavailable_windows": [
+    {
+      "employee_id": "emp-environment-1",
+      "start": "2026-06-16T13:00:00+08:00",
+      "end": "2026-06-16T18:00:00+08:00",
+      "reason": "calibration_support"
     }
   ],
   "preprocessing_resources": [
@@ -1444,6 +2093,54 @@
     },
     {
       "resource_id": "prep-11",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-12",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-13",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-14",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-15",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-16",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-17",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-18",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-19",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-20",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-21",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-22",
+      "resource_type": "prep_station"
+    },
+    {
+      "resource_id": "prep-23",
       "resource_type": "prep_station"
     }
   ],
@@ -1493,6 +2190,42 @@
     },
     {
       "resource_id": "cart-9",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-10",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-11",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-12",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-13",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-14",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-15",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-16",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-17",
+      "resource_type": "transfer_cart"
+    },
+    {
+      "resource_id": "cart-18",
       "resource_type": "transfer_cart"
     }
   ],
