@@ -296,6 +296,8 @@ class UserResponse(BaseModel):
 class AgentRunRequest(BaseModel):
     task_type: str = Field(min_length=1)
     payload: dict[str, Any] = Field(default_factory=dict)
+    session_id: str | None = Field(default=None, min_length=1, max_length=80)
+    use_session_context: bool = True
 
 
 class OfflineEvaluationRunRequest(BaseModel):

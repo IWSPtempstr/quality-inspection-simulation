@@ -36,7 +36,7 @@
 - 多 Agent 编排：LangGraph
 - RAG：OpenAI 兼容 Embedding + FAISS 优先索引 + 本地确定性 fallback
 - 工具接入：独立 MCP stdio 服务 + 本地工具 fallback
-- LLM：OpenAI 兼容 Chat API，可按 Agent 单独配置；当前仅异常分析 Agent 可选调用
+- LLM：OpenAI 兼容 Chat API，可按 Agent 单独配置；V1/V2 能力用于只读解释、文案增强、草稿生成、项目推荐和任务路由，写操作仍由确定性接口执行
 - 数学优化：OR-Tools CP-SAT，可作为滚动窗口候选排程策略；超出窗口、超出规模或求解失败时回退到规则排程
 - 前端页面：Jinja2 服务端渲染管理页
 - 测试：pytest
@@ -160,16 +160,29 @@ DB Layer
 
 复检通过 `/api/orders/{order_id}/retest` 创建新订单，记录 `parent_order_id` 和 `retest_reason`，并写入 `retest_required` 排程事件。系统同时提供简单的 header 权限模型，默认角色为 `admin`；可通过 `X-User-Role` 和 `X-User-Id` 模拟 `admin/scheduler/operator/viewer`。订单、排程、事件、通知和执行回写会写入 `audit_logs`，用于演示操作审计。
 
-## Agent 评价体系
+## LLM Agent 验收与评价
 
-系统新增离线评测与在线 Trace 两类评价能力。离线评测使用 `data/evaluation/agent_eval_cases.jsonl` 中的 JSONL 标准任务集，对响应质量、轨迹状态和执行效率进行评分；在线 Trace 在每次 `/api/agent/run` 后记录 `trace_id`、Agent 路径、handoff、工具调用、节点耗时、Token 使用占位和错误信息。
+系统新增离线评测与在线 Trace 两类评价能力。离线评测使用 `data/evaluation/agent_eval_cases.jsonl` 和 `data/evaluation/agent_eval_cases_v2.jsonl` 中的 JSONL 标准任务集，对响应质量、轨迹状态和执行效率进行评分；在线 Trace 在每次 `/api/agent/run` 后记录 `trace_id`、Agent 路径、handoff、工具调用、节点耗时、Token 使用和错误信息。
+
+当前 LLM Agent 分为两组验收范围：
+
+- V1 只读解释与文案增强：`search_knowledge` 合成 RAG 回答、`explain_schedule` 解释当前排程、`analyze_exception` 输出结构化异常分析、`generate_notifications` 增强规则通知文案。V1 不写订单、不重建队列、不预约设备、不改变通知触发条件。
+- V2 人机确认型业务辅助输入：`draft_order_from_text` 只生成订单草稿，`identify_projects` 在有样品描述时给出检测项目推荐，`route_user_query` 只返回推荐任务和目标 Agent。V2 不自动创建订单，也不自动执行推荐出的写操作。
+
+LLM 输出进入业务结果前会做结构校验和白名单校验。RAG 回答必须带引用；排程解释和异常分析必须包含验收要求的结构化字段；自然语言路由只能返回允许的任务与 Agent 组合。校验失败、非 JSON 输出、API Key 缺失或模型调用失败时，系统返回确定性 fallback，并在 Trace 的 `llm_chat_json` 工具调用中记录 `fallback_used`、模型名、错误和 token usage。
 
 当前评价指标包括：
 
 - 系统级：业务正确性、排程质量、系统效率、稳定性和可观测性。
-- Agent 级：Orchestrator 路由准确率、RAG Hit@K、Queue Scheduler 排程可行率、Equipment Monitor 工具调用成功率、Notification Agent 触发准确率、Exception Analyzer 解释质量和 fallback 触发率。
+- Agent 级：Orchestrator 路由准确率、订单草稿字段准确率、项目推荐必检保留率、RAG 引用覆盖率、Queue Scheduler 解释结构完整率、Notification Agent 文案增强可用率、Exception Analyzer 结构化字段完整率和 fallback 触发率。
 - 离线评测：响应质量使用规则断言模拟 LLMJudge 输出，语义类指标后续可替换为真实 LLMJudge；轨迹状态会对比 `visited_agents` 与 `handoffs`；效率会检查端到端延迟和 handoff 数量。
 - 在线阈值：默认监控 Agent 成功率、轨迹符合率、MCP 成功率、RAG Hit@3、500 单重排耗时、约束违规数、LLM fallback 连续次数和 Token 预算。
+
+V1/V2 验收关注以下汇总指标：
+
+- JSON 解析成功率、fallback 后接口成功率、平均延迟、P95 延迟和平均 token 消耗。
+- RAG 回答 citation 覆盖率、排程解释只读违规数、异常分析结构字段完整率和通知生成保持率。
+- 订单草稿字段准确率、非法枚举透传数、缺失字段识别准确率、项目推荐必检保留率、幻觉项目进入必检列表数量、路由准确率、模糊意图澄清率和写操作自动执行次数。
 
 ## 算法替代路线
 
@@ -411,6 +424,10 @@ curl -X POST http://127.0.0.1:8002/api/agent/run \
 curl -X POST http://127.0.0.1:8002/api/evaluation/offline/run \
   -H "Content-Type: application/json" \
   -d '{"dataset_path": "data/evaluation/agent_eval_cases.jsonl", "limit": 3}'
+
+curl -X POST http://127.0.0.1:8002/api/evaluation/run \
+  -H "Content-Type: application/json" \
+  -d '{"dataset_path": "data/evaluation/agent_eval_cases_v2.jsonl"}'
 
 curl http://127.0.0.1:8002/api/evaluation/traces
 curl http://127.0.0.1:8002/api/evaluation/traces/{trace_id}

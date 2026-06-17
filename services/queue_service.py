@@ -7,6 +7,7 @@ from math import ceil
 from typing import Iterable
 
 from domain.schemas import OrderType, QueueStatus
+from services.schedule_metrics import delay_minutes, delay_rate, sla_rate, sla_status
 from services.simulation_service import SimulationService
 
 
@@ -1623,14 +1624,10 @@ class QueueService:
         return value
 
     def _sla_status(self, finish_time: datetime, promised_finish_time: datetime | None) -> str:
-        if promised_finish_time is None:
-            return "not_applicable"
-        return "on_time" if finish_time <= promised_finish_time else "delayed"
+        return sla_status(finish_time, promised_finish_time)
 
     def _delay_minutes(self, finish_time: datetime, promised_finish_time: datetime | None) -> int:
-        if promised_finish_time is None or finish_time <= promised_finish_time:
-            return 0
-        return int((finish_time - promised_finish_time).total_seconds() // 60)
+        return delay_minutes(finish_time, promised_finish_time)
 
     def _build_metrics(
         self,
@@ -1730,14 +1727,10 @@ class QueueService:
         }
 
     def _sla_rate(self, orders: list[dict]) -> float:
-        if not orders:
-            return 1.0
-        return round(sum(1 for order in orders if order.get("sla_status") == "on_time") / len(orders), 4)
+        return sla_rate(orders)
 
     def _delay_rate(self, orders: list[dict]) -> float:
-        if not orders:
-            return 0.0
-        return round(sum(1 for order in orders if order.get("sla_status") == "delayed") / len(orders), 4)
+        return delay_rate(orders)
 
     def _order_type(self, value: OrderType | str) -> OrderType:
         return value if isinstance(value, OrderType) else OrderType(value)

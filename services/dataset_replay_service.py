@@ -206,7 +206,7 @@ class DatasetReplayService:
                 latest_source_order_id = item["original_order_id"]
                 imported_count += 1
 
-            heartbeat = self.scheduler_heartbeat_service.trigger(now=current_time) if imported_count else None
+            heartbeat = self.scheduler_heartbeat_service.trigger() if imported_count else None
             latest_schedule_run_id = heartbeat.get("schedule_run_id") if heartbeat else None
             with self.session_factory() as session:
                 repository = DatasetReplayRepository(session)

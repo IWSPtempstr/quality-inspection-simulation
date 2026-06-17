@@ -269,3 +269,18 @@ class AgentTraceStepModel(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     tool_calls: Mapped[str] = mapped_column(Text, default="[]")
     token_usage: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class AgentSessionModel(Base):
+    __tablename__ = "agent_sessions"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    actor_id: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    actor_role: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="active", index=True)
+    summary: Mapped[str] = mapped_column(Text, default="{}")
+    last_task_type: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    last_trace_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)

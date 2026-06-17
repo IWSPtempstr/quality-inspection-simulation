@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterable
 
 from sqlalchemy import func, or_, select
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from db.models import (
     AgentTraceModel,
     AgentTraceStepModel,
+    AgentSessionModel,
     AuditLogModel,
     DatasetReplayItemModel,
     DatasetReplayRunModel,
@@ -1346,3 +1347,84 @@ class AgentTraceRepository:
         if hasattr(value, "isoformat"):
             return value
         return datetime.fromisoformat(value)
+
+
+class AgentSessionRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_active(self, session_id: str, *, now: datetime | None = None) -> dict | None:
+        model = self.session.get(AgentSessionModel, session_id)
+        if model is None:
+            return None
+        current = self._ensure_tz(now or utc_now())
+        if model.status != "active" or self._ensure_tz(model.expires_at) <= current:
+            return None
+        return self._to_dict(model)
+
+    def get(self, session_id: str) -> dict | None:
+        model = self.session.get(AgentSessionModel, session_id)
+        return self._to_dict(model) if model else None
+
+    def upsert_summary(
+        self,
+        *,
+        session_id: str,
+        actor_id: str | None,
+        actor_role: str | None,
+        summary: dict,
+        last_task_type: str,
+        last_trace_id: str,
+        ttl_hours: int = 24,
+    ) -> dict:
+        now = utc_now()
+        model = self.session.get(AgentSessionModel, session_id)
+        if model is None:
+            model = AgentSessionModel(
+                id=session_id,
+                actor_id=actor_id,
+                actor_role=actor_role,
+                created_at=now,
+                expires_at=now + timedelta(hours=ttl_hours),
+            )
+            self.session.add(model)
+        model.actor_id = actor_id
+        model.actor_role = actor_role
+        model.status = "active"
+        model.summary = _json_dump(summary)
+        model.last_task_type = last_task_type
+        model.last_trace_id = last_trace_id
+        model.expires_at = now + timedelta(hours=ttl_hours)
+        model.updated_at = now
+        self.session.commit()
+        self.session.refresh(model)
+        return self._to_dict(model)
+
+    def close(self, session_id: str) -> dict | None:
+        model = self.session.get(AgentSessionModel, session_id)
+        if model is None:
+            return None
+        model.status = "closed"
+        model.updated_at = utc_now()
+        self.session.commit()
+        self.session.refresh(model)
+        return self._to_dict(model)
+
+    def _to_dict(self, model: AgentSessionModel) -> dict:
+        return {
+            "id": model.id,
+            "actor_id": model.actor_id,
+            "actor_role": model.actor_role,
+            "status": model.status,
+            "summary": _json_dict(model.summary),
+            "last_task_type": model.last_task_type,
+            "last_trace_id": model.last_trace_id,
+            "expires_at": model.expires_at,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
+        }
+
+    def _ensure_tz(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=utc_now().tzinfo)
+        return value
