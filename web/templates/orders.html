@@ -9,6 +9,17 @@
   <section class="panel stack" aria-labelledby="create-order-title">
     <h2 id="create-order-title">创建订单</h2>
     <form id="order-form" autocomplete="off">
+      <label>自然语言需求
+        <input name="user_text" placeholder="例如：客户送检一批加急电磁兼容样品，希望三天内完成" autocomplete="off">
+      </label>
+      <div class="actions">
+        <button type="button" data-action="order-draft">生成草稿</button>
+        <button type="button" data-action="project-recommend">识别检测项目</button>
+      </div>
+      <div id="order-assist-status" class="status-line" aria-live="polite">草稿和项目推荐只会回填表单，确认后才创建订单。</div>
+      <div id="order-assist-result" class="detail-panel" aria-live="polite">
+        <div class="empty">可先输入自然语言需求生成订单草稿。</div>
+      </div>
       <label>订单类型
         <select name="order_type">
           <option value="normal">普通订单</option>

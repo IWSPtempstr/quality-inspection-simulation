@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from agents import AgentGraphRunner
-from api import api_routers
+from api import core_api_routers, demo_api_routers
 from config.settings import get_settings
 from db.repositories import DetectionProjectRepository, EquipmentRepository, UserRepository
 from db.session import create_tables, get_session_factory
@@ -29,6 +29,16 @@ from services.scheduler_service import (
 from services.security_service import AuditService, PermissionService
 from services.tool_client import LocalSimulationToolClient
 from web import router as web_router
+
+
+class LazyApp:
+    def __init__(self) -> None:
+        self._app: FastAPI | None = None
+
+    async def __call__(self, scope, receive, send) -> None:
+        if self._app is None:
+            self._app = create_app()
+        await self._app(scope, receive, send)
 
 
 def _seed_reference_data(app: FastAPI) -> None:
@@ -98,23 +108,28 @@ def create_app() -> FastAPI:
     permission_service = PermissionService()
     audit_service = AuditService(session_factory)
     monitoring_report_service = MonitoringReportService(session_factory, settings.base_dir)
-    dataset_replay_service = DatasetReplayService(
-        session_factory=session_factory,
-        base_dir=settings.base_dir,
-        scheduling_event_service=scheduling_event_service,
-        scheduler_heartbeat_service=scheduler_heartbeat_service,
-        notification_service=notification_service,
-    )
+    dataset_replay_service = None
+    if settings.enable_dataset_replay:
+        dataset_replay_service = DatasetReplayService(
+            session_factory=session_factory,
+            base_dir=settings.base_dir,
+            scheduling_event_service=scheduling_event_service,
+            scheduler_heartbeat_service=scheduler_heartbeat_service,
+            notification_service=notification_service,
+        )
     knowledge_retriever = KnowledgeRetriever(settings.knowledge_base_dir, index_dir=settings.rag_index_dir)
     fallback_tool_client = LocalSimulationToolClient(simulation_service, queue_service)
-    tool_client = McpToolClient(
-        command=settings.mcp_server_command,
-        args=settings.mcp_server_args or [],
-        fallback_client=fallback_tool_client,
-        adapter_type=settings.mcp_adapter_type,
-        cwd=settings.mcp_server_cwd,
-    )
+    tool_client = fallback_tool_client
+    if settings.enable_mcp_simulation:
+        tool_client = McpToolClient(
+            command=settings.mcp_server_command,
+            args=settings.mcp_server_args or [],
+            fallback_client=fallback_tool_client,
+            adapter_type=settings.mcp_adapter_type,
+            cwd=settings.mcp_server_cwd,
+        )
 
+    app.state.settings = settings
     app.state.session_factory = session_factory
     app.state.simulation_service = simulation_service
     app.state.queue_service = queue_service
@@ -126,7 +141,8 @@ def create_app() -> FastAPI:
     app.state.permission_service = permission_service
     app.state.audit_service = audit_service
     app.state.monitoring_report_service = monitoring_report_service
-    app.state.dataset_replay_service = dataset_replay_service
+    if dataset_replay_service is not None:
+        app.state.dataset_replay_service = dataset_replay_service
     app.state.knowledge_retriever = knowledge_retriever
     app.state.tool_client = tool_client
     agent_graph = AgentGraphRunner(
@@ -150,20 +166,28 @@ def create_app() -> FastAPI:
 
     _seed_reference_data(app)
 
-    app.router.add_event_handler("startup", scheduler_heartbeat_service.start_background_loop)
-    app.router.add_event_handler("shutdown", scheduler_heartbeat_service.stop_background_loop)
+    if settings.scheduler_heartbeat_enabled:
+        app.router.add_event_handler("startup", scheduler_heartbeat_service.start_background_loop)
+        app.router.add_event_handler("shutdown", scheduler_heartbeat_service.stop_background_loop)
 
-    for router in api_routers:
+    for router in core_api_routers:
         app.include_router(router)
-    app.include_router(web_router)
-    app.mount("/static", StaticFiles(directory="web/static"), name="static")
+    if settings.enable_dataset_replay:
+        app.include_router(demo_api_routers["datasets"])
+    if settings.enable_simulation_clock:
+        app.include_router(demo_api_routers["simulation"])
+    if settings.enable_mcp_simulation:
+        app.include_router(demo_api_routers["mcp"])
+    if settings.enable_web_ui:
+        app.include_router(web_router)
+        app.mount("/static", StaticFiles(directory="web/static"), name="static")
     return app
 
 
-app = create_app()
+app = LazyApp()
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8002)
+    uvicorn.run(create_app(), host="127.0.0.1", port=8002)

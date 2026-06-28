@@ -23,16 +23,21 @@ def queue(request: Request):
     return templates.TemplateResponse(request, "queue.html", {"title": "队列与排程"})
 
 
-@router.get("/knowledge")
-def knowledge(request: Request):
-    return templates.TemplateResponse(request, "knowledge.html", {"title": "知识库检索"})
+@router.get("/execution")
+def execution(request: Request):
+    return templates.TemplateResponse(request, "execution.html", {"title": "执行看板"})
 
 
-@router.get("/agents")
-def agents(request: Request):
-    return templates.TemplateResponse(request, "agents.html", {"title": "Agent 执行轨迹"})
+@router.get("/events")
+def events(request: Request):
+    return templates.TemplateResponse(request, "events.html", {"title": "事件中心"})
 
 
 @router.get("/notifications")
 def notifications(request: Request):
     return templates.TemplateResponse(request, "notifications.html", {"title": "员工通知"})
+
+
+@router.get("/audit")
+def audit(request: Request):
+    return templates.TemplateResponse(request, "audit.html", {"title": "审计日志"})

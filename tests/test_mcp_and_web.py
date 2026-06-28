@@ -24,6 +24,7 @@ def test_mcp_client_reports_fallback_status_when_stdio_command_fails():
 def test_mcp_status_api_exposes_tool_mode(tmp_path, monkeypatch):
     db_path = tmp_path / "mcp.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("APP_PROFILE", "demo")
     monkeypatch.setenv("MCP_SERVER_COMMAND", "missing-mcp-command")
 
     client = TestClient(create_app())
@@ -36,6 +37,7 @@ def test_mcp_status_api_exposes_tool_mode(tmp_path, monkeypatch):
 def test_mcp_queue_snapshot_uses_application_schedule_state(tmp_path, monkeypatch):
     db_path = tmp_path / "mcp-shared.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("APP_PROFILE", "demo")
 
     app = create_app()
     client = TestClient(app)
@@ -61,6 +63,7 @@ def test_mcp_queue_snapshot_uses_application_schedule_state(tmp_path, monkeypatc
 def test_jinja_management_pages_render(tmp_path, monkeypatch):
     db_path = tmp_path / "web.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("APP_PROFILE", "demo")
 
     client = TestClient(create_app())
 
@@ -68,9 +71,15 @@ def test_jinja_management_pages_render(tmp_path, monkeypatch):
         ("/", "检测队列仪表盘"),
         ("/orders", "订单管理"),
         ("/queue", "队列与排程"),
-        ("/knowledge", "知识库检索"),
-        ("/agents", "Agent 执行轨迹"),
+        ("/execution", "执行看板"),
+        ("/events", "事件中心"),
+        ("/notifications", "员工通知"),
+        ("/audit", "审计日志"),
     ]:
         response = client.get(path)
         assert response.status_code == 200
         assert marker in response.text
+
+    dashboard = client.get("/")
+    assert "/knowledge" not in dashboard.text
+    assert "/agents" not in dashboard.text

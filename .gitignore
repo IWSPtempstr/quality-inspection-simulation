@@ -8,5 +8,11 @@ data/_synthetic_large_validation_tmp/
 data/_optimized_scheduling_eval_tmp/
 rag/index/
 .env
+.agents/
+.claude/
+.codex/
+.mcp.json
+prototype/
+*.pdf
 # Added by code-review-graph
 .code-review-graph/

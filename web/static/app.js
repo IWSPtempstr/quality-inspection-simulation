@@ -239,6 +239,8 @@
   function initOrders() {
     if (!$("#orders-table")) return;
     $("#order-form")?.addEventListener("submit", handleCreateOrder);
+    $('[data-action="order-draft"]')?.addEventListener("click", (event) => generateOrderDraft(event.currentTarget));
+    $('[data-action="project-recommend"]')?.addEventListener("click", (event) => recommendProjects(event.currentTarget));
     $("#orders-filter-form")?.addEventListener("submit", (event) => {
       event.preventDefault();
       loadOrders();
@@ -250,6 +252,82 @@
     $("#orders-table-body")?.addEventListener("click", handleOrderTableAction);
     $("#order-detail")?.addEventListener("submit", handleOrderUpdate);
     loadOrders();
+  }
+
+  async function generateOrderDraft(button) {
+    const formElement = $("#order-form");
+    const form = new FormData(formElement);
+    const userText = form.get("user_text") || "";
+    if (!String(userText).trim()) {
+      setStatus("order-assist-status", "请先输入自然语言需求。", "error");
+      return;
+    }
+    setButtonBusy(button, true, "生成中…");
+    setStatus("order-assist-status", "正在生成订单草稿…");
+    try {
+      const payload = await apiFetch("/api/agent/run", {
+        method: "POST",
+        body: JSON.stringify({ task_type: "draft_order_from_text", payload: { user_text: userText } }),
+      });
+      const draft = payload.data?.result?.order_draft || {};
+      if (draft.order_type) formElement.elements.order_type.value = draft.order_type;
+      if (draft.sample_name) formElement.elements.sample_name.value = draft.sample_name;
+      if (draft.sample_quantity) formElement.elements.sample_quantity.value = draft.sample_quantity;
+      if (draft.certification_type) formElement.elements.certification_type.value = draft.certification_type;
+      $("#order-assist-result").innerHTML = `
+        <div class="detail-grid">
+          <div><span>草稿状态</span><strong>已回填，待人工确认</strong></div>
+          <div><span>缺失字段</span><strong>${escapeHtml((payload.data?.result?.missing_fields || []).join("、") || "无")}</strong></div>
+          <div><span>建议类型</span><strong>${escapeHtml(label("orderType", draft.order_type))}</strong></div>
+          <div><span>样品</span><strong>${escapeHtml(draft.sample_name || "-")}</strong></div>
+        </div>
+      `;
+      setStatus("order-assist-status", "草稿已生成，请确认后创建订单。", "success");
+    } catch (error) {
+      setStatus("order-assist-status", `${error.message}。请检查草稿生成权限。`, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  }
+
+  async function recommendProjects(button) {
+    const form = new FormData($("#order-form"));
+    const sampleDescription = form.get("user_text") || form.get("sample_name") || "";
+    setButtonBusy(button, true, "识别中…");
+    setStatus("order-assist-status", "正在识别检测项目…");
+    try {
+      const payload = await apiFetch("/api/agent/run", {
+        method: "POST",
+        body: JSON.stringify({
+          task_type: "identify_projects",
+          payload: {
+            sample_description: sampleDescription,
+            certification_type: form.get("certification_type"),
+          },
+        }),
+      });
+      const result = payload.data?.result || {};
+      const required = result.required_projects || [];
+      const recommended = result.recommended_projects || [];
+      $("#order-assist-result").innerHTML = `
+        <h3>检测项目推荐</h3>
+        <div class="result-list">
+          <article class="result-item">
+            <h2>必检项目</h2>
+            <p>${escapeHtml(required.map((item) => item.project_type || item.project_id || item.name).filter(Boolean).join("、") || "无")}</p>
+          </article>
+          <article class="result-item">
+            <h2>建议项目</h2>
+            <p>${escapeHtml(recommended.map((item) => item.project_type || item.project_id || item.name).filter(Boolean).join("、") || "无")}</p>
+          </article>
+        </div>
+      `;
+      setStatus("order-assist-status", "项目推荐已生成，必检项目需保留。", "success");
+    } catch (error) {
+      setStatus("order-assist-status", `${error.message}。请检查项目识别权限。`, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
   }
 
   async function handleCreateOrder(event) {
@@ -489,6 +567,7 @@
   }
 
   async function rebuildQueue(button) {
+    if (!window.confirm("确认触发队列重建？已运行和锁定的步骤不会被打断。")) return;
     setButtonBusy(button, true, "重建中…");
     setStatus("queue-status", "正在重建队列…");
     try {
@@ -794,85 +873,220 @@
     };
   }
 
-  function initKnowledge() {
-    if (!$("#knowledge-form")) return;
-    $("#knowledge-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const button = event.submitter;
-      setButtonBusy(button, true, "检索中…");
-      setStatus("knowledge-status", "正在检索知识库…");
-      try {
-        const query = new FormData(event.currentTarget).get("query");
-        const payload = await apiFetch("/api/knowledge/search", {
-          method: "POST",
-          body: JSON.stringify({ query, top_k: 3 }),
-        });
-        const results = payload.data?.results || payload.data || [];
-        $("#knowledge-results").innerHTML = Array.isArray(results) && results.length
-          ? results.map((item) => `
-            <article class="result-item">
-              <h2>${escapeHtml(item.source || "知识片段")}</h2>
-              <p>${escapeHtml(item.content || item.text || "")}</p>
-              <span class="muted">分数：${formatNumber(item.score)}</span>
-            </article>
-          `).join("")
-          : '<div class="empty">没有检索命中。</div>';
-        setDebug("knowledge-debug", payload);
-        setStatus("knowledge-status", "检索完成", "success");
-      } catch (error) {
-        setStatus("knowledge-status", `${error.message}。请检查查询内容。`, "error");
-      } finally {
-        setButtonBusy(button, false);
-      }
-    });
-    $('[data-action="knowledge-reindex"]')?.addEventListener("click", async (event) => {
-      const button = event.currentTarget;
-      setButtonBusy(button, true, "重建中…");
-      try {
-        const payload = await apiFetch("/api/knowledge/reindex", { method: "POST" });
-        setDebug("knowledge-debug", payload);
-        setStatus("knowledge-status", "索引已重建", "success");
-      } catch (error) {
-        setStatus("knowledge-status", `${error.message}。请检查 embedding 配置。`, "error");
-      } finally {
-        setButtonBusy(button, false);
-      }
-    });
+  function initExecution() {
+    if (!$("#execution-steps-body")) return;
+    $('[data-action="execution-load"]')?.addEventListener("click", () => loadExecutionSteps());
+    $("#execution-steps-body")?.addEventListener("click", handleExecutionAction);
+    loadExecutionSteps();
   }
 
-  function initAgents() {
-    if (!$("#agent-form")) return;
-    $("#agent-form").addEventListener("submit", async (event) => {
+  async function loadExecutionSteps() {
+    setStatus("execution-status", "正在加载排程步骤…");
+    try {
+      const payload = await apiFetch("/api/queue");
+      const steps = [];
+      (payload.data?.scheduled_orders || []).forEach((order) => {
+        (order.steps || []).forEach((step) => steps.push({ order, step }));
+      });
+      $("#execution-steps-body").innerHTML = steps.length
+        ? steps.map(({ order, step }) => `
+          <tr data-execution-step-id="${escapeHtml(step.id)}">
+            <td><code>${escapeHtml(order.id)}</code><br>${escapeHtml(order.sample_name)}</td>
+            <td>${badge(step.step_kind, "stepKind")}<br>${escapeHtml(step.project_type || "-")}</td>
+            <td>${escapeHtml(step.equipment_id || (step.resource_ids || []).join(", ") || step.equipment_type || "-")}</td>
+            <td>${escapeHtml((step.assigned_employee_ids || []).join(", ") || "-")}</td>
+            <td>${formatDate(step.start_time)}</td>
+            <td>${formatDate(step.end_time)}</td>
+            <td>${badge(step.execution_status || order.status)}${step.locked ? " " + badge("locked", "status") : ""}</td>
+            <td class="actions">
+              <button type="button" data-execution-action="view" data-step-id="${escapeHtml(step.id)}">查看</button>
+              <button type="button" data-execution-action="running" data-step-id="${escapeHtml(step.id)}" ${step.execution_status === "running" || step.execution_status === "completed" ? "disabled" : ""}>开始</button>
+              <button type="button" data-execution-action="complete" data-step-id="${escapeHtml(step.id)}" ${step.execution_status === "completed" ? "disabled" : ""}>完成</button>
+            </td>
+          </tr>
+        `).join("")
+        : emptyRow(8, "暂无可执行步骤，请先生成队列");
+      setStatus("execution-status", `已加载 ${steps.length} 个步骤`, "success");
+    } catch (error) {
+      $("#execution-steps-body").innerHTML = emptyRow(8, "执行步骤加载失败");
+      setStatus("execution-status", `${error.message}。请检查排程是否已生成。`, "error");
+    }
+  }
+
+  function handleExecutionAction(event) {
+    const button = event.target.closest("button[data-execution-action]");
+    if (!button) return;
+    const stepId = button.dataset.stepId;
+    if (button.dataset.executionAction === "view") {
+      $("#execution-detail").innerHTML = `<div class="detail-grid"><div><span>步骤</span><strong><code>${escapeHtml(stepId)}</code></strong></div><div><span>操作</span><strong>可开始、完成或上报异常</strong></div></div>`;
+      return;
+    }
+    updateStepExecution(stepId, button.dataset.executionAction, button);
+  }
+
+  async function updateStepExecution(stepId, action, button) {
+    const verb = action === "running" ? "开始" : "完成";
+    if (!window.confirm(`确认${verb}步骤 ${stepId}？`)) return;
+    setButtonBusy(button, true, `${verb}中…`);
+    try {
+      const payload = await apiFetch(`/api/schedules/steps/${encodeURIComponent(stepId)}/${action}`, {
+        method: "PATCH",
+        body: JSON.stringify({ note: `前端执行看板${verb}` }),
+      });
+      $("#execution-detail").innerHTML = `
+        <div class="detail-grid">
+          <div><span>步骤</span><strong><code>${escapeHtml(stepId)}</code></strong></div>
+          <div><span>结果</span><strong>${escapeHtml(payload.message)}</strong></div>
+          <div><span>状态</span><strong>${badge(payload.data?.execution_status || action)}</strong></div>
+          <div><span>锁定</span><strong>${payload.data?.locked ? "是" : "否"}</strong></div>
+        </div>
+      `;
+      await loadExecutionSteps();
+      setStatus("execution-status", `步骤已${verb}`, "success");
+    } catch (error) {
+      setStatus("execution-status", `${error.message}。请检查执行权限或步骤状态。`, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  }
+
+  function initEvents() {
+    if (!$("#events-table-body")) return;
+    $("#events-filter-form")?.addEventListener("submit", (event) => {
       event.preventDefault();
-      const button = event.submitter;
-      const taskType = new FormData(event.currentTarget).get("task_type");
-      setButtonBusy(button, true, "运行中…");
-      setStatus("agent-status", "正在运行 Agent…");
-      try {
-        const payload = await apiFetch("/api/agent/run", {
-          method: "POST",
-          body: JSON.stringify({ task_type: taskType, payload: {} }),
-        });
-        const data = payload.data || {};
-        $("#agent-visited").innerHTML = (data.visited_agents || []).length
-          ? data.visited_agents.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-          : '<li class="empty">没有节点访问记录</li>';
-        $("#agent-handoffs").innerHTML = (data.handoffs || []).length
-          ? data.handoffs.map((item) => `
-            <article class="result-item">
-              <h2>${escapeHtml(item.source)} 到 ${escapeHtml(item.target)}</h2>
-              <p>${escapeHtml(item.reason)}</p>
-            </article>
-          `).join("")
-          : '<div class="empty">没有 handoff 记录。</div>';
-        setDebug("agent-debug", payload);
-        setStatus("agent-status", "Agent 任务完成", "success");
-      } catch (error) {
-        setStatus("agent-status", `${error.message}。请检查任务权限。`, "error");
-      } finally {
-        setButtonBusy(button, false);
-      }
+      loadEvents();
     });
+    $('[data-action="events-load"]')?.addEventListener("click", () => loadEvents());
+    $('[data-action="events-heartbeat"]')?.addEventListener("click", (event) => triggerHeartbeat(event.currentTarget));
+    $("#events-table-body")?.addEventListener("click", handleEventAction);
+    loadEvents();
+  }
+
+  function eventParams() {
+    const form = new FormData($("#events-filter-form"));
+    return {
+      status: form.get("status"),
+      event_type: form.get("event_type"),
+    };
+  }
+
+  async function loadEvents() {
+    setStatus("events-status", "正在加载事件…");
+    try {
+      const query = objectToQuery(eventParams());
+      const payload = await apiFetch(`/api/scheduling/events${query ? "?" + query : ""}`);
+      const events = payload.data || [];
+      $("#events-table-body").innerHTML = events.length
+        ? events.map((item) => `
+          <tr>
+            <td>${escapeHtml(item.event_type)}</td>
+            <td>${badge(item.severity, "status")}</td>
+            <td>${escapeHtml([item.entity_type, item.entity_id].filter(Boolean).join(" / ") || "-")}</td>
+            <td>${badge(item.status)}</td>
+            <td>${formatDate(item.created_at)}</td>
+            <td class="actions">
+              <button type="button" data-event-action="suggest" data-event-id="${escapeHtml(item.id)}" data-event-type="${escapeHtml(item.event_type)}" data-event-status="${escapeHtml(item.status)}">建议</button>
+              <button type="button" data-event-action="resolve" data-event-id="${escapeHtml(item.id)}" ${item.status === "done" ? "disabled" : ""}>解决</button>
+            </td>
+          </tr>
+        `).join("")
+        : emptyRow(6, "暂无事件");
+      setStatus("events-status", `已加载 ${events.length} 条事件`, "success");
+    } catch (error) {
+      $("#events-table-body").innerHTML = emptyRow(6, "事件加载失败");
+      setStatus("events-status", `${error.message}。请检查事件接口。`, "error");
+    }
+  }
+
+  function handleEventAction(event) {
+    const button = event.target.closest("button[data-event-action]");
+    if (!button) return;
+    if (button.dataset.eventAction === "suggest") {
+      $("#event-detail").innerHTML = `
+        <div class="detail-grid">
+          <div><span>事件</span><strong>${escapeHtml(button.dataset.eventType)}</strong></div>
+          <div><span>当前状态</span><strong>${escapeHtml(button.dataset.eventStatus)}</strong></div>
+          <div><span>建议</span><strong>先确认资源恢复时间，再决定是否触发排程心跳。</strong></div>
+        </div>
+      `;
+    }
+    if (button.dataset.eventAction === "resolve") resolveEvent(button.dataset.eventId, button);
+  }
+
+  async function resolveEvent(eventId, button) {
+    if (!window.confirm(`确认解决事件 ${eventId}？`)) return;
+    setButtonBusy(button, true, "闭环中…");
+    try {
+      await apiFetch(`/api/scheduling/events/${encodeURIComponent(eventId)}/resolve`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "done", resolution_note: "前端事件中心确认闭环" }),
+      });
+      await loadEvents();
+      setStatus("events-status", "事件已闭环", "success");
+    } catch (error) {
+      setStatus("events-status", `${error.message}。请检查事件权限或状态。`, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  }
+
+  async function triggerHeartbeat(button) {
+    if (!window.confirm("确认触发排程心跳？")) return;
+    setButtonBusy(button, true, "处理中…");
+    try {
+      const payload = await apiFetch("/api/scheduling/heartbeat", { method: "POST" });
+      $("#event-detail").innerHTML = `<pre>${escapeHtml(JSON.stringify(payload.data, null, 2))}</pre>`;
+      await loadEvents();
+      setStatus("events-status", "排程心跳已处理", "success");
+    } catch (error) {
+      setStatus("events-status", `${error.message}。请检查调度权限。`, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  }
+
+  function initAudit() {
+    if (!$("#audit-table-body")) return;
+    $("#audit-filter-form")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadAuditLogs();
+    });
+    $('[data-action="audit-load"]')?.addEventListener("click", () => loadAuditLogs());
+    loadAuditLogs();
+  }
+
+  function auditParams() {
+    const form = new FormData($("#audit-filter-form"));
+    return {
+      action: form.get("action"),
+      target_type: form.get("target_type"),
+      target_id: form.get("target_id"),
+    };
+  }
+
+  async function loadAuditLogs() {
+    setStatus("audit-status", "正在加载审计日志…");
+    try {
+      const query = objectToQuery(auditParams());
+      const payload = await apiFetch(`/api/admin/audit-logs${query ? "?" + query : ""}`);
+      const logs = payload.data || [];
+      $("#audit-table-body").innerHTML = logs.length
+        ? logs.map((item) => `
+          <tr>
+            <td>${escapeHtml(item.user_id || "-")}</td>
+            <td>${escapeHtml(item.role || "-")}</td>
+            <td>${escapeHtml(item.action)}</td>
+            <td>${escapeHtml([item.target_type, item.target_id].filter(Boolean).join(" / ") || "-")}</td>
+            <td>${formatDate(item.created_at)}</td>
+            <td><code>${escapeHtml(JSON.stringify(item.detail || {}))}</code></td>
+          </tr>
+        `).join("")
+        : emptyRow(6, "暂无审计日志");
+      setStatus("audit-status", `已加载 ${logs.length} 条审计日志`, "success");
+    } catch (error) {
+      $("#audit-table-body").innerHTML = emptyRow(6, "审计日志加载失败");
+      setStatus("audit-status", `${error.message}。请检查审计权限。`, "error");
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -880,7 +1094,8 @@
     initOrders();
     initQueue();
     initNotifications();
-    initKnowledge();
-    initAgents();
+    initExecution();
+    initEvents();
+    initAudit();
   });
 })();

@@ -12,6 +12,8 @@ router = APIRouter(prefix="/api/evaluation", tags=["evaluation"])
 
 @router.post("/offline/run", response_model=DataResponse)
 def run_offline_evaluation(payload: OfflineEvaluationRunRequest, request: Request) -> DataResponse:
+    if not request.app.state.settings.enable_offline_evaluation:
+        raise HTTPException(status_code=404, detail="离线评测仅在 demo 模式启用")
     request.app.state.permission_service.require(request, "schedule:read")
     try:
         report = request.app.state.agent_evaluation_service.run_offline(payload)

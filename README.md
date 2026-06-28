@@ -1,219 +1,91 @@
-# 电器产品质量检测多 Agent 仿真系统
+# 电器产品检测排程管理系统
 
-本项目面向电器产品质量监督检验中心的日常检测队列管理场景，构建一套后端优先的多 Agent 智能协同仿真系统。系统围绕普通订单、加急订单和 VIP 订单，模拟 CCC 认证、CVC 认证和国际认证相关检测任务，并根据订单优先级、检测项目流程、设备类型、设备数量、批处理容量和检测时长生成检测队列。
+面向电器产品质量检测中心的订单、资源和排程管理系统。系统围绕检测订单接收、检测项目拆解、设备与人员约束、排程生成、执行回写、异常事件处理、通知提醒和操作审计，提供一套可运行的后端服务与轻量管理后台。
 
-## 当前版本快照
+当前代码以可落地的业务闭环为主：核心写操作均通过确定性 API 和权限校验完成；智能能力只用于草稿、推荐、解释和文案辅助，不直接创建订单、修改排程或占用资源。
 
-系统支持订单 CRUD、复检订单、订单级检测路线、多日连续检测、订单生命周期事件、设备实例级调度、设备性能差异、人员班次与不可用窗口、前处理与跨实验室转运、排程事件心跳、运行中步骤锁定、检测完成回写、候选策略评分、OR-Tools CP-SAT 滚动窗口候选策略、结构化调度解释、通知 Agent、操作审计、排程批次持久化、数据集按时间回放导入、Agent 离线评测与在线 Trace、FAISS/RAG 检索、MCP 工具入口、LangGraph 多 Agent 编排、Jinja2 管理页，以及最小数据集、500 单数据集和 5000 单大样本数据集验证。
+## 核心能力
 
-本仓库包含三组验证数据：
+- **订单管理**：创建、查询、修改、取消检测订单，支持普通、加急、VIP 订单和复检订单。
+- **检测路线**：按认证类型生成默认检测流程，也支持订单级检测路线。
+- **资源排程**：结合设备实例、人员班次、维护窗口、前处理、跨实验室转运、耗材配额和 SLA 生成排程。
+- **策略比较**：支持多种候选排程策略评分，默认以 `sla_guarded_hybrid` 进行步骤级调度。
+- **执行回写**：检测步骤可标记为运行中和完成；运行中步骤会锁定，后续重排不会打断。
+- **事件闭环**：订单变化、设备故障、人员不可用、耗材不足、检测完成等事件进入事件中心，可触发排程心跳和闭环处理。
+- **通知提醒**：生成设备空闲、检测完成、前处理、转运、SLA 风险、人员阻塞等通知，支持 SSE 实时推送。
+- **权限与审计**：提供 `admin/scheduler/operator/viewer` 角色模拟，关键写操作进入审计日志。
+- **业务辅助**：自然语言订单草稿、检测项目推荐、排程解释和异常处理建议均需要人工确认后才能进入确定性业务流程。
 
-- `data/mechanism_validation/`：最小机制验证数据集，用于验证订单、队列、RAG、MCP 和 Agent 链路是否连通。
-- `data/scenario_synthetic_center/`：500 单合成拟真数据集，用于常规机制验证和指标输出；订单中包含 `detection_route`，用于表达订单级检测路线和共享设备冲突。
-- `data/scenario_synthetic_center_large/`：5000 单合成拟真数据集，用于较大样本压力验证；验证脚本默认对全量数据做静态校验，并抽取前 500 单跑通 API、RAG、排程和 Agent 链路。
-- `data/scenario_synthetic_center_balanced_5000/`：由 5000 单压力数据派生的正常负载场景，设备平均负载约 66.17%，用于验证合理产能下的 SLA 达标能力。
-- `data/scenario_synthetic_center_highload_5000/`：由 5000 单压力数据派生的高负载场景，设备平均负载约 85.84%，用于验证峰值订单窗口下的步骤级调度和 SLA 可救性排序。
+## 管理后台
 
-数据集均为合成仿真数据，不代表任何真实检测中心的设备数量、检测耗时、订单分布或插队规则。
+启动后访问 `http://127.0.0.1:8002/`。
 
-## 项目定位
+当前后台页面：
 
-检测中心的实际业务通常涉及订单接收、样品识别、认证类型判断、检测项目拆解、设备资源匹配、队列排序和过程监测。由于现阶段缺少真实设备台账、设备能力矩阵、标准检测时长和历史工时数据，本项目先通过参数化仿真方式建立可运行闭环。
+- `/`：检测队列仪表盘
+- `/orders`：订单管理，含自然语言草稿和检测项目推荐
+- `/queue`：队列与排程，含策略对比、甘特图和阻塞原因
+- `/execution`：执行看板，支持开始/完成检测步骤
+- `/events`：事件中心，支持事件筛选、处理建议、事件闭环和排程心跳
+- `/notifications`：员工通知和仿真提醒
+- `/audit`：操作审计日志
 
-仿真参数包括：
-
-- 设备类型 `x`：如安全检测设备、电磁兼容设备、性能测试台、环境试验箱等。
-- 每类设备数量 `d`：同一设备类型可配置多台设备。
-- 支持项目类型 `i`：不同设备可支持不同检测项目。
-- 检测时间 `t`：每个检测步骤配置仿真耗时。
-- 单次容量 `n`：设备一次可检测的样品数量。
+后台采用 Jinja2 服务端渲染和原生 JavaScript，不需要 Node、Vue 或 React 构建链。
 
 ## 技术栈
 
-- 后端框架：FastAPI
-- 数据库：SQLite + SQLAlchemy
-- 数据校验：Pydantic
-- 多 Agent 编排：LangGraph
-- RAG：OpenAI 兼容 Embedding + FAISS 优先索引 + 本地确定性 fallback
-- 工具接入：独立 MCP stdio 服务 + 本地工具 fallback
-- LLM：OpenAI 兼容 Chat API，可按 Agent 单独配置；V1/V2 能力用于只读解释、文案增强、草稿生成、项目推荐和任务路由，写操作仍由确定性接口执行
-- 数学优化：OR-Tools CP-SAT，可作为滚动窗口候选排程策略；超出窗口、超出规模或求解失败时回退到规则排程
-- 前端页面：Jinja2 服务端渲染管理页
-- 测试：pytest
-- 运行环境：WSL2 Conda 环境 `agent-learning`
+- FastAPI
+- SQLite + SQLAlchemy
+- Pydantic
+- Jinja2 + 原生 JavaScript
+- OR-Tools CP-SAT（滚动窗口候选排程）
+- FAISS / numpy fallback（知识检索索引）
+- pytest
 
-## 系统架构
+可选能力：
 
-```text
-API Layer
-  ├─ /api/orders       订单增删改查
-  ├─ /api/queue        队列查询与重建
-  ├─ /api/schedules    历史排程查询
-  ├─ /api/scheduling   排程事件与心跳
-  ├─ /api/notifications 员工通知与 SSE
-  ├─ /api/simulation   仿真时钟
-  ├─ /api/admin        用户权限与操作审计
-  ├─ /api/monitor      队列与设备监测快照
-  ├─ /api/datasets     数据集摘要与按时间回放
-  ├─ /api/evaluation   Agent 离线评测与在线 Trace
-  ├─ /api/knowledge    RAG 知识检索与索引重建
-  ├─ /api/mcp          MCP 工具状态
-  └─ /api/agent        LangGraph Agent 入口
+- OpenAI 兼容 Chat API：用于异常解释、订单草稿、项目推荐和通知文案增强。
+- OpenAI 兼容 Embedding API：用于知识库向量索引；未配置时使用本地确定性 fallback。
+- MCP 仿真工具入口：用于开发和工具链验证，生产接入真实系统时应替换为明确的外部服务适配器。
 
-Agent Layer
-  ├─ Orchestrator              全局任务路由
-  ├─ Order Manager Agent       订单管理
-  ├─ Project Identifier Agent  检测项目识别
-  ├─ RAG Retriever Agent       认证与设备知识检索
-  ├─ Queue Scheduler Agent     队列调度
-  ├─ Equipment Monitor Agent   设备状态监测
-  ├─ Notification Agent        排程提醒与仿真时钟
-  └─ Exception Analyzer Agent  异常与阻塞分析
-
-Service Layer
-  ├─ SimulationService   设备与检测项目仿真
-  ├─ QueueService        优先级排序、步骤级调度与排程
-  ├─ CpSatScheduleService OR-Tools CP-SAT 滚动窗口候选排程
-  ├─ SchedulingEventService 排程事件写入、去重与查询
-  ├─ SchedulerHeartbeatService 心跳触发与后台消费
-  ├─ SchedulingCoordinatorService queue_scheduler 统一排程入口
-  ├─ ScheduleOptimizerService 候选策略评分
-  ├─ NotificationService 员工提醒生成与触发
-  ├─ DatasetReplayService 数据集按到达时间回放导入
-  ├─ AgentEvaluationService 离线评测与阈值状态
-  ├─ OpenAICompatibleLlmClient  可选异常分析增强
-  ├─ McpToolClient       MCP stdio 调用与 fallback
-  └─ ScheduleFormatter   持久化排程输出整理
-
-DB Layer
-  ├─ orders
-  ├─ equipment
-  ├─ detection_projects
-  ├─ queue_events
-  ├─ scheduling_events
-  ├─ schedule_runs
-  ├─ schedule_steps
-  ├─ dataset_replay_runs
-  ├─ dataset_replay_items
-  ├─ agent_traces
-  ├─ agent_trace_steps
-  ├─ notifications
-  ├─ users
-  └─ audit_logs
-```
-
-系统采用混合型多 Agent 架构。Orchestrator 负责统一入口、任务路由和全局状态控制；子 Agent 在明确依赖关系下允许定向通信，例如 Queue Scheduler Agent 可向 Equipment Monitor Agent 请求设备状态，Project Identifier Agent 可向 RAG Retriever Agent 请求认证知识上下文。
-
-当前 Agent 主要是 LangGraph 状态图中的确定性流程节点。`queue_scheduler` 是统一排程协调节点，API 手动重排、Agent 重排和心跳自动重排均通过它进入候选策略分析、排程计算、持久化和通知生成流程，并输出候选策略差异、瓶颈资源和 SLA 风险摘要。`exception_analyzer` 支持在配置 API Key 后调用 OpenAI 兼容 Chat API，用于解释阻塞、延期和瓶颈；调用失败时返回确定性结构化 fallback。其他 Agent 的模型配置已具备读取能力，但尚未把自然语言推理作为核心决策依据。
-
-## 排程机制
-
-当前调度器采用规则驱动的非抢占式排程，核心约束如下：
-
-- 优先级规则为 `vip > urgent > normal`，但仅对已经释放到队列中的订单生效。
-- 显式提供 `arrival_time` 的订单按到达时间释放；未提供 `arrival_time` 的 API 订单视为同一待排批次，以保留日常手工录入场景下的优先级排序行为。
-- 同一检测项目可绑定多个设备实例，排程步骤会记录具体 `equipment_id`，设备数量 `d` 会直接影响并行能力。
-- 单台设备单次容量 `n` 会影响 `required_batches` 和步骤持续时间。
-- 检测步骤按 `sequence` 顺序执行，后续步骤不能早于前序步骤完成。
-- 人员采用具体员工实例建模，每个检测步骤至少分配 1 名符合技能、角色和实验室区域要求的员工；部分步骤可配置 3 名及以上员工同时在场。
-- 员工分配会校验班次、请假/培训等不可用窗口；设备空闲但无合格人员时，步骤会后移或进入阻塞解释。
-- 支持 `exclusive`、`shared_supervision`、`setup_only` 三类人员占用模式。共享监管限定在同一实验室区域、同技能范围和员工并行上限内。
-- 环境类检测可配置 24-72 小时连续运行。连续步骤允许设备跨工作日和自然日占用，人员仅按配置参与上样、巡检或下样阶段。
-- 同类型设备可配置实例级性能系数、校准状态和故障风险；排程会按具体设备实例修正步骤耗时。
-- 首个检测步骤前可插入样品前处理步骤；相邻步骤跨实验室区域时自动插入样品转运步骤。
-- 设备准备/换型时间、维护窗口、模拟故障窗口、周末、午休、工作日结束时间和耗材日配额会参与排程避让。
-- 系统输出 `sla_status`、`delay_minutes`、平均等待时间、设备利用率、VIP SLA 达成率、加急延误率、人员阻塞、转运等待和阻塞原因分布。
-- `sla_guarded_hybrid` 已升级为步骤级调度策略。该策略不再一次性排完整个订单，而是维护跨订单的 ready step 池，让不同订单的前处理、转运和检测步骤按资源可用性逐步竞争。
-- 步骤级排序引入 SLA 可救性判断：先计算 `projected_finish_time` 与 `promised_finish_time` 的 slack，将“当前仍可准时完成或轻微延期可救回”的步骤放入更高优先级分桶，再结合订单类型、瓶颈设备稀缺度、步骤可开始时间和到达时间排序。
-- `sla_guarded_hybrid` 的排程指标会输出 `step_level_scheduling=true`，便于与 `priority_fifo` 等订单级 baseline 区分。
-- `cp_sat_rolling` 将 OR-Tools CP-SAT 作为排程 Agent 的工具层候选策略。v2 已把前处理、跨实验室转运、检测步骤、多阶段人员占用、耗材容量窗口、运行中资源锁定和滚动窗口预测纳入模型；当窗口内订单过多、求解超时或无可行解时，会记录 fallback 原因并回退到规则排程。
-
-该排程仍属于规则仿真、候选策略评分和滚动窗口优化的组合，不声明全局数学最优；默认采用非抢占式重排，已开始检测步骤在业务定义上不应被中断，当前代码层面的自动重排主要面向未开始订单和未开始步骤。
-
-## 事件驱动重排
-
-系统新增 `scheduling_events` 事件表，订单创建、修改、取消会自动写入事件；设备故障、人员不可用、耗材不足、维护变更、检测完成、样品转运和手动重排等突发状况可通过事件 API 写入。事件状态包括 `pending`、`processing`、`done`、`ignored` 和 `failed`。
-
-事件使用 `fingerprint` 和防抖窗口做合并处理，默认 30 秒内的同类事件会被标记为 `ignored`。`SchedulerHeartbeatService` 提供手动触发 API，也会在 FastAPI 启动时按 `SCHEDULER_HEARTBEAT_ENABLED` 和 `SCHEDULER_HEARTBEAT_INTERVAL_SECONDS` 启动后台心跳。高严重度事件（默认 `critical,high`）通过事件 API 写入后会立即触发一次心跳处理。
-
-`queue_scheduler` 是统一排程入口。它读取待处理事件和当前订单，调用 `ScheduleOptimizerService` 生成候选策略，包括 `priority_fifo`、`earliest_due_date`、`shortest_processing_time`、`bottleneck_resource_first`、`hybrid_weighted` 和 `sla_guarded_hybrid`。候选排程按阻塞订单数、VIP/加急/普通延期订单数、VIP/加急/普通延期分钟、平均等待、设备空闲惩罚、人员阻塞和转运等待进行评分，默认选择评分最低的方案并持久化为 `schedule_runs` 和 `schedule_steps`。
-
-## 数据集按时间回放
-
-数据集不再只作为静态验证摘要展示。系统新增 `dataset_replay_runs` 和 `dataset_replay_items`，可将 `data/` 目录下的数据集按订单 `arrival_time` 加速回放导入系统。启动回放时，系统读取指定数据集的订单文件，按到达时间排序，并建立待导入清单；正式订单表在启动后仍为空，只有当用户执行单步导入或手动 Tick 时，已到达订单才会写入 `orders`。
-
-回放流程如下：
-
-1. 选择数据集并创建回放批次。
-2. 将仿真时钟设置为数据集最早订单到达时间。
-3. 单步导入下一条订单，或按倍率推进 Tick。
-4. 将到达时间小于等于当前仿真时间的订单写入正式订单表。
-5. 为导入订单写入 `order_created` 排程事件。
-6. 每个 Tick 结束后触发一次 `scheduler_heartbeat`，由 `queue_scheduler` 统一重排。
-7. 生成通知并更新仪表盘、队列页和通知页。
-
-默认倍率为 `1 秒真实时间 = 30 分钟仿真时间`。第一版不在后端启动长期定时器，主要通过 API、Swagger 或测试脚本调用“单步导入”和“手动 Tick”接口来确定性推进；暂停状态下 Tick 不推进。当前仪表盘不再保留数据集回放控制台或静态数据集摘要表。`scenario_synthetic_center_large` 包含 5000 单，回放接口默认最多导入前 500 单，完整压力测试仍建议使用验证脚本。
-
-## 执行状态与审计
-
-排程步骤支持运行中和完成回写。`/api/schedules/steps/{step_id}/running` 会把对应检测步骤和订单标记为 `running`，并设置 `locked=true`；后续自动重排会保留该订单已锁定的步骤，只重排未开始订单和未开始步骤。`/api/schedules/steps/{step_id}/complete` 会记录实际完成时间，并在订单所有检测步骤完成后把订单状态回写为 `completed`。
-
-复检通过 `/api/orders/{order_id}/retest` 创建新订单，记录 `parent_order_id` 和 `retest_reason`，并写入 `retest_required` 排程事件。系统同时提供简单的 header 权限模型，默认角色为 `admin`；可通过 `X-User-Role` 和 `X-User-Id` 模拟 `admin/scheduler/operator/viewer`。订单、排程、事件、通知和执行回写会写入 `audit_logs`，用于演示操作审计。
-
-## LLM Agent 验收与评价
-
-系统新增离线评测与在线 Trace 两类评价能力。离线评测使用 `data/evaluation/agent_eval_cases.jsonl` 和 `data/evaluation/agent_eval_cases_v2.jsonl` 中的 JSONL 标准任务集，对响应质量、轨迹状态和执行效率进行评分；在线 Trace 在每次 `/api/agent/run` 后记录 `trace_id`、Agent 路径、handoff、工具调用、节点耗时、Token 使用和错误信息。
-
-当前 LLM Agent 分为两组验收范围：
-
-- V1 只读解释与文案增强：`search_knowledge` 合成 RAG 回答、`explain_schedule` 解释当前排程、`analyze_exception` 输出结构化异常分析、`generate_notifications` 增强规则通知文案。V1 不写订单、不重建队列、不预约设备、不改变通知触发条件。
-- V2 人机确认型业务辅助输入：`draft_order_from_text` 只生成订单草稿，`identify_projects` 在有样品描述时给出检测项目推荐，`route_user_query` 只返回推荐任务和目标 Agent。V2 不自动创建订单，也不自动执行推荐出的写操作。
-
-LLM 输出进入业务结果前会做结构校验和白名单校验。RAG 回答必须带引用；排程解释和异常分析必须包含验收要求的结构化字段；自然语言路由只能返回允许的任务与 Agent 组合。校验失败、非 JSON 输出、API Key 缺失或模型调用失败时，系统返回确定性 fallback，并在 Trace 的 `llm_chat_json` 工具调用中记录 `fallback_used`、模型名、错误和 token usage。
-
-当前评价指标包括：
-
-- 系统级：业务正确性、排程质量、系统效率、稳定性和可观测性。
-- Agent 级：Orchestrator 路由准确率、订单草稿字段准确率、项目推荐必检保留率、RAG 引用覆盖率、Queue Scheduler 解释结构完整率、Notification Agent 文案增强可用率、Exception Analyzer 结构化字段完整率和 fallback 触发率。
-- 离线评测：响应质量使用规则断言模拟 LLMJudge 输出，语义类指标后续可替换为真实 LLMJudge；轨迹状态会对比 `visited_agents` 与 `handoffs`；效率会检查端到端延迟和 handoff 数量。
-- 在线阈值：默认监控 Agent 成功率、轨迹符合率、MCP 成功率、RAG Hit@3、500 单重排耗时、约束违规数、LLM fallback 连续次数和 Token 预算。
-
-V1/V2 验收关注以下汇总指标：
-
-- JSON 解析成功率、fallback 后接口成功率、平均延迟、P95 延迟和平均 token 消耗。
-- RAG 回答 citation 覆盖率、排程解释只读违规数、异常分析结构字段完整率和通知生成保持率。
-- 订单草稿字段准确率、非法枚举透传数、缺失字段识别准确率、项目推荐必检保留率、幻觉项目进入必检列表数量、路由准确率、模糊意图澄清率和写操作自动执行次数。
-
-## 算法替代路线
-
-当前规则排程和候选评分仍作为 baseline。可替代算法路线见 [docs/scheduling_algorithm_options.md](docs/scheduling_algorithm_options.md)，重点包括 CP-SAT/约束规划、MILP、元启发式算法、滚动时域重排和强化学习。第一优先级建议是 CP-SAT + 滚动时域，因为它更容易表达设备互斥、人员容量、维护窗口、耗材容量和运行中步骤锁定。
-
-## 目录结构
+## 系统结构
 
 ```text
 project/
-├── agents/              # LangGraph 多 Agent 编排
-├── api/                 # FastAPI 路由
-├── config/              # 应用配置
-├── db/                  # SQLAlchemy 模型与仓储
-├── domain/              # Pydantic schema 与枚举
-├── mcp_server/          # MCP 模拟工具服务
-├── rag/                 # RAG 检索、索引与知识库
-├── services/            # 仿真、调度、MCP 和格式化服务
-├── data/
-│   ├── evaluation/                    # Agent 离线评测 JSONL
-│   ├── mechanism_validation/          # 最小机制验证数据集
-│   ├── scenario_synthetic_center/     # 500 单合成拟真数据集
-│   ├── scenario_synthetic_center_large/ # 5000 单压力合成数据集
-│   ├── scenario_synthetic_center_balanced_5000/ # 5000 单正常负载派生数据集
-│   └── scenario_synthetic_center_highload_5000/ # 5000 单高负载派生数据集
-├── docs/                # 算法路线和项目设计文档
-├── tests/               # pytest 测试
-├── web/                 # Jinja2 管理页
-├── app.py               # FastAPI 应用入口
-├── requirements.txt
-└── README.md
+├── api/          # FastAPI 路由
+├── agents/       # 业务辅助 Agent 编排
+├── config/       # 环境配置
+├── db/           # SQLAlchemy 模型与仓储
+├── domain/       # Pydantic schema 与枚举
+├── services/     # 排程、事件、通知、审计、监控等服务
+├── rag/          # 知识库检索与索引
+├── web/          # Jinja2 管理后台
+├── tests/        # pytest 测试
+├── data/         # SQLite、合成验证数据和评测样例
+├── app.py        # FastAPI 应用入口
+└── requirements.txt
 ```
+
+## 主要接口
+
+| 模块 | 接口 |
+| --- | --- |
+| 订单 | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{id}`, `DELETE /api/orders/{id}`, `POST /api/orders/{id}/retest` |
+| 队列排程 | `GET /api/queue`, `POST /api/queue/rebuild`, `GET /api/schedules`, `GET /api/schedules/{run_id}/gantt` |
+| 执行回写 | `PATCH /api/schedules/steps/{step_id}/running`, `PATCH /api/schedules/steps/{step_id}/complete` |
+| 事件 | `GET /api/scheduling/events`, `POST /api/scheduling/events`, `PATCH /api/scheduling/events/{event_id}/resolve`, `POST /api/scheduling/heartbeat` |
+| 通知 | `GET /api/notifications`, `PATCH /api/notifications/{id}/read`, `GET /api/notifications/stream` |
+| 监控审计 | `GET /api/monitor/report`, `GET /api/admin/audit-logs`, `GET /api/admin/users` |
+| 业务辅助 | `POST /api/agent/run` |
+
+业务辅助任务包括：
+
+- `draft_order_from_text`：生成订单草稿，不创建订单。
+- `identify_projects`：推荐检测项目，保留确定性必检规则。
+- `explain_schedule`：解释当前排程，不修改排程。
+- `analyze_exception`：分析异常和阻塞，不关闭事件。
+- `generate_notifications`：增强通知文案，不改变通知触发条件。
+- `route_user_query`：返回建议任务，不自动执行任务。
 
 ## 快速开始
 
@@ -230,29 +102,62 @@ cd /home/work/workproject2/project
 /root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pip install -r requirements.txt
 ```
 
-配置本地环境变量：
+复制环境变量文件：
 
 ```bash
-cd /home/work/workproject2/project
 cp .env.example .env
 ```
-
-`.env` 已被 `.gitignore` 排除，不应提交真实密钥。进程环境变量优先级高于 `.env` 文件，可用于临时覆盖。
 
 启动服务：
 
 ```bash
-cd /home/work/workproject2/project
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m uvicorn app:app --reload --port 8002
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m uvicorn app:create_app --factory --reload --port 8002
 ```
 
-启动后访问：
+访问：
 
-- 管理页：`http://127.0.0.1:8002/`
+- 管理后台：`http://127.0.0.1:8002/`
 - Swagger：`http://127.0.0.1:8002/docs`
 - ReDoc：`http://127.0.0.1:8002/redoc`
 
-## 环境变量
+## 运行模式
+
+默认配置偏生产落地，只启用核心业务路由和管理后台。演示、数据集回放、MCP 仿真和离线评测属于开发/验证能力，可按需开启。
+
+```bash
+export APP_PROFILE=production
+export ENABLE_WEB_UI=true
+```
+
+开发演示模式：
+
+```bash
+export APP_PROFILE=demo
+```
+
+`demo` 模式默认开启：
+
+- 数据集回放接口 `/api/datasets`
+- 仿真时钟接口 `/api/simulation`
+- MCP 仿真状态接口 `/api/mcp`
+- 离线评测入口 `/api/evaluation/offline/run`
+
+常用配置：
+
+```bash
+export DATABASE_URL=sqlite:////home/work/workproject2/project/data/simulation.db
+export SCHEDULER_HEARTBEAT_ENABLED=true
+export SCHEDULER_HEARTBEAT_INTERVAL_SECONDS=30
+export SCHEDULER_DEBOUNCE_SECONDS=30
+export SCHEDULER_IMMEDIATE_SEVERITIES=critical,high
+export SCHEDULER_DEFAULT_STRATEGY=sla_guarded_hybrid
+export CP_SAT_TIME_LIMIT_SECONDS=10
+export CP_SAT_ROLLING_HORIZON_DAYS=7
+export CP_SAT_NUM_WORKERS=4
+export CP_SAT_MAX_ACTIVE_ORDERS=80
+```
+
+可选 LLM / Embedding 配置：
 
 ```bash
 export LLM_PROVIDER=openai-compatible
@@ -260,37 +165,14 @@ export LLM_API_KEY=your-chat-key
 export LLM_BASE_URL=https://api.example.com/v1
 export LLM_MODEL=qwen-plus
 export LLM_ENABLE_THINKING=false
+
 export EMBEDDING_PROVIDER=openai-compatible
-export EMBEDDING_API_KEY=your-key
+export EMBEDDING_API_KEY=your-embedding-key
 export EMBEDDING_BASE_URL=https://api.example.com/v1
 export EMBEDDING_MODEL=text-embedding-v3
-export RAG_INDEX_DIR=/home/work/workproject2/project/rag/index
-export OPERATIONS_CONSTRAINTS_PATH=/home/work/workproject2/project/data/scenario_synthetic_center/operations_constraints.json
-export MCP_ADAPTER_TYPE=simulation
-export MCP_SERVER_COMMAND=/root/anaconda3/envs/agent-learning/bin/python
-export MCP_SERVER_ARGS="-m mcp_server.simulation_server"
-export SCHEDULER_HEARTBEAT_ENABLED=true
-export SCHEDULER_HEARTBEAT_INTERVAL_SECONDS=30
-export SCHEDULER_DEBOUNCE_SECONDS=30
-export SCHEDULER_IMMEDIATE_SEVERITIES=critical,high
-export SCHEDULER_DEFAULT_STRATEGY=hybrid_weighted
-export CP_SAT_TIME_LIMIT_SECONDS=10
-export CP_SAT_ROLLING_HORIZON_DAYS=7
-export CP_SAT_NUM_WORKERS=4
-export CP_SAT_MAX_ACTIVE_ORDERS=80
 ```
 
-关键配置说明：
-
-- `LLM_*`：默认 Chat 模型配置，当前主要供异常分析 Agent 使用。
-- `AGENT_<AGENT_NAME>_*`：按 Agent 覆盖模型、温度、最大 token 和 thinking 开关，例如 `AGENT_EXCEPTION_ANALYZER_MODEL`。
-- `EMBEDDING_*`：RAG 向量化配置。未配置 `EMBEDDING_API_KEY` 时，系统会使用本地确定性向量 fallback，便于离线测试。
-- `OPERATIONS_CONSTRAINTS_PATH`：合成拟真数据集中的班次、维护、停机等运营约束文件。
-- `MCP_ADAPTER_TYPE`：MCP 工具适配器标签，当前可用值以 `simulation` 为主，真实 LIMS/设备台账适配器仍是后续扩展。
-- `SCHEDULER_*`：排程事件防抖、后台心跳、立即触发严重度和默认候选策略配置。
-- `CP_SAT_*`：OR-Tools 滚动窗口求解配置，包括单次求解时间上限、滚动窗口天数、并行 worker 数和窗口内最大精排订单数。
-
-对于 Qwen 推理模型，若通过普通 chat completion 接口返回业务 JSON 或短文本，建议将对应 Agent 的 `*_ENABLE_THINKING=false`。本项目只在模型名称包含 `qwen` 时向请求体写入 `enable_thinking` 字段。
+未配置 API Key 时，系统会使用确定性 fallback，业务接口仍可运行。
 
 ## API 示例
 
@@ -307,131 +189,36 @@ curl -X POST http://127.0.0.1:8002/api/orders \
   }'
 ```
 
-重建队列并持久化排程：
+重建队列：
 
 ```bash
 curl -X POST http://127.0.0.1:8002/api/queue/rebuild
 ```
 
-查询最新队列：
+查询队列：
 
 ```bash
 curl http://127.0.0.1:8002/api/queue
 ```
 
-查询历史排程：
-
-```bash
-curl http://127.0.0.1:8002/api/schedules
-```
-
-写入突发排程事件：
+写入突发事件：
 
 ```bash
 curl -X POST http://127.0.0.1:8002/api/scheduling/events \
   -H "Content-Type: application/json" \
   -d '{
-    "event_type": "equipment_offline",
+    "event_type": "equipment_fault",
     "severity": "high",
     "entity_type": "equipment",
-    "entity_id": "safety_tester-1",
-    "payload": {"reason": "simulated failure"}
+    "entity_id": "ENV-03",
+    "payload": {"reason": "设备故障"}
   }'
 ```
 
-手动触发一次心跳消费：
+触发排程心跳：
 
 ```bash
 curl -X POST http://127.0.0.1:8002/api/scheduling/heartbeat
-curl http://127.0.0.1:8002/api/scheduling/heartbeat/status
-```
-
-查询可回放数据集并启动按时间回放：
-
-```bash
-curl http://127.0.0.1:8002/api/datasets
-curl http://127.0.0.1:8002/api/datasets/scenario_synthetic_center/summary
-
-curl -X POST http://127.0.0.1:8002/api/datasets/scenario_synthetic_center/replay/start \
-  -H "Content-Type: application/json" \
-  -d '{
-    "speed_minutes_per_second": 30,
-    "max_orders": 500,
-    "reset_runtime": true
-  }'
-```
-
-推进、暂停和查询回放批次：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/step
-curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/tick
-curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/pause
-curl -X POST http://127.0.0.1:8002/api/datasets/replay/{run_id}/resume
-curl http://127.0.0.1:8002/api/datasets/replay/{run_id}
-curl -N http://127.0.0.1:8002/api/datasets/replay/{run_id}/stream
-```
-
-闭环异常事件：
-
-```bash
-curl -X PATCH http://127.0.0.1:8002/api/scheduling/events/{event_id}/resolve \
-  -H "Content-Type: application/json" \
-  -d '{"status": "done", "resolution_note": "已人工确认并关闭"}'
-```
-
-比较候选排程策略：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/agent/run \
-  -H "Content-Type: application/json" \
-  -d '{"task_type": "analyze_schedule_options", "payload": {}}'
-```
-
-RAG 检索：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/knowledge/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "CCC 强制性认证 安全检测", "top_k": 3}'
-```
-
-重建 RAG 索引：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/knowledge/reindex
-```
-
-查询 MCP 状态：
-
-```bash
-curl http://127.0.0.1:8002/api/mcp/status
-```
-
-当前 MCP 客户端仍会启动 stdio 服务用于独立工具连通性验证；涉及队列快照和设备预约这类需要共享应用状态的工具，使用应用内 `LocalSimulationToolClient` 执行，以避免独立 MCP 进程持有一份空的队列状态。`/api/mcp/status` 中的 `stateful_tools_mode` 会标识这一点。
-
-运行 Agent：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/agent/run \
-  -H "Content-Type: application/json" \
-  -d '{"task_type": "query_queue", "payload": {}}'
-```
-
-运行离线评测并查询在线 Trace：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/evaluation/offline/run \
-  -H "Content-Type: application/json" \
-  -d '{"dataset_path": "data/evaluation/agent_eval_cases.jsonl", "limit": 3}'
-
-curl -X POST http://127.0.0.1:8002/api/evaluation/run \
-  -H "Content-Type: application/json" \
-  -d '{"dataset_path": "data/evaluation/agent_eval_cases_v2.jsonl"}'
-
-curl http://127.0.0.1:8002/api/evaluation/traces
-curl http://127.0.0.1:8002/api/evaluation/traces/{trace_id}
-curl http://127.0.0.1:8002/api/evaluation/thresholds/status
 ```
 
 标记检测步骤运行中与完成：
@@ -448,173 +235,65 @@ curl -X PATCH http://127.0.0.1:8002/api/schedules/steps/{step_id}/complete \
   -d '{"note": "检测完成"}'
 ```
 
-创建复检订单：
+生成订单草稿：
 
 ```bash
-curl -X POST http://127.0.0.1:8002/api/orders/{order_id}/retest \
+curl -X POST http://127.0.0.1:8002/api/agent/run \
   -H "Content-Type: application/json" \
-  -d '{"reason": "检测结果复核不一致"}'
+  -d '{
+    "task_type": "draft_order_from_text",
+    "payload": {"user_text": "客户送检一批加急电磁兼容样品，希望三天内完成"}
+  }'
 ```
 
-查询甘特图、监控报告和审计：
+查询审计日志：
 
 ```bash
-curl http://127.0.0.1:8002/api/schedules/{run_id}/gantt
-curl http://127.0.0.1:8002/api/monitor/report
 curl http://127.0.0.1:8002/api/admin/audit-logs
-curl http://127.0.0.1:8002/api/admin/users
 ```
-
-查询通知：
-
-```bash
-curl http://127.0.0.1:8002/api/notifications
-curl -N http://127.0.0.1:8002/api/notifications/stream
-```
-
-## 管理页
-
-- `/`：检测队列仪表盘
-- `/orders`：订单管理
-- `/queue`：队列与排程
-- `/knowledge`：知识库检索
-- `/agents`：Agent 执行轨迹
-- `/notifications`：员工提醒与仿真通知
-
-管理页通过现有 API 获取数据，不引入 Node、Vue 或 React 构建链。
 
 ## 测试
 
+运行全量测试：
+
 ```bash
 cd /home/work/workproject2/project
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q
 ```
 
-合成数据集验证：
+常用定向测试：
 
 ```bash
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/validate_synthetic_center_dataset.py
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/validate_large_synthetic_center_dataset.py
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest tests/test_api_and_agents.py -q
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest tests/test_queue_service.py -q
+/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest tests/test_mcp_and_web.py -q
 ```
 
-生成并评估 5000 单优化场景：
+## 数据说明
 
-```bash
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/generate_optimized_synthetic_center_datasets.py
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python scripts/evaluate_optimized_scheduling.py
-```
+仓库内 `data/` 目录包含用于开发验证的合成数据集和评测样例。它们只用于机制验证、压力测试和演示，不代表任何真实检测中心的设备数量、检测耗时、人员排班、订单到达分布或插队规则。
 
-评估报告输出到：
+真实落地时应接入：
 
-- `data/evaluation_reports/scheduling_optimization_report.json`
-- `data/evaluation_reports/scheduling_optimization_summary.md`
+- LIMS / 订单系统
+- 设备台账和设备状态服务
+- 检测项目标准库
+- 人员排班、考勤和技能矩阵
+- 历史工时与实际检测结果
 
-大样本数据集位于 `data/scenario_synthetic_center_large/`，包含 2026-06-01 至 2026-11-30 周期内的 5000 条合成订单。大样本验证脚本会对 5000 条订单做静态一致性校验，并默认抽取前 500 条跑通 API、RAG、排程和 Agent 链路。
+## 当前限制
 
-最近一次本地验证命令：
+- 当前排程以规则调度、候选策略评分和滚动窗口优化组合为主，不声明全局数学最优。
+- CP-SAT 作为窗口内候选策略，不适合对超大订单量进行全量一次性精排。
+- MCP 目前是仿真工具入口，未接入真实设备或 LIMS。
+- 权限模型为 header 模拟角色，未接入真实登录态和组织权限体系。
+- 合成数据和 fallback 能保证本地运行，但不能替代真实生产数据校准。
+- 智能能力只做辅助输入和解释，所有业务写操作仍由确定性 API 执行。
 
-```bash
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q -s
-```
+## 后续落地方向
 
-验证结果为 `72 passed, 3 warnings`，总耗时约 210.90 秒。如修改调度、RAG、MCP 或数据集生成逻辑，应同时运行对应的数据集验证脚本。
-
-最近一次 5000 单优化评测结果：
-
-| 场景 | 抽样 | 优化策略 SLA | VIP SLA | 加急延期率 | SLA 相对 baseline 提升 | 总延期分钟下降 | 重排 P95 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `balanced_5000` | spread 500 | 1.000 | 1.000 | 0.000 | 0.000 | 0.000 | 13495ms |
-| `highload_5000` | spread 500 | 1.000 | 1.000 | 0.000 | 0.000 | 0.000 | 12028ms |
-| `highload_peak_500` | head 500 | 0.866 | 1.000 | 0.000 | 0.780 | 0.966 | 68625ms |
-| `stress_load` | spread 500 | 1.000 | 1.000 | 0.000 | 0.854 | 1.000 | 9774ms |
-
-其中 `highload_peak_500` 用于验证订单集中到达时的步骤级排程与 SLA 可救性排序；该场景下 `sla_guarded_hybrid` 相较 `priority_fifo` 显著降低延期，但 P95 重排耗时偏高，后续可通过候选窗口缓存、滚动时域和 CP-SAT/启发式混合求解继续优化。
-
-当前测试覆盖：
-
-- 订单优先级：`vip > urgent > normal`
-- 同优先级按创建时间排序
-- 多步骤检测流程顺序
-- 订单级 `detection_route` 覆盖默认认证流程
-- 旧版 SQLite 订单表自动补齐 `detection_route` 列
-- 检测耗时按 `t_min/t_mode/t_max` 生成浮动值
-- 不同订单共享设备类型时的资源冲突排队
-- 设备容量与批处理计算
-- 设备不可用时的阻塞状态
-- RAG 索引持久化、重建和状态查询
-- RAG 检索命中
-- MCP stdio 工具调用与本地 fallback
-- 排程批次和排程步骤持久化
-- Jinja2 管理页渲染
-- FastAPI 订单创建与队列重建
-- LangGraph Orchestrator 到子 Agent 的 handoff 轨迹
-- 设备实例级并行排程
-- `sla_guarded_hybrid` 步骤级 ready step 池调度
-- SLA 可救性排序：基于 `projected_finish_time`、`promised_finish_time` 和 slack 分桶选择下一步骤
-- 5000 单派生数据集生成与调度优化评测
-- 到达时间感知的非抢占式优先级、维护窗口避让、工作日结束时间约束、SLA 状态和延期分钟数
-- 排程指标：平均等待、设备利用率、VIP SLA 达成率、加急延误率、阻塞原因分布
-- 人员实例约束、多人设备、共享监管、样品前处理、跨实验室转运、设备准备时间和耗材日配额
-- 排程事件写入、去重、防抖、手动心跳、高严重度立即触发、候选策略评分和 queue_scheduler 统一入口
-- 数据集列表、摘要、按时间回放启动、Tick 导入、单步导入、暂停续跑、权限拦截和 SSE 状态快照
-- Notification Agent、通知持久化、仿真时钟推进和 SSE 接口
-- 运行中步骤锁定、检测完成回写、复检订单、设备预约甘特图、监控报告、权限拦截和操作审计
-- 异常分析 Agent 的 LLM 失败 fallback
-- Agent 在线 Trace 持久化、离线 JSONL 评测、响应质量/轨迹状态/效率评分和阈值状态查询
-
-## 当前完成度
-
-已完成：
-
-- 后端项目骨架与分层结构
-- 领域模型、订单类型、认证类型、队列状态、设备状态
-- SQLite 持久化模型与基础仓储
-- 订单创建、查询、修改、取消接口
-- 检测设备仿真与认证项目仿真流程
-- 队列排序、队列重建、阻塞识别
-- 设备实例级排程：排程步骤记录具体 `equipment_id`，同类多台设备可并行处理
-- 步骤级调度：`sla_guarded_hybrid` 维护跨订单 ready step 池，使不同订单的检测步骤可围绕共享设备、人员和转运资源交错排程
-- SLA 可救性排序：按 slack 分桶优先处理仍可准时或轻微延期可救回的步骤，再结合订单优先级、瓶颈设备稀缺度和到达时间排序
-- 运营约束接入：订单到达时间、承诺完成时间、人员实例、班次、午休、维护/故障窗口、工作日结束时间、前处理、转运、准备时间和耗材日配额参与排程
-- SLA 与运营指标：准时/延期状态、延期分钟数、等待时间、设备利用率、人员阻塞、转运等待和阻塞原因分布
-- 排程事件队列：订单变化和突发状况写入 `scheduling_events`，支持去重、防抖、状态追踪和关联排程批次
-- 心跳重排机制：支持后台周期消费、手动触发、高严重度事件即时触发和并发锁控制
-- 候选策略评分：支持多种规则策略比较，并记录 `selected_strategy` 和 `candidate_scores`
-- 结构化调度解释：输出候选策略排名、瓶颈资源、SLA 风险、阻塞原因和建议动作
-- 执行状态流转：支持步骤运行中锁定、检测完成回写、复检订单和运行中订单重排保留
-- 权限与审计：提供 `admin/scheduler/operator/viewer` 模拟角色、操作审计日志和用户权限查询
-- RAG 索引重建、保存、加载和检索
-- MCP stdio 独立服务入口与本地 fallback
-- MCP 适配器标签：当前为 `simulation`，用于后续替换真实工具源
-- 排程批次和步骤持久化
-- 数据集回放：支持列出数据集、查看摘要、按 `arrival_time` 建立回放批次、单步导入、手动 Tick、暂停、续跑和 SSE 状态快照
-- Notification Agent、通知表、仿真时钟、SSE 通知流和通知管理 API
-- Jinja2 管理页：仪表盘、订单、队列、知识库、Agent轨迹、通知面板
-- LangGraph 多 Agent 编排与异常分析 Agent 可选 LLM 调用
-- Agent 评价体系：支持 JSONL 离线评测、在线 Trace 入库、节点耗时记录、工具调用记录和阈值状态查询
-- FastAPI 接口与自动化测试
-
-当前限制：
-
-- 当前环境已安装 `faiss-cpu`，RAG 索引优先使用 FAISS；若其他环境未安装 FAISS，会自动使用 numpy fallback。
-- MCP 独立服务目前封装的是仿真工具，还未接入真实实验室系统。
-- `MCP_ADAPTER_TYPE` 当前是适配器类型标识，不代表已经连通真实 LIMS、设备台账或工时系统。
-- 合成数据集用于机制验证和压力测试，不代表某真实检测中心的设备数量、检测耗时、订单到达分布或插队规则。
-- 数据集回放验证的是订单释放、事件触发和心跳重排机制，不代表真实检测中心的实时接单节奏或生产排程效果。
-- 调度器已使用设备实例、人员实例、前处理、转运、耗材、到达时间、SLA、维护窗口和工作日结束时间；CP-SAT 采用滚动窗口候选求解，不做 5000 单全量一次性精排。
-- `sla_guarded_hybrid` 在 500 单峰值高负载样本中能明显改善 SLA，但步骤级候选试排开销较高，当前 `highload_peak_500` P95 重排耗时约 68.6 秒，不适合作为生产级实时优化器。
-- 非抢占式约束已覆盖运行中步骤锁定和未开始任务重排；暂停、续跑、人工复核审批流仍是后续扩展。
-- 高严重度事件通过 API 写入后会立即触发一次心跳；后台周期心跳只在 FastAPI 生命周期启动后运行，测试和脚本仍以手动触发为主，以保证验证结果确定。
-- MCP stdio 服务已可独立启动，但需要共享应用状态的工具当前仍通过应用内 fallback 执行；真实外部 MCP 服务适配需要单独设计状态同步或数据库访问边界。
-- 除 `exception_analyzer` 外，其他 Agent 当前仍以确定性流程为主，模型配置属于后续增强入口。
-- 当前 LLMJudge 为规则断言 fallback，用于离线开发和稳定测试；真实 LLMJudge、云端观测面板和 Token 精细计费仍是后续可接入能力。
-- 前端管理页以服务端渲染和少量原生 JS 为主，尚未加入真实登录态下的权限控制和复杂交互组件。
-- 设备状态、检测时间、检测项目仍是仿真种子数据。
-- 尚未接入真实 LIMS、设备台账、检测标准库或历史工时数据。
-
-## 后续步骤
-
-1. 增加检测执行层面的暂停、续跑、返工审批、报告复核等更完整闭环。
-2. 将 MCP 工具替换为真实设备台账、LIMS、检测标准库、人员考勤和工时服务适配器，并明确状态同步方式。
-3. 增加权限模型的真实登录、角色管理和操作审计导出。
-4. 基于真实历史工时或专家标注样本校准 CP-SAT 目标函数权重、滚动窗口长度和大样本截断阈值。
+1. 接入真实订单、设备、人员和检测标准数据源。
+2. 将 header 角色替换为正式登录、组织权限和操作审批。
+3. 基于真实工时数据校准检测耗时、人员配置和排程目标函数。
+4. 补充暂停、返工、复核、报告签发等检测执行闭环。
+5. 增加生产级监控、告警和审计导出。

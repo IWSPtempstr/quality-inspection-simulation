@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>执行看板</h1>
+  <p>查看排程步骤，开始检测、完成检测，并保持运行中步骤锁定。</p>
+</section>
+
+<section class="panel stack">
+  <div class="toolbar">
+    <button type="button" data-action="execution-load">加载最新排程步骤</button>
+    <div id="execution-status" class="status-line" aria-live="polite">等待加载</div>
+  </div>
+
+  <div class="grid two">
+    <section aria-labelledby="execution-list-title">
+      <h2 id="execution-list-title">待办与运行中步骤</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>订单</th>
+              <th>步骤</th>
+              <th>设备/资源</th>
+              <th>员工</th>
+              <th>开始</th>
+              <th>结束</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="execution-steps-body">
+            <tr><td colspan="8" class="empty">等待加载</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="execution-detail-title">
+      <h2 id="execution-detail-title">步骤详情</h2>
+      <div id="execution-detail" class="detail-panel" aria-live="polite">
+        <div class="empty">从左侧选择步骤。</div>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

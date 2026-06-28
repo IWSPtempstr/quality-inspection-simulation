@@ -616,3 +616,135 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Business-backoffice polish from the local prototype */
+html,
+body {
+  background: #f5f7f8;
+  color: #18252b;
+}
+
+.topbar {
+  background: #122226;
+  border-bottom-color: #20383e;
+  color: #ffffff;
+}
+
+.brand {
+  color: #ffffff;
+}
+
+nav a {
+  border-radius: 6px;
+  color: #dbe8eb;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+nav a:hover,
+nav a[aria-current="page"] {
+  background: #20383e;
+  border-color: #2f555d;
+  color: #ffffff;
+}
+
+.hero h1 {
+  font-size: clamp(24px, 3vw, 34px);
+}
+
+.panel {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+button {
+  background: #0f766e;
+  border-color: #0f766e;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+button:hover {
+  background: #115e59;
+  border-color: #115e59;
+}
+
+button:active {
+  background: #0f4f4a;
+}
+
+.management-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  align-items: start;
+}
+
+.assistant-panel {
+  position: sticky;
+  top: 18px;
+  background: #ffffff;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.assistant-panel p {
+  color: #43545c;
+  line-height: 1.6;
+}
+
+.note-box {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  background: #f7fafb;
+  color: #43545c;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  color: #18252b;
+  background: #f8fbfc;
+  text-decoration: none;
+}
+
+.button-link:hover {
+  border-color: #b8c7cd;
+  background: #eef5f6;
+}
+
+tbody tr:hover td {
+  background: #f8fbfc;
+}
+
+.badge-vip,
+.badge-selected,
+.badge-success,
+.sla-on-time {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+tr.is-active-step td {
+  box-shadow: inset 4px 0 0 #0f766e;
+}
+
+.debug-panel summary {
+  color: #0f766e;
+}
+
+@media (max-width: 900px) {
+  .management-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .assistant-panel {
+    position: static;
+  }
+}

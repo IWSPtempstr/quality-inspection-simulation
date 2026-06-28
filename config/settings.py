@@ -50,6 +50,13 @@ class AgentModelConfig:
 class Settings:
     base_dir: Path = BASE_DIR
     app_name: str = "电器产品质量检测多Agent仿真系统"
+    app_profile: str = "production"
+    enable_demo_routes: bool = False
+    enable_dataset_replay: bool = False
+    enable_simulation_clock: bool = False
+    enable_offline_evaluation: bool = False
+    enable_mcp_simulation: bool = False
+    enable_web_ui: bool = False
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'simulation.db'}")
     knowledge_base_dir: Path = BASE_DIR / "rag" / "knowledge_base"
     rag_index_dir: Path = BASE_DIR / "rag" / "index"
@@ -84,6 +91,10 @@ def load_environment() -> None:
 def get_settings() -> Settings:
     load_environment()
     default_mcp_args = ["-m", "mcp_server.simulation_server"]
+    app_profile = _env_text("APP_PROFILE", "production").strip().lower()
+    if app_profile not in {"production", "demo"}:
+        app_profile = "production"
+    demo_default = app_profile == "demo"
     raw_args = os.getenv("MCP_SERVER_ARGS")
     llm_provider = _env_text("LLM_PROVIDER", _env_text("MODEL_PROVIDER", "openai-compatible"))
     llm_api_key = os.getenv("LLM_API_KEY") or None
@@ -93,6 +104,13 @@ def get_settings() -> Settings:
     llm_max_tokens = _env_int("LLM_MAX_TOKENS", 512)
     llm_enable_thinking = _env_bool("LLM_ENABLE_THINKING", False)
     return Settings(
+        app_profile=app_profile,
+        enable_demo_routes=_env_bool("ENABLE_DEMO_ROUTES", demo_default),
+        enable_dataset_replay=_env_bool("ENABLE_DATASET_REPLAY", demo_default),
+        enable_simulation_clock=_env_bool("ENABLE_SIMULATION_CLOCK", demo_default),
+        enable_offline_evaluation=_env_bool("ENABLE_OFFLINE_EVALUATION", demo_default),
+        enable_mcp_simulation=_env_bool("ENABLE_MCP_SIMULATION", demo_default),
+        enable_web_ui=_env_bool("ENABLE_WEB_UI", demo_default),
         database_url=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'simulation.db'}"),
         knowledge_base_dir=Path(os.getenv("KNOWLEDGE_BASE_DIR", str(BASE_DIR / "rag" / "knowledge_base"))),
         rag_index_dir=Path(os.getenv("RAG_INDEX_DIR", str(BASE_DIR / "rag" / "index"))),

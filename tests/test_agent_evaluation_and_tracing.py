@@ -12,6 +12,7 @@ from services.evaluation_service import AgentEvaluationService
 def _client(tmp_path, monkeypatch, name: str = "agent-eval") -> TestClient:
     db_path = tmp_path / f"{name}.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("APP_PROFILE", "demo")
     monkeypatch.setenv("SCHEDULER_HEARTBEAT_ENABLED", "false")
     return TestClient(create_app())
 

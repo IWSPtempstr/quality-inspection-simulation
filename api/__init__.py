@@ -12,18 +12,27 @@ from .schedules import router as schedules_router
 from .scheduling import router as scheduling_router
 from .simulation import router as simulation_router
 
-api_routers = [
+core_api_routers = [
     admin_router,
-    datasets_router,
     evaluation_router,
     orders_router,
     queue_router,
     schedules_router,
     monitor_router,
     knowledge_router,
-    mcp_router,
     notifications_router,
-    simulation_router,
     scheduling_router,
     agent_router,
+]
+
+demo_api_routers = {
+    "datasets": datasets_router,
+    "mcp": mcp_router,
+    "simulation": simulation_router,
+}
+
+api_routers = core_api_routers + [
+    datasets_router,
+    mcp_router,
+    simulation_router,
 ]
