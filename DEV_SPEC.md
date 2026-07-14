@@ -337,6 +337,21 @@ PostgreSQL is the system of record. Core tables include `orders`,
 `audit_logs`, `inbox_events`, `outbox_events`, `idempotency_records`,
 `ai_sessions`, `ai_session_summaries`, and `resolved_exception_cases`.
 
+G2 is deliberately limited to the PostgreSQL connection, Goose migration
+runner, transaction unit, and the infrastructure tables `idempotency_records`,
+`audit_logs`, and `outbox_events`. It must not create order, project,
+equipment, employee, shift, or unavailability tables/models/repositories;
+those belong to G4. It must not create `inbox_events` or RabbitMQ persistence;
+that belongs to G5.
+
+G2 integration tests use the pinned Go module
+`github.com/testcontainers/testcontainers-go v0.43.0` to start an isolated
+`postgres:16-alpine` container. Tests run the forward-only Goose migrations,
+use the container's per-test database URL, and terminate the container through
+test cleanup. They must never read a developer, shared, or production database
+URL. A missing Docker daemon is a clear integration-test failure, never a skip
+or SQLite fallback.
+
 All mutating public endpoints require `Idempotency-Key`. Business aggregates
 use monotonic `version`; conflicting writes require `If-Match` and return RFC
 9457 Problem Details with HTTP 409. Database unique constraints provide final
@@ -728,7 +743,7 @@ It is a browser fixture surface, not a login or an authentication mechanism.
 | ID | Scope | Allowed writes |
 | --- | --- | --- |
 | G1 | Create the `api-go` directory skeleton defined in 4.3; committed OpenAPI Generator 7.17.0 `go-gin-server` wrapper/configuration and generated OpenAPI 3.1 transport boundary; mount only generated health plus `/readyz`; typed config, core lifecycle/observability, and separate API/worker entry points. No business repositories or use cases beyond health/readiness. | `services/api-go/**`, `spec.md` |
-| G2 | Goose migrations, Gorm models/repositories, transaction and test database. | `services/api-go/**`, `spec.md` |
+| G2 | PostgreSQL connection, Goose migration runner, transaction unit, and Gorm models/repositories only for `idempotency_records`, `audit_logs`, and `outbox_events`; Testcontainers Go `v0.43.0` with `postgres:16-alpine` integration coverage. Orders/projects/resources remain G4; Inbox/RabbitMQ persistence remains G5. | `services/api-go/**`, `DEV_SPEC.md`, `spec.md` |
 | G3 | OIDC, four roles, audit, idempotency, version conflict middleware. | `services/api-go/**`, `spec.md` |
 | G4 | Order/project validation and resource APIs. | `services/api-go/**`, `spec.md` |
 | G5 | Inbox/Outbox worker, RabbitMQ retries/DLQ, Redis failure behavior. | `services/api-go/**`, `spec.md` |
