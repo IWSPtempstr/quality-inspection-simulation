@@ -4,7 +4,7 @@
 
 - Status: `in_progress`
 - Active phase: Phase 2
-- Active task: G2
+- Active task: G3
 - Git baseline observed: `main` is ahead of `origin/main` by one commit; user
   worktree changes include deletion of the prior `DEV_SPEC.md` and unrelated
   untracked documentation. These changes must not be reverted or committed by
@@ -74,8 +74,9 @@
 | F10 | done | `npm run lint`; `npm run typecheck`; `npm test`; `npm run build`; main and demo Playwright checks through `with-toolchain.sh` | Contextual assistance is MSW/contract-only: event-scoped `获取诊断` drawer; schedule explanation and deterministic preflight; order/resource prechecks; review-queue case candidate; editable audit filters; notification body draft and separate send. 57 Vitest tests and 6 main Playwright tests pass; axe has zero Critical/Serious findings on gate routes. |
 | Frontend Gate | done | Accessibility, E2E, visual, human acceptance | Automated checks, screenshots, demo mode, and F10 evidence passed. Scheduler and administrator human acceptance was recorded on 2026-07-14 using `docs/product/demo-acceptance.md`; Phase 2 is unblocked. |
 | G1 | done | `npm ci`; OpenAPI Generator 7.17.0 validation/generation; `go test ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2 run`; production-dependency npm audit | Go 1.26 module, Gin/Gorm-declared skeleton, typed config, structured logging/correlation middleware, lifecycle, API/worker entry points, `/api/v1/system/health`, `/readyz`, generated OpenAPI 3.1 Gin transport types, and route-boundary tests completed. The generator uses a typed `Null` support type and explicit boolean `oneOf` constants; only health/readiness routes are mounted. All checks passed; production dependency audit found 0 vulnerabilities. |
-| G2 | pending | Goose, Gorm, PostgreSQL transaction and integration checks | Next Phase 2 task. |
-| G3-G8 | pending | Go checks and G8/A8 interface mapping defined in DEV_SPEC | Blocked by predecessor tasks. |
+| G2 | done | Goose migration; Testcontainers PostgreSQL 16 integration test; `go test ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2 run` | PostgreSQL client, forward-only Goose runner, service-owned transaction unit, and Gorm models/repositories for `idempotency_records`, append-only `audit_logs`, and `outbox_events` completed. Testcontainers starts and cleans `postgres:16-alpine`; integration coverage verifies migration, rollback atomicity, successful three-table persistence, scoped idempotency uniqueness, and audit update/delete rejection. No order/resource/Inbox/RabbitMQ implementation was added. |
+| G3 | pending | OIDC, RBAC, audit, idempotency, version-conflict checks | Next Phase 2 task. |
+| G4-G8 | pending | Go checks and G8/A8 interface mapping defined in DEV_SPEC | Blocked by predecessor tasks. |
 | S1-S5 | pending | Scheduler checks defined in DEV_SPEC | Blocked by Phase 2. |
 | A1-A8 | pending | AI checks and G8/A8 interface mapping defined in DEV_SPEC | Blocked by Phase 3. |
 | I1-I6 | pending | Infrastructure checks defined in DEV_SPEC | Blocked by Phase 4. |

@@ -10,12 +10,14 @@ type LookupEnv func(string) (string, bool)
 type Config struct {
 	Environment string
 	HTTPAddress string
+	DatabaseURL string
 }
 
 func Load(lookup LookupEnv) (Config, error) {
 	config := Config{
 		Environment: valueOrDefault(lookup, "APP_ENV", "development"),
 		HTTPAddress: valueOrDefault(lookup, "HTTP_ADDR", ":8080"),
+		DatabaseURL: valueOrDefault(lookup, "DATABASE_URL", ""),
 	}
 	return config, config.Validate()
 }
