@@ -3,15 +3,31 @@ package repositories
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/entities"
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type IdempotencyRepository struct{}
+
+func (IdempotencyRepository) Find(ctx context.Context, db *gorm.DB, scope, key string) (entities.IdempotencyRecord, bool, error) {
+	var model models.IdempotencyRecord
+	err := db.WithContext(ctx).Where("scope = ? AND idempotency_key = ?", scope, key).First(&model).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return entities.IdempotencyRecord{}, false, nil
+	}
+	if err != nil {
+		return entities.IdempotencyRecord{}, false, fmt.Errorf("find idempotency record: %w", err)
+	}
+	return entities.IdempotencyRecord{
+		ID: model.ID, Scope: model.Scope, IdempotencyKey: model.IdempotencyKey, RequestHash: model.RequestHash, CreatedAt: model.CreatedAt,
+	}, true, nil
+}
 
 func (IdempotencyRepository) Create(ctx context.Context, tx *gorm.DB, record entities.IdempotencyRecord) error {
 	model := models.IdempotencyRecord{
@@ -22,6 +38,21 @@ func (IdempotencyRepository) Create(ctx context.Context, tx *gorm.DB, record ent
 		return fmt.Errorf("create idempotency record: %w", err)
 	}
 	return nil
+}
+
+func (IdempotencyRepository) CreateIfAbsent(ctx context.Context, tx *gorm.DB, record entities.IdempotencyRecord) (bool, error) {
+	model := models.IdempotencyRecord{
+		ID: record.ID, Scope: record.Scope, IdempotencyKey: record.IdempotencyKey,
+		RequestHash: record.RequestHash, CreatedAt: record.CreatedAt,
+	}
+	result := tx.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "scope"}, {Name: "idempotency_key"}},
+		DoNothing: true,
+	}).Create(&model)
+	if result.Error != nil {
+		return false, fmt.Errorf("claim idempotency record: %w", result.Error)
+	}
+	return result.RowsAffected == 1, nil
 }
 
 type AuditLogRepository struct{}

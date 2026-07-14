@@ -3,7 +3,10 @@ module github.com/detection-center/scheduling-workbench/services/api-go
 go 1.26.3
 
 require (
+	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/gin-gonic/gin v1.11.0
+	github.com/go-jose/go-jose/v4 v4.0.5
+	github.com/google/uuid v1.6.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.43.0
 	gorm.io/datatypes v1.2.7
@@ -43,7 +46,6 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.9.2 // indirect
@@ -97,6 +99,7 @@ require (
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect

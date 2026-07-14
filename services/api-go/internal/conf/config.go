@@ -8,16 +8,20 @@ import (
 type LookupEnv func(string) (string, bool)
 
 type Config struct {
-	Environment string
-	HTTPAddress string
-	DatabaseURL string
+	Environment   string
+	HTTPAddress   string
+	DatabaseURL   string
+	OIDCIssuerURL string
+	OIDCClientID  string
 }
 
 func Load(lookup LookupEnv) (Config, error) {
 	config := Config{
-		Environment: valueOrDefault(lookup, "APP_ENV", "development"),
-		HTTPAddress: valueOrDefault(lookup, "HTTP_ADDR", ":8080"),
-		DatabaseURL: valueOrDefault(lookup, "DATABASE_URL", ""),
+		Environment:   valueOrDefault(lookup, "APP_ENV", "development"),
+		HTTPAddress:   valueOrDefault(lookup, "HTTP_ADDR", ":8080"),
+		DatabaseURL:   valueOrDefault(lookup, "DATABASE_URL", ""),
+		OIDCIssuerURL: valueOrDefault(lookup, "OIDC_ISSUER_URL", ""),
+		OIDCClientID:  valueOrDefault(lookup, "OIDC_CLIENT_ID", ""),
 	}
 	return config, config.Validate()
 }

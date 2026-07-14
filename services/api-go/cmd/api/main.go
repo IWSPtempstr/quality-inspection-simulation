@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/api"
+	"github.com/detection-center/scheduling-workbench/services/api-go/internal/clients/oidc"
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/conf"
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/core"
 )
@@ -20,9 +21,14 @@ func main() {
 	}
 
 	logger := core.NewLogger(config.Environment)
+	authenticator, err := oidc.NewVerifier(context.Background(), config.OIDCIssuerURL, config.OIDCClientID)
+	if err != nil {
+		logger.Error("initialize OIDC verifier", "error", err)
+		os.Exit(1)
+	}
 	server := &http.Server{
 		Addr:              config.HTTPAddress,
-		Handler:           api.NewRouter(logger),
+		Handler:           api.NewRouter(logger, authenticator),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
