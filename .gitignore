@@ -1,13 +1,43 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
 data/*.db
 data/_validation_tmp/
 data/_synthetic_validation_tmp/
 data/_synthetic_large_validation_tmp/
 data/_optimized_scheduling_eval_tmp/
 rag/index/
+
+# Local environment and runtime output
 .env
+.env.*
+!.env.example
+*.log
+logs/
+
+# Node/npm dependencies, caches, and generated web-test output
+node_modules/
+.npm/
+.npm-cache/
+dist/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+apps/web/tests/artifacts/
+*.tsbuildinfo
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+
 .agents/
 .claude/
 .codex/
