@@ -1,0 +1,1 @@
+.state { display: grid; place-items: center; min-height: 320px; align-content: center; text-align: center; color: var(--ink-muted); }.state h2 { margin: 14px 0 4px; color: var(--ink-strong); font-size: 18px; }.state p { margin: 0; }

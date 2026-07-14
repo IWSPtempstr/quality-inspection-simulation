@@ -1,0 +1,18 @@
+.shell { min-height: 100vh; display: grid; grid-template-columns: 232px minmax(0, 1fr); background: var(--surface-canvas); }
+.rail { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 18px 12px; background: var(--surface-raised); border-right: 1px solid var(--border-subtle); }
+.brand { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; color: var(--ink-strong); font-weight: 700; }
+.brand svg { color: var(--action-primary); }
+.navigation { display: grid; gap: 3px; margin-top: 28px; }
+.groupLabel { margin: 22px 10px 5px; color: var(--ink-muted); font-size: 12px; font-weight: 600; }
+.navItem { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 10px; border-radius: 6px; color: var(--ink-muted); font-size: 14px; text-decoration: none; }
+.navItem:hover { color: var(--ink-strong); background: var(--surface-subtle); }
+.navItem.active { color: var(--action-primary); background: var(--action-subtle); font-weight: 600; }
+.workspace { min-width: 0; }
+.header { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--surface-raised); border-bottom: 1px solid var(--border-subtle); }
+.crumb { margin: 0 0 2px; color: var(--ink-muted); font-size: 12px; }
+.user { display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 13px; }
+.presence { width: 8px; height: 8px; border-radius: 50%; background: var(--status-success); }
+.demoRole { display: flex; align-items: center; gap: 6px; margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--border-subtle); color: var(--ink-muted); font-size: 12px; }
+.demoRole select { min-width: 92px; min-height: 30px; border: 1px solid var(--border-subtle); border-radius: 4px; background: var(--surface-raised); color: var(--ink-strong); font: inherit; }
+.content { padding: 24px; outline: none; }
+@media (max-width: 900px) { .shell { grid-template-columns: 64px minmax(0, 1fr); } .brand span, .navItem span, .groupLabel, .demoRole > span { display: none; } .rail { align-items: center; padding-inline: 8px; } .navItem { justify-content: center; width: 40px; padding: 0; } .header, .content { padding-inline: 16px; } .demoRole { margin-left: 0; padding-left: 0; border-left: 0; } .demoRole select { min-width: 84px; } }

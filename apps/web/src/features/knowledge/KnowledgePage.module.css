@@ -1,0 +1,23 @@
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.surface, .result, .error, .insufficient { border: 1px solid var(--border-subtle); background: var(--surface-raised); }
+.surface { padding: 20px; }
+.surface h2, .result h2 { margin: 0; font-size: 16px; }
+.surface > p { margin: 5px 0 18px; color: var(--ink-muted); font-size: 13px; }
+.surface label { display: grid; gap: 7px; color: var(--ink-strong); font-size: 13px; font-weight: 600; }
+.surface input, .surface textarea { box-sizing: border-box; width: 100%; min-height: 38px; padding: 9px; color: var(--ink-strong); background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 6px; font: inherit; font-weight: 400; }
+.surface textarea { min-height: 94px; resize: vertical; }
+.surface button { margin-top: 14px; }
+.result { margin-top: 20px; padding: 20px; }
+.answer { max-width: 76ch; margin: 12px 0 20px; font-size: 15px; line-height: 1.7; }
+.result h3 { margin: 0 0 10px; font-size: 14px; }
+.citations { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.citations li { padding: 12px; background: var(--surface-subtle); border-left: 3px solid var(--action-primary); }
+.citations strong, .citations span { display: block; }
+.citations span { margin-top: 3px; color: var(--ink-muted); font-size: 13px; }
+.citations p { margin: 8px 0 0; font-size: 13px; line-height: 1.55; }
+.error, .insufficient, .degraded { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding: 12px; color: var(--status-warning-ink); background: var(--status-warning-bg); border-color: var(--status-warning); font-size: 13px; }
+.error { justify-content: space-between; color: var(--status-danger-ink); background: var(--status-danger-bg); border-color: var(--status-danger); }
+.insufficient { display: block; }
+.insufficient p { margin: 5px 0 0; }
+.degraded { margin: 0 0 16px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }

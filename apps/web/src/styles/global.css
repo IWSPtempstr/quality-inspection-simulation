@@ -1,0 +1,8 @@
+@import "./tokens.css";
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; }
+body { margin: 0; color: var(--ink-strong); background: var(--surface-canvas); font-size: 14px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.skipLink { position: fixed; top: 8px; left: 8px; z-index: 10; padding: 8px 12px; color: white; background: var(--action-primary); text-decoration: none; transform: translateY(-160%); }.skipLink:focus { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0ms !important; animation-duration: 0ms !important; } }

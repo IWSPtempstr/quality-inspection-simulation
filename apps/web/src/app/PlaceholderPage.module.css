@@ -1,0 +1,2 @@
+.empty { display: grid; place-items: center; min-height: 260px; gap: 8px; color: var(--ink-muted); border: 1px dashed var(--border-subtle); background: var(--surface-raised); }
+.empty p { margin: 0; }

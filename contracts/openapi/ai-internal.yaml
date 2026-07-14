@@ -1,0 +1,212 @@
+openapi: 3.1.0
+info:
+  title: AI Internal API
+  version: 1.0.0
+  description: Internal service API callable only by the authenticated Go business API.
+security:
+  - ServiceBearerAuth: []
+paths:
+  /internal/v1/knowledge/query:
+    post:
+      operationId: queryStandards
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgeQuery' } } } }
+      responses: { '200': { description: Cited answer, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgeAnswer' } } } } }
+  /internal/v1/diagnoses:
+    post:
+      operationId: diagnoseException
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosisRequest' } } } }
+      responses: { '200': { description: Evidence-bounded diagnosis, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosisResult' } } } }, '503': { description: Retrieval service degraded } }
+  /internal/v1/schedule-explanations:
+    post:
+      operationId: explainScheduleResult
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanationRequest' } } } }
+      responses: { '200': { description: Result-scoped explanation, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanationResult' } } } }, '503': { description: Service degraded } }
+  /internal/v1/data-quality-explanations:
+    post:
+      operationId: explainFailedRules
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityExplanationRequest' } } } }
+      responses: { '200': { description: Non-binding failed-rule explanation, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityExplanationResult' } } } }, '503': { description: Service degraded } }
+  /internal/v1/exception-case-candidates:
+    post:
+      operationId: extractExceptionCaseCandidate
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidateRequest' } } } }
+      responses: { '200': { description: Non-persistent candidate content, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidateResult' } } } }, '503': { description: Service degraded } }
+  /internal/v1/audit-filter-suggestions:
+    post:
+      operationId: suggestAuditFilters
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestionRequest' } } } }
+      responses: { '200': { description: Structured filter suggestion only, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestionResult' } } } }, '503': { description: Service degraded } }
+  /internal/v1/notification-body-drafts:
+    post:
+      operationId: draftNotificationBody
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationBodyDraftRequest' } } } }
+      responses: { '200': { description: Body-text draft only, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationBodyDraftResult' } } } }, '503': { description: Service degraded } }
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Service-issued bearer token required for internal calls. The AI service accepts actor and center context only from the authenticated Go business API.
+  schemas:
+    KnowledgeQuery:
+      type: object
+      description: Actor and center context is derived by the Go API from verified OIDC claims and forwarded only after ServiceBearerAuth succeeds. These fields are not accepted as authority from unauthenticated callers.
+      required: [center_id, actor_id, query]
+      properties:
+        center_id: { type: string }
+        actor_id: { type: string }
+        query: { type: string, minLength: 1 }
+    Citation:
+      type: object
+      required: [standard_title, version, clause, page, content]
+      properties:
+        standard_title: { type: string }
+        version: { type: string }
+        clause: { type: string }
+        page: { type: integer }
+        content: { type: string }
+    KnowledgeAnswer:
+      type: object
+      required: [answer, citations, evidence_available]
+      properties:
+        answer: { type: string }
+        citations: { type: array, items: { $ref: '#/components/schemas/Citation' } }
+        evidence_available: { type: boolean }
+    DiagnosisRequest:
+      type: object
+      description: Actor and center context is derived by the Go API from verified OIDC claims and forwarded only after ServiceBearerAuth succeeds. These fields are not accepted as authority from unauthenticated callers.
+      required: [center_id, actor_id, event_id, schedule_version, resource_snapshot_version]
+      properties:
+        center_id: { type: string }
+        actor_id: { type: string }
+        event_id: { type: string }
+        schedule_version: { type: integer }
+        resource_snapshot_version: { type: integer }
+        session_id: { type: string }
+    DiagnosisResult:
+      type: object
+      required: [event_id, affected_orders, frozen_step_ids, sla_risks, affected_resources, evidence, resolved_case_ids, recommendations, evidence_gaps, confidence, tool_calls]
+      properties:
+        event_id: { type: string }
+        affected_orders: { type: array, items: { type: object } }
+        frozen_step_ids: { type: array, items: { type: string } }
+        sla_risks: { type: array, items: { type: object } }
+        affected_resources: { type: array, items: { type: object } }
+        evidence: { type: array, items: { $ref: '#/components/schemas/Citation' } }
+        resolved_case_ids: { type: array, items: { type: string } }
+        recommendations: { type: array, items: { type: string } }
+        evidence_gaps: { type: array, items: { type: string } }
+        confidence: { type: string, enum: [high, medium, low, insufficient] }
+        tool_calls: { type: array, maxItems: 5, items: { type: string, enum: [get_event_snapshot, get_order_snapshot, get_resource_snapshot, get_schedule_snapshot, search_standards, search_resolved_cases] } }
+    AssistanceContext:
+      type: object
+      required: [center_id, actor_id, correlation_id]
+      properties:
+        center_id: { type: string }
+        actor_id: { type: string }
+        correlation_id: { type: string }
+        context_version: { type: string }
+        context_hash: { type: string }
+    ScheduleExplanationRequest:
+      allOf:
+        - $ref: '#/components/schemas/AssistanceContext'
+        - type: object
+          required: [preview_id, subject_type, subject_id, persisted_result]
+          properties:
+            preview_id: { type: string }
+            subject_type: { type: string, enum: [preview, order, step] }
+            subject_id: { type: string }
+            persisted_result: { type: object }
+    ScheduleExplanationResult:
+      type: object
+      required: [summary, constraint_reasons, tradeoffs, frozen_step_ids, blockers, evidence_available, degraded]
+      properties:
+        summary: { type: string }
+        constraint_reasons: { type: array, items: { type: string } }
+        tradeoffs: { type: array, items: { type: string } }
+        frozen_step_ids: { type: array, items: { type: string } }
+        blockers: { type: array, items: { type: object } }
+        evidence_available: { type: boolean }
+        degraded: { type: boolean }
+    DataQualityExplanationRequest:
+      allOf:
+        - $ref: '#/components/schemas/AssistanceContext'
+        - type: object
+          required: [scope, findings]
+          properties:
+            scope: { type: string, enum: [order, resource, schedule_preview] }
+            findings: { type: array, items: { type: object, required: [code, message, blocking], properties: { code: { type: string }, message: { type: string }, blocking: { type: boolean }, redacted_context: { type: object } } } }
+    DataQualityExplanationResult:
+      type: object
+      required: [explanations, degraded]
+      properties:
+        explanations: { type: array, items: { type: object, required: [code, explanation], properties: { code: { type: string }, explanation: { type: string }, suggested_correction: { type: [string, 'null'] } } } }
+        degraded: { type: boolean }
+    ExceptionCaseCandidateRequest:
+      allOf:
+        - $ref: '#/components/schemas/AssistanceContext'
+        - type: object
+          required: [event_id, closed_event_snapshot]
+          properties:
+            event_id: { type: string }
+            closed_event_snapshot: { type: object }
+    ExceptionCaseCandidateResult:
+      type: object
+      required: [summary, trigger, impact, disposition, outcome, tags, evidence, retention_until, degraded]
+      properties:
+        summary: { type: string }
+        trigger: { type: string }
+        impact: { type: string }
+        disposition: { type: string }
+        outcome: { type: string }
+        tags: { type: array, items: { type: string } }
+        evidence: { type: array, items: { $ref: '#/components/schemas/Citation' } }
+        retention_until: { type: string, format: date-time }
+        degraded: { type: boolean }
+    AuditFilterSuggestionRequest:
+      allOf:
+        - $ref: '#/components/schemas/AssistanceContext'
+        - type: object
+          required: [query, allowed_fields]
+          properties:
+            query: { type: string, minLength: 1, maxLength: 1000 }
+            allowed_fields: { type: array, items: { type: string, enum: [actor_id, action, entity_id, created_at] } }
+    AuditFilterSuggestionResult:
+      type: object
+      required: [filters, explanation, uncertainty, degraded]
+      properties:
+        filters: { type: array, items: { type: object, required: [field, operator, value], properties: { field: { type: string, enum: [actor_id, action, entity_id, created_at] }, operator: { type: string, enum: [equals, contains, gte, lte] }, value: { type: string } } } }
+        explanation: { type: string }
+        uncertainty: { type: boolean }
+        degraded: { type: boolean }
+    NotificationBodyDraftRequest:
+      allOf:
+        - $ref: '#/components/schemas/AssistanceContext'
+        - type: object
+          required: [notification_id, title, source_body]
+          properties:
+            notification_id: { type: string }
+            title: { type: string }
+            source_body: { type: string }
+            instruction: { type: string, maxLength: 1000 }
+    NotificationBodyDraftResult:
+      type: object
+      required: [body, degraded]
+      properties:
+        body: { type: string }
+        degraded: { type: boolean }

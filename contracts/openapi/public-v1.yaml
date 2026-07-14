@@ -1,0 +1,273 @@
+openapi: 3.1.0
+info:
+  title: Detection Scheduling Workbench API
+  version: 1.0.0
+  description: Human-approved scheduling API for an electrical-product testing center.
+servers:
+  - url: /api/v1
+security:
+  - OidcSessionCookie: []
+paths:
+  /session/me:
+    get:
+      operationId: getSession
+      responses:
+        '200': { $ref: '#/components/responses/SessionResponse' }
+  /orders:
+    get:
+      operationId: listOrders
+      parameters: [ { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }, { $ref: '#/components/parameters/Query' } ]
+      responses: { '200': { $ref: '#/components/responses/OrderPage' } }
+    post:
+      operationId: createOrder
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OrderInput' } } } }
+      responses: { '201': { $ref: '#/components/responses/OrderResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /orders/{order_id}:
+    parameters: [ { $ref: '#/components/parameters/OrderId' } ]
+    get:
+      operationId: getOrder
+      responses: { '200': { $ref: '#/components/responses/OrderResponse' }, '404': { $ref: '#/components/responses/Problem' } }
+    patch:
+      operationId: updateOrder
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OrderPatch' } } } }
+      responses: { '200': { $ref: '#/components/responses/OrderResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+    delete:
+      operationId: cancelOrder
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      responses: { '204': { description: Cancelled }, '409': { $ref: '#/components/responses/Problem' } }
+  /orders/{order_id}/retests:
+    post:
+      operationId: createRetest
+      parameters: [ { $ref: '#/components/parameters/OrderId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 1 } } } } } }
+      responses: { '201': { $ref: '#/components/responses/OrderResponse' } }
+  /resources/equipment:
+    get: { operationId: listEquipment, responses: { '200': { $ref: '#/components/responses/EquipmentList' } } }
+  /resources/employees:
+    get: { operationId: listEmployees, responses: { '200': { $ref: '#/components/responses/EmployeeList' } } }
+  /resources/shifts:
+    get: { operationId: listShifts, responses: { '200': { $ref: '#/components/responses/ShiftList' } } }
+  /resources/unavailability:
+    get: { operationId: listUnavailability, responses: { '200': { $ref: '#/components/responses/UnavailabilityList' } } }
+  /schedules/current:
+    get: { operationId: getCurrentSchedule, responses: { '200': { $ref: '#/components/responses/ScheduleResponse' } } }
+  /schedule-previews:
+    get: { operationId: listSchedulePreviews, responses: { '200': { $ref: '#/components/responses/SchedulePreviewPage' } } }
+    post:
+      operationId: createSchedulePreview
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { event_ids: { type: array, items: { type: string } } } } } } }
+      responses: { '202': { $ref: '#/components/responses/SchedulePreviewResponse' } }
+  /schedule-previews/{preview_id}:
+    parameters: [ { $ref: '#/components/parameters/PreviewId' } ]
+    get: { operationId: getSchedulePreview, responses: { '200': { $ref: '#/components/responses/SchedulePreviewResponse' } } }
+  /schedule-previews/{preview_id}/explanation:
+    post:
+      operationId: explainSchedulePreview
+      parameters: [ { $ref: '#/components/parameters/PreviewId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanationRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/ScheduleExplanationResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /schedule-previews/preflight:
+    post:
+      operationId: preflightScheduleDataQuality
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityPreflightRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/DataQualityPreflightResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /schedule-previews/{preview_id}/approve:
+    post:
+      operationId: approveSchedulePreview
+      parameters: [ { $ref: '#/components/parameters/PreviewId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      responses: { '200': { $ref: '#/components/responses/SchedulePreviewResponse' }, '409': { $ref: '#/components/responses/Problem' }, '503': { $ref: '#/components/responses/Problem' } }
+  /schedule-previews/{preview_id}/reject:
+    post:
+      operationId: rejectSchedulePreview
+      parameters: [ { $ref: '#/components/parameters/PreviewId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      responses: { '200': { $ref: '#/components/responses/SchedulePreviewResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /schedule-steps/{step_id}/start:
+    patch:
+      operationId: startScheduleStep
+      parameters: [ { $ref: '#/components/parameters/StepId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      responses: { '200': { $ref: '#/components/responses/ScheduleStepResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /schedule-steps/{step_id}/complete:
+    patch:
+      operationId: completeScheduleStep
+      parameters: [ { $ref: '#/components/parameters/StepId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      responses: { '200': { $ref: '#/components/responses/ScheduleStepResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /events:
+    get: { operationId: listEvents, responses: { '200': { $ref: '#/components/responses/EventPage' } } }
+  /events/{event_id}:
+    get: { operationId: getEvent, parameters: [ { $ref: '#/components/parameters/EventId' } ], responses: { '200': { $ref: '#/components/responses/EventResponse' } } }
+  /events/{event_id}/diagnose:
+    post:
+      operationId: diagnoseEvent
+      parameters: [ { $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/IdempotencyKey' } ]
+      responses: { '202': { $ref: '#/components/responses/DiagnosisResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /events/{event_id}/case-candidates:
+    post:
+      operationId: createExceptionCaseCandidate
+      parameters: [ { $ref: '#/components/parameters/EventId' } ]
+      responses: { '200': { $ref: '#/components/responses/ExceptionCaseCandidateResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /exception-case-candidates/{candidate_id}/submit:
+    post:
+      operationId: submitExceptionCaseCandidate
+      parameters: [ { $ref: '#/components/parameters/CaseCandidateId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidateSubmission' } } } }
+      responses: { '201': { $ref: '#/components/responses/ExceptionCaseReviewResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /events/{event_id}/close:
+    post:
+      operationId: closeEvent
+      parameters: [ { $ref: '#/components/parameters/EventId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' } ]
+      responses: { '200': { $ref: '#/components/responses/EventResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /knowledge/query:
+    post:
+      operationId: queryKnowledge
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [query], properties: { query: { type: string, minLength: 1 } } } } } }
+      responses: { '200': { $ref: '#/components/responses/KnowledgeResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /knowledge/impact-analysis:
+    post:
+      operationId: analyzeKnowledgeImpact
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [standard_version_id], properties: { standard_version_id: { type: string } } } } } }
+      responses: { '200': { $ref: '#/components/responses/KnowledgeResponse' } }
+  /notifications:
+    get: { operationId: listNotifications, responses: { '200': { $ref: '#/components/responses/NotificationPage' } } }
+  /notifications/{notification_id}/read:
+    patch:
+      operationId: readNotification
+      parameters: [ { $ref: '#/components/parameters/NotificationId' }, { $ref: '#/components/parameters/IdempotencyKey' } ]
+      responses: { '204': { description: Marked read } }
+  /notification-drafts:
+    post:
+      operationId: createNotificationDraft
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationDraftRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/NotificationDraftResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /notification-drafts/{draft_id}/send:
+    post:
+      operationId: sendNotificationDraft
+      parameters: [ { $ref: '#/components/parameters/NotificationDraftId' }, { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationDraftSendRequest' } } } }
+      responses: { '202': { $ref: '#/components/responses/NotificationDeliveryResponse' }, '409': { $ref: '#/components/responses/Problem' } }
+  /audit-logs:
+    get: { operationId: listAuditLogs, responses: { '200': { $ref: '#/components/responses/AuditPage' } } }
+  /audit-logs/filter-suggestions:
+    post:
+      operationId: suggestAuditFilters
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestionRequest' } } } }
+      responses: { '200': { $ref: '#/components/responses/AuditFilterSuggestionResponse' }, '503': { $ref: '#/components/responses/Problem' } }
+  /system/health:
+    get: { operationId: getSystemHealth, responses: { '200': { $ref: '#/components/responses/HealthResponse' } } }
+components:
+  securitySchemes:
+    OidcSessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-public_session
+      description: OIDC-authenticated BFF session cookie for same-origin browser requests. The BFF sets this cookie after the OIDC login flow with HttpOnly, Secure, and SameSite protections; the React client does not attach a Bearer token and the browser sends the cookie automatically. The BFF validates the OIDC-authenticated session and derives actor identity, center scope, and roles exclusively from verified claims.
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 25 } }
+    Query: { name: q, in: query, schema: { type: string } }
+    OrderId: { name: order_id, in: path, required: true, schema: { type: string } }
+    PreviewId: { name: preview_id, in: path, required: true, schema: { type: string } }
+    StepId: { name: step_id, in: path, required: true, schema: { type: string } }
+    EventId: { name: event_id, in: path, required: true, schema: { type: string } }
+    NotificationId: { name: notification_id, in: path, required: true, schema: { type: string } }
+    CaseCandidateId: { name: candidate_id, in: path, required: true, schema: { type: string } }
+    NotificationDraftId: { name: draft_id, in: path, required: true, schema: { type: string } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 1 } }
+    IfMatch: { name: If-Match, in: header, required: true, schema: { type: string, minLength: 1 } }
+  responses:
+    Problem: { description: Problem details, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    SessionResponse: { description: Session, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
+    OrderResponse: { description: Order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+    OrderPage: { description: Order page, content: { application/json: { schema: { $ref: '#/components/schemas/OrderPage' } } } }
+    EquipmentList: { description: Equipment, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Equipment' } } } } }
+    EmployeeList: { description: Employees, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Employee' } } } } }
+    ShiftList: { description: Shifts, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Shift' } } } } }
+    UnavailabilityList: { description: Unavailability, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Unavailability' } } } } }
+    ScheduleResponse: { description: Schedule, content: { application/json: { schema: { $ref: '#/components/schemas/Schedule' } } } }
+    ScheduleStepResponse: { description: Schedule step, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleStep' } } } }
+    SchedulePreviewResponse: { description: Preview, content: { application/json: { schema: { $ref: '#/components/schemas/SchedulePreview' } } } }
+    SchedulePreviewPage: { description: Preview page, content: { application/json: { schema: { $ref: '#/components/schemas/SchedulePreviewPage' } } } }
+    EventResponse: { description: Event, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+    EventPage: { description: Event page, content: { application/json: { schema: { $ref: '#/components/schemas/EventPage' } } } }
+    DiagnosisResponse: { description: Diagnosis, content: { application/json: { schema: { $ref: '#/components/schemas/Diagnosis' } } } }
+    ScheduleExplanationResponse: { description: Deterministic preview explanation, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanation' } } } }
+    DataQualityPreflightResponse: { description: Deterministic data-quality preflight, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityPreflight' } } } }
+    ExceptionCaseCandidateResponse: { description: Non-persistent exception case candidate, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidate' } } } }
+    ExceptionCaseReviewResponse: { description: Submitted PostgreSQL review-queue record, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseReview' } } } }
+    KnowledgeResponse: { description: Knowledge result, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgeResult' } } } }
+    NotificationPage: { description: Notification page, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationPage' } } } }
+    NotificationDraftResponse: { description: Non-persistent enhanced notification body draft, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationDraft' } } } }
+    NotificationDeliveryResponse: { description: Accepted deterministic notification delivery, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationDelivery' } } } }
+    AuditPage: { description: Audit page, content: { application/json: { schema: { $ref: '#/components/schemas/AuditPage' } } } }
+    AuditFilterSuggestionResponse: { description: Editable audit-filter suggestion, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestion' } } } }
+    HealthResponse: { description: Health, content: { application/json: { schema: { $ref: '#/components/schemas/Health' } } } }
+  schemas:
+    Problem: { type: object, required: [type, title, status], properties: { type: { type: string }, title: { type: string }, status: { type: integer }, detail: { type: string }, instance: { type: string } } }
+    Session: { type: object, required: [user_id, role], properties: { user_id: { type: string }, role: { type: string, enum: [admin, scheduler, operator, viewer] }, display_name: { type: string } } }
+    OrderInput: { type: object, required: [sample_name, sample_quantity, certification_type, priority, promised_finish_time, project_ids], properties: { sample_name: { type: string }, sample_quantity: { type: integer, minimum: 1 }, certification_type: { type: string }, priority: { type: string, enum: [normal, urgent, vip] }, promised_finish_time: { type: string, format: date-time }, project_ids: { type: array, minItems: 1, items: { type: string } } } }
+    OrderPatch: { type: object, minProperties: 1, properties: { priority: { type: string, enum: [normal, urgent, vip] }, promised_finish_time: { type: string, format: date-time }, project_ids: { type: array, items: { type: string } } } }
+    Order: { allOf: [ { $ref: '#/components/schemas/OrderInput' }, { type: object, required: [id, status, version, created_at], properties: { id: { type: string }, status: { type: string }, version: { type: integer }, created_at: { type: string, format: date-time } } } ] }
+    OrderPage: { type: object, required: [items, page, page_size, total], properties: { items: { type: array, items: { $ref: '#/components/schemas/Order' } }, page: { type: integer }, page_size: { type: integer }, total: { type: integer } } }
+    Equipment: { type: object, required: [id, name, status, capacity, project_ids], properties: { id: { type: string }, name: { type: string }, status: { type: string }, capacity: { type: integer }, project_ids: { type: array, items: { type: string } }, version: { type: integer } } }
+    Employee: { type: object, required: [id, name, skills], properties: { id: { type: string }, name: { type: string }, skills: { type: array, items: { type: string } }, shift_id: { type: string }, version: { type: integer } } }
+    Shift: { type: object, required: [id, name, start_time, end_time], properties: { id: { type: string }, name: { type: string }, start_time: { type: string }, end_time: { type: string } } }
+    Unavailability: { type: object, required: [id, entity_id, starts_at, ends_at], properties: { id: { type: string }, entity_id: { type: string }, starts_at: { type: string, format: date-time }, ends_at: { type: string, format: date-time }, reason: { type: string } } }
+    ScheduleStep: { type: object, required: [id, order_id, project_id, starts_at, ends_at, status, frozen], properties: { id: { type: string }, order_id: { type: string }, project_id: { type: string }, equipment_id: { type: string }, employee_ids: { type: array, items: { type: string } }, starts_at: { type: string, format: date-time }, ends_at: { type: string, format: date-time }, status: { type: string }, frozen: { type: boolean }, version: { type: integer } } }
+    Schedule: { type: object, required: [version, steps], properties: { version: { type: integer }, steps: { type: array, items: { $ref: '#/components/schemas/ScheduleStep' } } } }
+    SchedulePreview:
+      type: object
+      required: [id, status, algorithm_used, solver_status, fallback_used, fallback_reason, base_schedule_version, resource_snapshot_version, frozen_step_count, changed_step_count, delayed_order_count, weighted_delay_minutes, total_delay_minutes, blockers, changes, schedule, version]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [pending_review, approved, rejected, conflicted, failed] }
+        algorithm_used: { type: string, enum: [cp_sat, sla_fallback] }
+        solver_status: { type: string }
+        fallback_used: { type: boolean }
+        fallback_reason: { type: [string, 'null'] }
+        base_schedule_version: { type: integer }
+        resource_snapshot_version: { type: integer }
+        frozen_step_count: { type: integer }
+        changed_step_count: { type: integer }
+        delayed_order_count: { type: integer }
+        weighted_delay_minutes: { type: integer }
+        total_delay_minutes: { type: integer }
+        blockers: { type: array, items: { type: object } }
+        changes: { type: array, items: { type: object } }
+        schedule: { $ref: '#/components/schemas/Schedule' }
+        version: { type: integer }
+      oneOf:
+        - properties:
+            fallback_used: { type: boolean, const: false }
+            fallback_reason: { type: 'null' }
+        - properties:
+            fallback_used: { type: boolean, const: true }
+            fallback_reason:
+              type: string
+              enum: [cp_sat_infeasible, cp_sat_timeout_without_feasible_solution, cp_sat_execution_error, input_size_protection_threshold_exceeded]
+    SchedulePreviewPage: { type: object, required: [items, page, page_size, total], properties: { items: { type: array, items: { $ref: '#/components/schemas/SchedulePreview' } }, page: { type: integer }, page_size: { type: integer }, total: { type: integer } } }
+    Event: { type: object, required: [id, event_type, status, severity, version, occurred_at], properties: { id: { type: string }, event_type: { type: string }, status: { type: string }, severity: { type: string }, entity_id: { type: string }, version: { type: integer }, occurred_at: { type: string, format: date-time }, payload: { type: object } } }
+    EventPage: { type: object, required: [items, page, page_size, total], properties: { items: { type: array, items: { $ref: '#/components/schemas/Event' } }, page: { type: integer }, page_size: { type: integer }, total: { type: integer } } }
+    Citation: { type: object, required: [standard_title, version, clause, page, content], properties: { standard_title: { type: string }, version: { type: string }, clause: { type: string }, page: { type: integer }, content: { type: string } } }
+    Diagnosis: { type: object, required: [event_id, affected_order_ids, frozen_step_ids, sla_risks, affected_resources, evidence, resolved_case_ids, recommendations, evidence_gaps, confidence, tool_calls, degraded, memory_summary_status], properties: { event_id: { type: string }, affected_order_ids: { type: array, items: { type: string } }, frozen_step_ids: { type: array, items: { type: string } }, sla_risks: { type: array, items: { type: object } }, affected_resources: { type: array, items: { type: object } }, evidence: { type: array, items: { $ref: '#/components/schemas/Citation' } }, resolved_case_ids: { type: array, items: { type: string } }, recommendations: { type: array, items: { type: string } }, evidence_gaps: { type: array, items: { type: string } }, confidence: { type: string, enum: [high, medium, low, insufficient] }, tool_calls: { type: array, maxItems: 5, items: { type: string, enum: [get_event_snapshot, get_order_snapshot, get_resource_snapshot, get_schedule_snapshot, search_standards, search_resolved_cases] } }, degraded: { type: boolean }, memory_summary_status: { type: string, enum: [available, degraded, not_used] } } }
+    ScheduleExplanationRequest: { type: object, required: [subject_type, subject_id], properties: { subject_type: { type: string, enum: [preview, order, step] }, subject_id: { type: string } } }
+    ScheduleExplanation: { type: object, required: [preview_id, subject_type, subject_id, summary, constraint_reasons, tradeoffs, frozen_step_ids, blockers, evidence_available, degraded], properties: { preview_id: { type: string }, subject_type: { type: string, enum: [preview, order, step] }, subject_id: { type: string }, summary: { type: string }, constraint_reasons: { type: array, items: { type: string } }, tradeoffs: { type: array, items: { type: string } }, frozen_step_ids: { type: array, items: { type: string } }, blockers: { type: array, items: { type: object } }, fallback_reason: { type: [string, 'null'] }, evidence_available: { type: boolean }, degraded: { type: boolean } } }
+    DataQualityPreflightRequest: { type: object, required: [scope], properties: { scope: { type: string, enum: [order, resource, schedule_preview] }, order_id: { type: string }, resource_ids: { type: array, items: { type: string } }, preview_id: { type: string } } }
+    DataQualityFinding: { type: object, required: [code, severity, message, blocking], properties: { code: { type: string }, severity: { type: string, enum: [info, warning, error] }, message: { type: string }, field: { type: string }, blocking: { type: boolean }, suggestion: { type: [string, 'null'] } } }
+    DataQualityPreflight: { type: object, required: [scope, status, findings, deterministic, explanation_available, degraded], properties: { scope: { type: string, enum: [order, resource, schedule_preview] }, status: { type: string, enum: [passed, blocked] }, findings: { type: array, items: { $ref: '#/components/schemas/DataQualityFinding' } }, deterministic: { type: boolean, const: true }, explanation_available: { type: boolean }, degraded: { type: boolean } } }
+    ExceptionCaseCandidate: { type: object, required: [candidate_id, event_id, source_candidate_hash, summary, trigger, impact, disposition, outcome, tags, evidence, retention_until, status], properties: { candidate_id: { type: string, description: Opaque non-persistent signed candidate reference }, event_id: { type: string }, source_candidate_hash: { type: string }, summary: { type: string }, trigger: { type: string }, impact: { type: string }, disposition: { type: string }, outcome: { type: string }, tags: { type: array, items: { type: string } }, evidence: { type: array, items: { $ref: '#/components/schemas/Citation' } }, retention_until: { type: string, format: date-time }, status: { type: string, const: candidate } } }
+    ExceptionCaseCandidateSubmission: { type: object, required: [source_candidate_hash, summary, trigger, impact, disposition, outcome, tags, retention_until], properties: { source_candidate_hash: { type: string }, summary: { type: string, minLength: 1 }, trigger: { type: string, minLength: 1 }, impact: { type: string, minLength: 1 }, disposition: { type: string, minLength: 1 }, outcome: { type: string, minLength: 1 }, tags: { type: array, items: { type: string } }, retention_until: { type: string, format: date-time } } }
+    ExceptionCaseReview: { type: object, required: [id, event_id, status, version, submitted_at], properties: { id: { type: string }, event_id: { type: string }, status: { type: string, const: pending_review }, version: { type: integer }, submitted_at: { type: string, format: date-time } } }
+    KnowledgeResult: { type: object, required: [answer, citations, evidence_available], properties: { answer: { type: string }, citations: { type: array, items: { $ref: '#/components/schemas/Citation' } }, evidence_available: { type: boolean } } }
+    Notification: { type: object, required: [id, title, status, created_at], properties: { id: { type: string }, title: { type: string }, status: { type: string }, created_at: { type: string, format: date-time } } }
+    NotificationPage: { type: object, required: [items, page, page_size, total], properties: { items: { type: array, items: { $ref: '#/components/schemas/Notification' } }, page: { type: integer }, page_size: { type: integer }, total: { type: integer } } }
+    NotificationDraftRequest: { type: object, required: [notification_id], properties: { notification_id: { type: string }, instruction: { type: string, maxLength: 1000 } } }
+    NotificationDraft: { type: object, required: [draft_id, notification_id, source_hash, title, body, degraded], properties: { draft_id: { type: string, description: Opaque non-persistent signed draft reference }, notification_id: { type: string }, source_hash: { type: string }, title: { type: string }, body: { type: string }, degraded: { type: boolean } } }
+    NotificationDraftSendRequest: { type: object, required: [source_hash, body], properties: { source_hash: { type: string }, body: { type: string, minLength: 1, maxLength: 10000 } } }
+    NotificationDelivery: { type: object, required: [id, draft_id, status, accepted_at], properties: { id: { type: string }, draft_id: { type: string }, status: { type: string, const: accepted }, accepted_at: { type: string, format: date-time } } }
+    AuditLog: { type: object, required: [id, actor_id, action, created_at], properties: { id: { type: string }, actor_id: { type: string }, action: { type: string }, created_at: { type: string, format: date-time }, detail: { type: object } } }
+    AuditPage: { type: object, required: [items, page, page_size, total], properties: { items: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }, page: { type: integer }, page_size: { type: integer }, total: { type: integer } } }
+    AuditFilterSuggestionRequest: { type: object, required: [query], properties: { query: { type: string, minLength: 1, maxLength: 1000 } } }
+    AuditFilterSuggestion: { type: object, required: [original_query, filters, explanation, uncertainty, degraded], properties: { original_query: { type: string }, filters: { type: array, items: { type: object, required: [field, operator, value], properties: { field: { type: string, enum: [actor_id, action, entity_id, created_at] }, operator: { type: string, enum: [equals, contains, gte, lte] }, value: { type: string } } } }, explanation: { type: string }, uncertainty: { type: boolean }, degraded: { type: boolean } } }
+    Health: { type: object, required: [status, services], properties: { status: { type: string, enum: [healthy, degraded] }, services: { type: object, additionalProperties: { type: string } } } }

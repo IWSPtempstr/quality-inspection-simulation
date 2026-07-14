@@ -1,0 +1,56 @@
+openapi: 3.1.0
+info:
+  title: Scheduler Internal API
+  version: 1.0.0
+  description: Internal service API callable only by the authenticated Go business API.
+security:
+  - ServiceBearerAuth: []
+paths:
+  /internal/v1/schedule:
+    post:
+      operationId: calculateSchedule
+      security:
+        - ServiceBearerAuth: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SchedulingSnapshot' } } } }
+      responses: { '200': { description: Candidate result, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleCandidate' } } } }, '401': { description: Invalid service authentication } }
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Service-issued bearer token required for internal calls. The scheduler accepts immutable snapshots only from the authenticated Go business API.
+  schemas:
+    SchedulingSnapshot:
+      type: object
+      required: [snapshot_id, input_hash, as_of, base_schedule_version, resource_snapshot_version, orders, resources, frozen_steps]
+      properties:
+        snapshot_id: { type: string }
+        input_hash: { type: string }
+        as_of: { type: string, format: date-time }
+        base_schedule_version: { type: integer }
+        resource_snapshot_version: { type: integer }
+        orders: { type: array, items: { type: object } }
+        resources: { type: object }
+        frozen_steps: { type: array, items: { type: object } }
+    ScheduleCandidate:
+      type: object
+      required: [input_hash, algorithm_used, solver_status, fallback_used, fallback_reason, blocked_steps, schedule, metrics]
+      properties:
+        input_hash: { type: string }
+        algorithm_used: { type: string, enum: [cp_sat, sla_fallback] }
+        solver_status: { type: string }
+        fallback_used: { type: boolean }
+        fallback_reason: { type: [string, 'null'] }
+        blocked_steps: { type: array, items: { type: object } }
+        schedule: { type: object }
+        metrics: { type: object }
+      oneOf:
+        - properties:
+            fallback_used: { const: false }
+            fallback_reason: { type: 'null' }
+        - properties:
+            fallback_used: { const: true }
+            fallback_reason:
+              type: string
+              enum: [cp_sat_infeasible, cp_sat_timeout_without_feasible_solution, cp_sat_execution_error, input_size_protection_threshold_exceeded]

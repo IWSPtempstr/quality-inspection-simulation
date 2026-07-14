@@ -1,0 +1,16 @@
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.surface { min-width: 0; padding: 18px; background: var(--surface-raised); border: 1px solid var(--border-subtle); }
+.surfaceHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.surface h2 { margin: 0; font-size: 16px; }
+.surfaceHeader p { margin: 4px 0 0; color: var(--ink-muted); font-size: 13px; }
+.search { display: flex; flex: 0 1 210px; align-items: center; gap: 7px; min-width: 160px; color: var(--ink-muted); }
+.search input { width: 100%; min-width: 0; min-height: 36px; padding: 0 9px; color: var(--ink-strong); background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 6px; font: inherit; }
+.tableWrap { overflow: auto; border-top: 1px solid var(--border-subtle); }
+.tableWrap table { width: 100%; min-width: 580px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tableWrap th { position: sticky; top: 0; z-index: 1; padding: 10px; color: var(--ink-muted); background: var(--surface-subtle); font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
+.tableWrap td { padding: 11px 10px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; white-space: nowrap; }
+.tableState { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 184px; padding: 12px; color: var(--ink-muted); border-top: 1px solid var(--border-subtle); text-align: center; }
+.degraded, .healthError { display: flex; align-items: center; min-height: 36px; margin: 0 0 16px; padding: 8px 12px; color: var(--status-warning-ink); background: var(--status-warning-bg); border: 1px solid var(--status-warning); font-size: 13px; }
+.healthError { color: var(--ink-muted); background: var(--surface-subtle); border-color: var(--border-subtle); }
+.preflight { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px 18px; margin-bottom: 18px; padding: 14px 16px; background: var(--surface-raised); border: 1px solid var(--border-subtle); }.preflight h2 { margin: 0; font-size: 16px; }.preflight p { margin: 4px 0 0; color: var(--ink-muted); font-size: 13px; }.preflightResult { flex-basis: 100%; display: grid; gap: 4px; padding: 10px 12px; background: var(--status-warning-bg); border-left: 3px solid var(--status-warning); }.preflightResult p { margin: 0; color: var(--status-warning-ink); }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
