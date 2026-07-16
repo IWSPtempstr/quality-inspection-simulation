@@ -18,7 +18,7 @@ type Order struct {
 
 	SampleQuantity int32 `json:"sample_quantity"`
 
-	CertificationType string `json:"certification_type"`
+	CertificationType CertificationType `json:"certification_type"`
 
 	Priority string `json:"priority"`
 
@@ -28,7 +28,7 @@ type Order struct {
 
 	Id string `json:"id"`
 
-	Status string `json:"status"`
+	Status OrderStatus `json:"status"`
 
 	Version int32 `json:"version"`
 

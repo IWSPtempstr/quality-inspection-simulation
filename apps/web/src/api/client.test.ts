@@ -17,4 +17,34 @@ describe("apiRequest", () => {
   it("creates a key callers can retain for a retry", () => {
     expect(createIdempotencyKey()).toEqual(expect.any(String));
   });
+
+  it("uses the BFF session for a G4-G7 Go request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest("/orders");
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.credentials).toBe("include");
+  });
+
+  it("uses the BFF session for a G8 Go facade request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ degraded: false }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest("/events/event-001/diagnose", { method: "POST", body: JSON.stringify({}) });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.credentials).toBe("include");
+  });
+
+  it("does not override the request strategy for a knowledge fixture route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ answer: "fixture" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest("/knowledge/query", { method: "POST", body: JSON.stringify({ query: "CCC" }) });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.credentials).toBeUndefined();
+  });
 });

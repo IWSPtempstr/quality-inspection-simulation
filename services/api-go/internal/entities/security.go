@@ -24,6 +24,7 @@ const (
 	CapabilityEventsWrite       Capability = "events:write"
 	CapabilityKnowledgeRead     Capability = "knowledge:read"
 	CapabilityNotificationsRead Capability = "notifications:read"
+	CapabilityNotificationsSend Capability = "notifications:send"
 	CapabilityAuditRead         Capability = "audit:read"
 	CapabilitySystemRead        Capability = "system:read"
 )

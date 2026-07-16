@@ -183,6 +183,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			handleFunctions.DefaultAPI.ListAuditLogs,
 		},
 		{
+			"ListDetectionProjects",
+			http.MethodGet,
+			"/api/v1/projects",
+			handleFunctions.DefaultAPI.ListDetectionProjects,
+		},
+		{
 			"ListEmployees",
 			http.MethodGet,
 			"/api/v1/resources/employees",
@@ -231,6 +237,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			handleFunctions.DefaultAPI.ListUnavailability,
 		},
 		{
+			"PauseOrder",
+			http.MethodPost,
+			"/api/v1/orders/:order_id/pause",
+			handleFunctions.DefaultAPI.PauseOrder,
+		},
+		{
 			"PreflightScheduleDataQuality",
 			http.MethodPost,
 			"/api/v1/schedule-previews/preflight",
@@ -253,6 +265,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			http.MethodPost,
 			"/api/v1/schedule-previews/:preview_id/reject",
 			handleFunctions.DefaultAPI.RejectSchedulePreview,
+		},
+		{
+			"ResumeOrder",
+			http.MethodPost,
+			"/api/v1/orders/:order_id/resume",
+			handleFunctions.DefaultAPI.ResumeOrder,
 		},
 		{
 			"SendNotificationDraft",

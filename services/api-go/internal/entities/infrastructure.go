@@ -6,11 +6,15 @@ import (
 )
 
 type IdempotencyRecord struct {
-	ID             string
-	Scope          string
-	IdempotencyKey string
-	RequestHash    string
-	CreatedAt      time.Time
+	ID                  string
+	Scope               string
+	IdempotencyKey      string
+	RequestHash         string
+	CreatedAt           time.Time
+	ResponseStatus      *int
+	ResponseContentType *string
+	ResponseBody        json.RawMessage
+	CompletedAt         *time.Time
 }
 
 type AuditLog struct {
@@ -36,5 +40,6 @@ type OutboxEvent struct {
 	Payload       json.RawMessage
 	OccurredAt    time.Time
 	PublishedAt   *time.Time
+	ClaimedAt     *time.Time
 	CreatedAt     time.Time
 }

@@ -14,6 +14,12 @@ import (
 )
 
 type OrderPatch struct {
+	SampleName string `json:"sample_name,omitempty"`
+
+	SampleQuantity int32 `json:"sample_quantity,omitempty"`
+
+	CertificationType CertificationType `json:"certification_type,omitempty"`
+
 	Priority string `json:"priority,omitempty"`
 
 	PromisedFinishTime time.Time `json:"promised_finish_time,omitempty"`

@@ -11,4 +11,6 @@ package generated
 
 type CreateRetestRequest struct {
 	Reason string `json:"reason"`
+
+	ProjectIds []string `json:"project_ids"`
 }

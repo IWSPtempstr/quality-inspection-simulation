@@ -344,6 +344,172 @@ equipment, employee, shift, or unavailability tables/models/repositories;
 those belong to G4. It must not create `inbox_events` or RabbitMQ persistence;
 that belongs to G5.
 
+### 6.1.1 G4 confirmed business contracts
+
+- The partner business system owns the global detection-project catalog. G4
+  persists its versioned local projection; G5 later imports full snapshots and
+  RabbitMQ increments. Projects apply to one or more of `CCC`, `CVC`, and
+  `international`; center-project applicability decides selectability. Project
+  and resource projections retain `source_id`, monotonic `source_version`,
+  effective period, and soft-active state. A deactivated record remains
+  historically visible but is excluded from new orders and allocations.
+- A valid order enters `pending_schedule` directly. Order states are
+  `pending_schedule`, `scheduled`, `in_progress`, `paused`, `completed`, and
+  `cancelled`. There is no order-review state. Only scheduler/admin may pause
+  an order without running steps; resume returns it to `pending_schedule`.
+- Pending-schedule orders are fully editable. Scheduled orders only permit
+  priority and promised-finish changes. Only pending-schedule, scheduled, and
+  paused orders may be cancelled.
+- A retest is a child order containing only requested source projects. A source
+  project must be completed and `retest_required` or `failed`; running,
+  pending, cancelled, and already-open-retest projects are rejected.
+- All relevant records and queries are scoped by OIDC-derived `center_id`.
+  Identical idempotency scope/key/request-hash requests return the stored first
+  HTTP response; the same key with another hash returns RFC 9457 `409`. The
+  idempotency record persists response status, content type, JSON response
+  body, completion timestamp, and the scope
+  `center_id + actor_id + operation + aggregate_id`.
+- G4 creates only the projection schema and deterministic validation for the
+  partner catalog/resources. Full-snapshot fetching, RabbitMQ consumption,
+  stale-event rejection, retry queues, and Inbox persistence remain G5 work.
+
+### 6.1.2 G5 confirmed messaging contracts
+
+- A partner resource-event envelope requires `event_id`, `center_id`,
+  `event_type`, `entity_type`, `entity_id`, `source_version`, `occurred_at`,
+  and `payload`. G5 accepts only `equipment`, `employee`, `shift`, and
+  `unavailability` entities with `upserted` or `deactivated` event types.
+  Unknown, malformed, missing-center, and invalid-payload events are
+  quarantined directly to the DLQ.
+- `inbox_events.event_id` is globally unique. Source versions are monotonic
+  per `center_id + entity_type + entity_id`; duplicate and stale events are
+  durably recorded, acknowledged, and make no projection or rebuild change.
+  Inbox records retain the envelope JSON, correlation ID, received time,
+  status (`received`, `processed`, `stale`, `quarantined`), retry count,
+  failure reason, and processed time before a projection update occurs.
+- The resource projection update, Inbox completion, and optional Outbox insert
+  are one PostgreSQL transaction. Repositories never commit independently.
+- `partner.events` is a durable topic exchange; `api-go.g5.resource` binds
+  `resource.#`. The worker uses manual acknowledgement and acknowledges only
+  after successful processing or durable stale/quarantine classification.
+  Transient failures route through durable 1-minute, 5-minute, and 30-minute
+  retry queues, then `api-go.g5.resource.dlq` with original envelope and
+  failure metadata.
+- Unpublished Outbox rows are safely claimed and published unchanged through
+  durable `internal.events` with routing key `schedule.rebuild.requested`.
+  Publisher confirms are mandatory; `published_at` is set only after a
+  confirmation. G5 publishes only immutable intent containing `center_id`,
+  debounce-window start, triggering event IDs, and correlation ID. It never
+  invokes the scheduler or creates a preview.
+- Redis key `g5:resource-debounce:{center_id}` uses `SET NX` with a 45-second
+  TTL. The first valid event in a window creates one rebuild intent; later
+  valid events still update projections but create no second intent. If Redis
+  is unavailable, the event remains durably `received`, receives no projection
+  update or acknowledgement, and enters the retry chain. Retry delay exceeds
+  the debounce TTL.
+- G5 tests use PostgreSQL, RabbitMQ 4, and Redis 7 Testcontainers. They cover
+  duplicate IDs, stale versions, center isolation, transactional rollback,
+  debounce behavior, Outbox recovery/publisher confirms, manual ack, all retry
+  queues, DLQ, and Redis outage retention. SQLite is prohibited.
+
+### 6.1.3 G6 confirmed scheduling contracts
+
+- G6 owns immutable Go snapshots, persisted candidate previews, human
+  approval, and partner write-back persistence. It does not call the Python
+  scheduler: until S4, an authenticated controlled callback writes fixture or
+  internal candidate results.
+- Creating a preview captures a center-scoped immutable snapshot of orders,
+  selected projects, resources, current formal schedule, and frozen steps. A
+  step is frozen when it is `running` or starts no later than
+  `as_of + 120 minutes`. Persist `snapshot_id`, stable `input_hash`, `as_of`,
+  base schedule version, resource snapshot version, immutable JSON, and
+  preview version.
+- `POST /internal/v1/schedule-previews/{preview_id}/candidate` requires
+  service authentication and matching `preview_id`, `snapshot_id`, and
+  `input_hash`. Mismatch, terminal state, and stale version are rejected. The
+  callback may only transition `pending_candidate` to `pending_review`.
+- Preview lifecycle is `pending_candidate -> pending_review -> rejected |
+  approved_pending_writeback`; `approved_pending_writeback -> approved |
+  conflicted | failed`. Only `approved` creates the next formal schedule
+  version. Admin and scheduler roles may approve or reject. Every transition
+  requires center isolation, If-Match, idempotency, append-only audit, and a
+  transactionally consistent Outbox record.
+- Redis provides a short approval lock. Redis outage rejects a new approval
+  attempt with a degraded-service `503` and changes neither preview nor formal
+  schedule state.
+- The write-back worker sends conditional HTTP `PUT` to
+  `/internal/v1/centers/{center_id}/schedule-versions/{target_version}` with
+  `If-Match: <base_schedule_version>` and a stable idempotency key. Its payload
+  contains center ID, preview ID, target version, and normalized schedule
+  steps. Success atomically marks the preview approved, persists the formal
+  version/steps, and audits. Timeout/5xx retains
+  `approved_pending_writeback` for retry; partner 409/412 records a sanitized
+  response summary, marks `conflicted`, and stops automatic retries.
+- G6 tests use PostgreSQL, Redis, and an HTTP partner stub for snapshot hash
+  determinism, frozen invariance, callback mismatch, center isolation,
+  idempotent replay, concurrent single approval, reject terminality, Redis
+  outage, write-back success, retry/recovery, and partner conflict. SQLite is
+  prohibited.
+
+### 6.1.4 G7 confirmed execution and operations contracts
+
+- G7 owns formal step execution, system-created event lifecycle, deterministic
+  notifications, health aggregation, and the bounded React API switch. It does
+  not implement AI assistance, scheduler algorithms, Python scheduler calls,
+  or G8 workflows.
+- A successful G6 partner write-back expands the immutable approved formal
+  schedule-version JSON into center-scoped `schedule_steps`; historical formal
+  versions are never modified. Step lifecycle is `scheduled -> running ->
+  completed` or `scheduled -> cancelled`. Starting records executor and actual
+  start; completing records actual completion and deterministic project result.
+  Start and complete require center isolation, executor role authorization,
+  `If-Match`, `Idempotency-Key`, append-only audit, and transactional Outbox
+  persistence. Running steps are immutable; G6 snapshot creation continues to
+  freeze running steps and steps starting no later than `as_of + 120 minutes`.
+- System-created events are center-scoped and transition `open -> acknowledged
+  -> closed`, with direct `open -> closed` permitted. Execution, resource, and
+  partner anomalies create `open` events. Only administrator or scheduler may
+  acknowledge or close. Closure persists actor, timestamp, and disposition,
+  does not request a schedule rebuild, and supplies only read-only facts to a
+  later G8 case-candidate flow.
+- Notifications are generated only by deterministic execution/event rules.
+  Recipients are the affected order creator plus scheduler-role users in that
+  center, de-duplicated. Supported channels are `in_app` and controlled
+  `webhook_stub`; delivery lifecycle is `pending -> sent | failed` and uses the
+  G5 durable retry/DLQ semantics. Read status is center-scoped and idempotent.
+- Health reports PostgreSQL failure as `unavailable`; RabbitMQ, Redis, partner
+  write-back, and notification-channel outages as `degraded`. It exposes only
+  named component status, never URLs, credentials, partner bodies, or stack
+  traces.
+- React switches only G4-G7 flows to Go: orders/resources, previews,
+  execution, events, notifications, and system health. G8 and knowledge
+  surfaces remain MSW-backed. The UI waits for server confirmation and recovers
+  from version conflicts; it must not optimistically mutate authoritative state.
+- Every execution, event, and notification mutation couples aggregate state,
+  audit, idempotency result, and Outbox insertion in one PostgreSQL transaction.
+  G7 tests use PostgreSQL, RabbitMQ, Redis, and controlled channel/partner HTTP
+  stubs for step version races, frozen invariance, event lifecycle, recipient
+  isolation/deduplication, retry/DLQ, read idempotency, rollback, dependency
+  health sanitization, and the bounded React contract/E2E switch. SQLite is
+  prohibited. The delivery gate is `go test -count=1 ./...`, `go vet ./...`,
+  fixed `golangci-lint v2.12.2`, and the affected frontend wrapper checks.
+- G7 completion amendment: RabbitMQ declares a durable notification work queue,
+  three durable notification retry queues delayed 1 minute, 5 minutes, and 30
+  minutes, and a notification DLQ. Notification Outbox rows are published with
+  broker confirmation and are marked published only after confirmation. A
+  manual-ack notification worker persists `sent` only after `in_app` or the
+  controlled `webhook_stub` adapter succeeds; a failure is durably recorded as
+  `failed` before the message enters the retry chain and is never acknowledged
+  early. Resource, execution, and partner anomalies create open events through
+  the same transactional event/notification rule path.
+- Health aggregation is injected at the API boundary and probes PostgreSQL,
+  RabbitMQ, Redis, partner write-back, and notification channel independently.
+  PostgreSQL failure returns overall `unavailable`; every other probe failure
+  returns overall `degraded`. Responses retain only stable component names and
+  statuses. G7 additionally requires PostgreSQL/RabbitMQ/Redis Testcontainers
+  coverage for retry/DLQ, worker confirmation/failure, dependency health,
+  anomaly event creation, recipient de-duplication, and transaction rollback.
+
 G2 integration tests use the pinned Go module
 `github.com/testcontainers/testcontainers-go v0.43.0` to start an isolated
 `postgres:16-alpine` container. Tests run the forward-only Goose migrations,
@@ -423,9 +589,11 @@ All public API paths begin `/api/v1`, use `snake_case`, timezone-aware ISO
 
 ```text
 GET  /session/me
+GET  /projects
 GET|POST /orders
 GET|PATCH|DELETE /orders/{id}
 POST /orders/{id}/retests
+POST /orders/{id}/{pause,resume}
 GET  /resources/{equipment,employees,shifts,unavailability}
 GET  /schedules/current
 GET|POST /schedule-previews
@@ -745,10 +913,10 @@ It is a browser fixture surface, not a login or an authentication mechanism.
 | G1 | Create the `api-go` directory skeleton defined in 4.3; committed OpenAPI Generator 7.17.0 `go-gin-server` wrapper/configuration and generated OpenAPI 3.1 transport boundary; mount only generated health plus `/readyz`; typed config, core lifecycle/observability, and separate API/worker entry points. No business repositories or use cases beyond health/readiness. | `services/api-go/**`, `spec.md` |
 | G2 | PostgreSQL connection, Goose migration runner, transaction unit, and Gorm models/repositories only for `idempotency_records`, `audit_logs`, and `outbox_events`; Testcontainers Go `v0.43.0` with `postgres:16-alpine` integration coverage. Orders/projects/resources remain G4; Inbox/RabbitMQ persistence remains G5. | `services/api-go/**`, `DEV_SPEC.md`, `spec.md` |
 | G3 | OIDC, four roles, audit, idempotency, version conflict middleware. | `services/api-go/**`, `spec.md` |
-| G4 | Order/project validation and resource APIs. | `services/api-go/**`, `spec.md` |
-| G5 | Inbox/Outbox worker, RabbitMQ retries/DLQ, Redis failure behavior. | `services/api-go/**`, `spec.md` |
-| G6 | Immutable snapshot, preview persistence, approval, external versioned/idempotent write-back. | `services/api-go/**`, `spec.md` |
-| G7 | Execution, events, notifications, system view, and React API switch. | `services/api-go/**`, `apps/web/src/{api/**,mocks/**}`, `spec.md` |
+| G4 | Apply the confirmed G4 business contracts in 6.1.1: project catalog read, order/resource migrations and APIs, partial retest, pause/resume, center isolation, deterministic project validation, and persisted idempotency response replay. No RabbitMQ consumer, Inbox, scheduler, or approval implementation. | `services/api-go/**`, `contracts/openapi/public-v1.yaml`, `DEV_SPEC.md`, `spec.md` |
+| G5 | Apply the confirmed G5 messaging contracts in 6.1.2: resource-event Inbox/projections, transactional Outbox, RabbitMQ retry/DLQ and publisher confirms, and Redis debounce/outage behavior. No scheduler invocation, preview, approval, project-catalog import, or partner write-back. | `services/api-go/**`, `DEV_SPEC.md`, `spec.md` |
+| G6 | Apply the confirmed G6 scheduling contracts in 6.1.3: immutable snapshots, controlled candidate callback, persisted preview lifecycle, approval locks, and conditional partner HTTP write-back. No Python scheduler call, scheduling algorithm, execution reporting, notification, or G7 behavior. | `services/api-go/**`, `DEV_SPEC.md`, `spec.md` |
+| G7 | Apply the confirmed G7 execution and operations contracts in 6.1.4: formal-step expansion/execution, event and deterministic notification lifecycle, health aggregation, and bounded React G4-G7 Go API switch. The existing main and demo Playwright configurations may be adjusted only to keep their already-separated live and fixture server responsibilities. No AI assistance, scheduler algorithm/call, or G8 behavior. | `services/api-go/**`, `apps/web/src/{api/**,mocks/**}`, `apps/web/tests/{playwright.config.ts,demo-playwright.config.ts}` only for that configuration separation, `contracts/openapi/public-v1.yaml` only when a missing execution/event schema prevents the contract, `DEV_SPEC.md`, `spec.md` |
 | G8 | Data-quality preflight, AI-assistance facade endpoints, PostgreSQL case-review workflow, audit-filter validation, and notification draft/send boundary. Go validates actor/center scope and rule results; it never delegates a business mutation to AI. | `services/api-go/**`, `contracts/openapi/{public-v1.yaml,ai-internal.yaml}`, `apps/web/src/{api/**,mocks/**}`, `spec.md` |
 
 #### G8/A8 interface mapping
@@ -781,9 +949,90 @@ migration in production; Goose migrations are mandatory.
 
 ### Phase 3: Python scheduler
 
+#### S1 confirmed scheduler foundation contract
+
+S1 creates the Python scheduler's importable, solver-free foundation. It owns
+only typed immutable contracts, typed non-secret configuration, normalized
+candidate hashing, and package/test bootstrap. S1 does not expose an HTTP
+route, consume RabbitMQ, call Go, call a partner system, persist a snapshot or
+candidate, import OR-Tools, choose an algorithm, or create a schedule. Those
+responsibilities remain respectively S4, S2, and S3.
+
+The S1 contracts mirror `contracts/openapi/scheduler-internal.yaml` without
+copying OpenAPI-generated code:
+
+- `SchedulingSnapshot` accepts exactly `snapshot_id`, `input_hash`, `as_of`,
+  `base_schedule_version`, `resource_snapshot_version`, `orders`, `resources`,
+  and `frozen_steps`. It rejects unknown top-level fields, normalizes all
+  datetimes to timezone-aware UTC, and preserves opaque order/resource/step
+  payload fragments as JSON values rather than deciding their business meaning.
+- `ScheduleCandidate` accepts `input_hash`, `algorithm_used`,
+  `solver_status`, `fallback_used`, `fallback_reason`, `blocked_steps`,
+  `schedule`, and `metrics`. `algorithm_used` is limited to `cp_sat` or
+  `sla_fallback`; a non-fallback candidate requires `fallback_reason = null`,
+  while a fallback candidate requires one of the four declared fallback
+  reasons. S1 validates this shape but never selects either algorithm.
+- `NormalizedCandidate` is the S1 result wrapper: it carries the validated
+  `ScheduleCandidate` plus `normalized_result_hash`. The hash is
+  `sha256:<hex>` over canonical UTF-8 JSON: recursively sorted object keys,
+  stable list order, compact separators, and UTC RFC 3339 timestamps rendered
+  with `Z`. Equivalent input therefore hashes identically; an input hash,
+  schedule, blocker, metric, fallback, or timestamp change changes the result
+  hash. The wrapper has no persistence behavior.
+- Scheduler configuration is a frozen Pydantic settings model populated only
+  from environment variables and `conf/` examples. It defines environment,
+  service bearer token, callback base URL, queue names, solver time limit, and
+  queue-size protection limit. Validation rejects missing production service
+  token/callback configuration and non-positive limits. S1 does not open a
+  connection or send a callback. Secrets are never committed or logged.
+- S1 exposes pure functions only: parse/validate snapshot, parse/validate
+  candidate, and normalize/hash a candidate. The later S4 adapter may call
+  these functions after authenticating the service request and before its
+  authenticated callback. The S4 callback must bind `snapshot_id`,
+  `input_hash`, and the normalized-result hash; it may not trust browser input.
+
+S1 creates only this layout:
+
+```text
+services/scheduler-py/
+  pyproject.toml
+  conf/config.example.env
+  src/scheduler/
+    __init__.py
+    conf/{__init__.py,settings.py}
+    contracts/{__init__.py,snapshot.py,candidate.py}
+    core/{__init__.py,canonical_json.py}
+    entities/{__init__.py,scheduling.py}
+  tests/test_contracts.py
+```
+
+S1 must not create `api/`, `worker/`, `clients/`, `cp_sat/`,
+`sla_fallback/`, `services/`, `scripts/`, database clients, queue clients, or
+an application entry point. A dependency is allowed only when needed for this
+contract foundation: Pydantic/Pydantic Settings, pytest, Ruff, and mypy.
+FastAPI, OR-Tools, HTTPX, and RabbitMQ dependencies are introduced by their
+own later tasks.
+
+S1 delivery checks run from `services/scheduler-py` through the required
+`agent-learning` Conda environment:
+
+```bash
+conda run -n agent-learning ruff check .
+conda run -n agent-learning mypy src
+conda run -n agent-learning pytest -q tests/test_contracts.py
+```
+
+Required S1 tests prove rejection of naive datetimes, unknown top-level
+fields, invalid fallback combinations, and invalid settings; canonical hash
+stability across dictionary key order; hash changes for semantic changes; and
+the absence of solver, HTTP, broker, or database imports from S1 modules.
+The existing OpenAPI Spectral lint remains required when
+`scheduler-internal.yaml` changes. `spec.md` records S1 as done only after all
+three Python checks pass.
+
 | ID | Scope | Allowed writes |
 | --- | --- | --- |
-| S1 | Create the scheduler directory skeleton defined in 4.3; scheduler contracts, snapshot/result entities, typed configuration, and normalized result hash. | `services/scheduler-py/{src/scheduler/**,tests/test_contracts.py,conf/**}`, `spec.md` |
+| S1 | Apply the confirmed scheduler foundation contract above: solver-free package bootstrap, immutable snapshot/candidate contracts, typed configuration, and normalized result hash. No FastAPI route, worker, callback, queue, solver, persistence, or scheduling decision. | `services/scheduler-py/{pyproject.toml,src/scheduler/{__init__.py,conf/**,contracts/**,core/**,entities/**},tests/test_contracts.py,conf/config.example.env}`, `spec.md` |
 | S2 | CP-SAT constraints, lexicographic objective, metrics, blockers. | `services/scheduler-py/src/scheduler/cp_sat/**`, `services/scheduler-py/tests/**`, `spec.md` |
 | S3 | Python-only deterministic SLA fallback. | `services/scheduler-py/src/scheduler/sla_fallback/**`, `services/scheduler-py/tests/**`, `spec.md` |
 | S4 | Internal FastAPI endpoint/worker, authentication, callback resilience. | `services/scheduler-py/src/scheduler/{api/**,worker/**}`, `services/scheduler-py/tests/**`, `spec.md` |

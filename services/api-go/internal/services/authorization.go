@@ -7,7 +7,7 @@ var roleCapabilities = map[entities.Role]map[entities.Capability]struct{}{
 	entities.RoleScheduler: {
 		entities.CapabilityOrdersRead: {}, entities.CapabilityOrdersWrite: {}, entities.CapabilityResourcesRead: {},
 		entities.CapabilityScheduleRead: {}, entities.CapabilityScheduleWrite: {}, entities.CapabilityEventsRead: {},
-		entities.CapabilityEventsWrite: {}, entities.CapabilityKnowledgeRead: {}, entities.CapabilityNotificationsRead: {},
+		entities.CapabilityEventsWrite: {}, entities.CapabilityKnowledgeRead: {}, entities.CapabilityNotificationsRead: {}, entities.CapabilityNotificationsSend: {},
 		entities.CapabilityAuditRead: {},
 	},
 	entities.RoleOperator: {

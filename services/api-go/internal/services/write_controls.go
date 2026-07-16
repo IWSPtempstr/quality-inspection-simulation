@@ -78,3 +78,7 @@ func requestHash(body []byte) string {
 	sum := sha256.Sum256(body)
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
+
+// RequestHash exposes the established persisted idempotency hash algorithm to
+// HTTP handlers that need to compare an existing claim before opening a write transaction.
+func RequestHash(body []byte) string { return requestHash(body) }

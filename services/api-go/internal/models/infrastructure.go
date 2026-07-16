@@ -7,11 +7,15 @@ import (
 )
 
 type IdempotencyRecord struct {
-	ID             string    `gorm:"column:id;type:uuid;primaryKey"`
-	Scope          string    `gorm:"column:scope;not null"`
-	IdempotencyKey string    `gorm:"column:idempotency_key;not null"`
-	RequestHash    string    `gorm:"column:request_hash;not null"`
-	CreatedAt      time.Time `gorm:"column:created_at;not null"`
+	ID                  string     `gorm:"column:id;type:uuid;primaryKey"`
+	Scope               string     `gorm:"column:scope;not null"`
+	IdempotencyKey      string     `gorm:"column:idempotency_key;not null"`
+	RequestHash         string     `gorm:"column:request_hash;not null"`
+	CreatedAt           time.Time  `gorm:"column:created_at;not null"`
+	ResponseStatus      *int       `gorm:"column:response_status"`
+	ResponseContentType *string    `gorm:"column:response_content_type"`
+	ResponseBody        string     `gorm:"column:response_body;type:text"`
+	CompletedAt         *time.Time `gorm:"column:completed_at"`
 }
 
 func (IdempotencyRecord) TableName() string { return "idempotency_records" }
@@ -41,6 +45,7 @@ type OutboxEvent struct {
 	Payload       datatypes.JSON `gorm:"column:payload;type:jsonb;not null"`
 	OccurredAt    time.Time      `gorm:"column:occurred_at;not null"`
 	PublishedAt   *time.Time     `gorm:"column:published_at"`
+	ClaimedAt     *time.Time     `gorm:"column:claimed_at"`
 	CreatedAt     time.Time      `gorm:"column:created_at;not null"`
 }
 

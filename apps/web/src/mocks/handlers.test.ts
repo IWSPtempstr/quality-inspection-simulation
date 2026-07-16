@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { handlers } from "@/mocks/handlers";
 import { server } from "@/mocks/server";
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -6,6 +7,14 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("MSW public API fixtures", () => {
+  it("keeps only G8 assistance routes in the default MSW handler set", () => {
+    const handledPaths = handlers.map((handler) => handler.info.path);
+
+    expect(handledPaths).toContain("*/api/v1/knowledge/query");
+    expect(handledPaths).not.toContain("*/api/v1/orders");
+    expect(handledPaths).not.toContain("*/api/v1/system/health");
+  });
+
   it("returns the current scheduler session", async () => {
     const response = await fetch("http://localhost/api/v1/session/me");
     await expect(response.json()).resolves.toMatchObject({ role: "scheduler", user_id: "scheduler-001" });

@@ -72,6 +72,9 @@ type DefaultAPI interface {
 	// ListAuditLogs Get /api/v1/audit-logs
 	ListAuditLogs(c *gin.Context)
 
+	// ListDetectionProjects Get /api/v1/projects
+	ListDetectionProjects(c *gin.Context)
+
 	// ListEmployees Get /api/v1/resources/employees
 	ListEmployees(c *gin.Context)
 
@@ -96,6 +99,9 @@ type DefaultAPI interface {
 	// ListUnavailability Get /api/v1/resources/unavailability
 	ListUnavailability(c *gin.Context)
 
+	// PauseOrder Post /api/v1/orders/:order_id/pause
+	PauseOrder(c *gin.Context)
+
 	// PreflightScheduleDataQuality Post /api/v1/schedule-previews/preflight
 	PreflightScheduleDataQuality(c *gin.Context)
 
@@ -107,6 +113,9 @@ type DefaultAPI interface {
 
 	// RejectSchedulePreview Post /api/v1/schedule-previews/:preview_id/reject
 	RejectSchedulePreview(c *gin.Context)
+
+	// ResumeOrder Post /api/v1/orders/:order_id/resume
+	ResumeOrder(c *gin.Context)
 
 	// SendNotificationDraft Post /api/v1/notification-drafts/:draft_id/send
 	SendNotificationDraft(c *gin.Context)

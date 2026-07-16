@@ -27,7 +27,7 @@ const idempotentEmpty = (request: Request) => {
   return new HttpResponse(null, { status: 204 });
 };
 
-export const handlers = [
+const g4ToG7FixtureHandlers = [
   http.get(`${api}/session/me`, () => HttpResponse.json(mockSession)),
   http.get(`${api}/orders`, ({ request }) => {
     const query = new URL(request.url).searchParams.get("q")?.trim().toLowerCase();
@@ -72,25 +72,40 @@ export const handlers = [
   http.get(`${api}/schedule-previews`, () => HttpResponse.json(page([mockPreview]))),
   http.post(`${api}/schedule-previews`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, mockPreview, 202)),
   http.get(`${api}/schedule-previews/:id`, () => HttpResponse.json(mockPreview)),
-  http.post(`${api}/schedule-previews/:id/explanation`, () => HttpResponse.json(mockScheduleExplanation)),
-  http.post(`${api}/schedule-previews/preflight`, () => HttpResponse.json(mockPreflight)),
   http.post(`${api}/schedule-previews/:id/approve`, ({ request }) => replayIdempotent(request) ?? (request.headers.get("If-Match") === "stale" ? problem(409, "版本冲突", "候选排程已被其他调度员处理") : idempotentJson(request, { ...mockPreview, status: "approved" }))),
   http.post(`${api}/schedule-previews/:id/reject`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { ...mockPreview, status: "rejected" })),
   http.patch(`${api}/schedule-steps/:id/start`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { ...mockPreview.schedule.steps[0], status: "running", frozen: true })),
   http.patch(`${api}/schedule-steps/:id/complete`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { ...mockPreview.schedule.steps[0], status: "completed", frozen: false })),
   http.get(`${api}/events`, () => HttpResponse.json(page(mockEvents))),
   http.get(`${api}/events/:id`, ({ params }) => HttpResponse.json(mockEvents.find((event) => event.id === params.id) ?? null)),
+  http.post(`${api}/events/:id/close`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { ...mockEvents[0], status: "closed" })),
+  http.get(`${api}/notifications`, () => HttpResponse.json(page(mockNotifications))),
+  http.patch(`${api}/notifications/:id/read`, ({ request }) => replayIdempotent(request) ?? idempotentEmpty(request)),
+  http.get(`${api}/system/health`, () => HttpResponse.json(mockHealth)),
+];
+
+const g8AssistanceFixtureHandlers = [
+  http.post(`${api}/schedule-previews/:id/explanation`, () => HttpResponse.json(mockScheduleExplanation)),
+  http.post(`${api}/schedule-previews/preflight`, () => HttpResponse.json(mockPreflight)),
   http.post(`${api}/events/:id/diagnose`, () => HttpResponse.json(mockDiagnosis, { status: 202 })),
   http.post(`${api}/events/:id/case-candidates`, () => HttpResponse.json(mockCaseCandidate)),
   http.post(`${api}/exception-case-candidates/:id/submit`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { id: "CASE-REVIEW-001", event_id: "EVT-001", status: "pending_review", version: 1, submitted_at: "2026-07-14T09:30:00+08:00" }, 201)),
-  http.post(`${api}/events/:id/close`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { ...mockEvents[0], status: "closed" })),
-  http.post(`${api}/knowledge/query`, () => HttpResponse.json(mockKnowledge)),
-  http.post(`${api}/knowledge/impact-analysis`, () => HttpResponse.json(mockKnowledge)),
-  http.get(`${api}/notifications`, () => HttpResponse.json(page(mockNotifications))),
-  http.patch(`${api}/notifications/:id/read`, ({ request }) => replayIdempotent(request) ?? idempotentEmpty(request)),
   http.post(`${api}/notification-drafts`, () => HttpResponse.json(mockNotificationDraft)),
   http.post(`${api}/notification-drafts/:id/send`, ({ request }) => replayIdempotent(request) ?? idempotentJson(request, { id: "DELIVERY-001", draft_id: "draft-signed-not-01", status: "accepted", accepted_at: "2026-07-14T09:30:00+08:00" }, 202)),
-  http.get(`${api}/audit-logs`, () => HttpResponse.json(page(mockAudit))),
   http.post(`${api}/audit-logs/filter-suggestions`, () => HttpResponse.json(mockAuditFilterSuggestion)),
-  http.get(`${api}/system/health`, () => HttpResponse.json(mockHealth)),
 ];
+
+const fixtureOnlyHandlers = [
+  http.post(`${api}/knowledge/query`, () => HttpResponse.json(mockKnowledge)),
+  http.post(`${api}/knowledge/impact-analysis`, () => HttpResponse.json(mockKnowledge)),
+  http.get(`${api}/audit-logs`, () => HttpResponse.json(page(mockAudit))),
+];
+
+// Knowledge retrieval and the audit list remain fixture-backed until their own
+// Go contracts are delivered. G8 assistance operations are mounted by Go;
+// do not add them here. G4-G7 operations also remain outside this default set.
+export const handlers = fixtureOnlyHandlers;
+
+// The development-only manual demo must remain self-contained and must not
+// call Go. Tests use these same fixed fixtures for feature-level coverage.
+export const fixtureHandlers = [...g4ToG7FixtureHandlers, ...g8AssistanceFixtureHandlers, ...fixtureOnlyHandlers];

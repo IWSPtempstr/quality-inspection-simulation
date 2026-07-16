@@ -6,7 +6,7 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   testDir: testDirectory,
-  testMatch: "demo-acceptance.e2e.ts",
+  testMatch: "**/demo-acceptance.e2e.ts",
   timeout: 30_000,
   use: { baseURL: "http://127.0.0.1:5174", browserName: "chromium", viewport: { width: 1280, height: 800 } },
   webServer: {

@@ -6,7 +6,7 @@ const testDirectory = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   testDir: testDirectory,
-  testMatch: "**/*.e2e.ts",
+  testMatch: "**/frontend-gate.e2e.ts",
   timeout: 30_000,
   fullyParallel: false,
   use: {

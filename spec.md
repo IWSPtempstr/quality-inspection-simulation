@@ -4,7 +4,7 @@
 
 - Status: `in_progress`
 - Active phase: Phase 2
-- Active task: G4
+- Active task: G8
 - Git baseline observed: `main` is ahead of `origin/main` by one commit; user
   worktree changes include deletion of the prior `DEV_SPEC.md` and unrelated
   untracked documentation. These changes must not be reverted or committed by
@@ -52,6 +52,37 @@
   their JSON values or route surface. Generation maps JSON Schema `null` to a
   dedicated generated-package `Null` type; it must never emit untyped fallback
   representations for these schemas.
+- G4 business-contract decision: the partner system owns a global project
+  catalog with CCC/CVC/international applicability and center-specific enable
+  state; both project/resource projections use a future full-snapshot plus
+  RabbitMQ incremental import. Orders enter `pending_schedule` without review,
+  use the confirmed six-state machine, and pause only through scheduler/admin
+  when no step is running. A retest is a child order for completed failed or
+  retest-required projects only. All facts are `center_id` scoped from OIDC;
+  idempotent replay returns the persisted initial response while changed reuse
+  returns RFC 9457 `409`. G4 owns schema/API/validation only; G5 owns import
+  workers, stale-event handling, retries, and Inbox.
+- G5 messaging-contract decision: resource events require center-scoped,
+  version-ordered Inbox processing for equipment, employees, shifts, and
+  unavailability. RabbitMQ uses manual acknowledgement, three durable retry
+  queues and a DLQ; Redis provides only 45-second center debounce. Redis
+  outage leaves an event durably received and retryable. Transactional Outbox
+  publishes only `schedule.rebuild.requested` intent after broker confirms;
+  G5 does not invoke the scheduler or create previews.
+- G6 scheduling-contract decision: Go persists center-scoped immutable
+  snapshots and fixture/internal candidates without calling Python until S4.
+  Previews progress through review and approved-pending-writeback before a
+  confirmed conditional partner HTTP PUT creates the formal schedule version.
+  Approval uses Redis coordination and fails closed on Redis outage; partner
+  timeout/5xx is retryable while 409/412 is a terminal preview conflict.
+- G7 execution-and-operations decision: successful G6 write-back expands an
+  immutable formal version into executable steps; execution, event, and
+  notification writes are center-scoped, idempotent, audited, and Outbox
+  transactional. Notification recipients are the affected order creator plus
+  same-center scheduler-role users, de-duplicated. PostgreSQL outages are
+  unavailable while supporting dependency outages are sanitized degraded
+  component statuses. The React switch is limited to G4-G7 flows; G8/knowledge
+  remains MSW-backed.
 
 ## Task Status
 
@@ -76,8 +107,11 @@
 | G1 | done | `npm ci`; OpenAPI Generator 7.17.0 validation/generation; `go test ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2 run`; production-dependency npm audit | Go 1.26 module, Gin/Gorm-declared skeleton, typed config, structured logging/correlation middleware, lifecycle, API/worker entry points, `/api/v1/system/health`, `/readyz`, generated OpenAPI 3.1 Gin transport types, and route-boundary tests completed. The generator uses a typed `Null` support type and explicit boolean `oneOf` constants; only health/readiness routes are mounted. All checks passed; production dependency audit found 0 vulnerabilities. |
 | G2 | done | Goose migration; Testcontainers PostgreSQL 16 integration test; `go test ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2 run` | PostgreSQL client, forward-only Goose runner, service-owned transaction unit, and Gorm models/repositories for `idempotency_records`, append-only `audit_logs`, and `outbox_events` completed. Testcontainers starts and cleans `postgres:16-alpine`; integration coverage verifies migration, rollback atomicity, successful three-table persistence, scoped idempotency uniqueness, and audit update/delete rejection. No order/resource/Inbox/RabbitMQ implementation was added. |
 | G3 | done | Local OIDC discovery/JWKS verification; API middleware tests; PostgreSQL 16 Testcontainers integration test; `go test ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2 run` | OIDC BFF-cookie verifier validates issuer, audience, signature, actor center and fixed roles. `GET /api/v1/session/me` is authenticated; health/readiness remain operational endpoints. Four-role capability checks, RFC 9457 authorization/precondition errors, `Idempotency-Key` and `If-Match` parsing, database-conflict-safe idempotency claiming, append-only audit service, and version comparison are ready for later write handlers. Tests verify roles, session rejection, header errors, real JWKS validation, duplicate/reused idempotency keys, audit correlation, and version conflict. No business aggregate route was mounted. |
-| G4 | pending | Order/project validation and resource APIs | Next Phase 2 task. |
-| G5-G8 | pending | Go checks and G8/A8 interface mapping defined in DEV_SPEC | Blocked by predecessor tasks. |
+| G4 | done | OpenAPI Generator validation; `git diff --check`; `go test -count=1 ./...`; `go vet ./...`; and `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run` passed in the Docker/listener-enabled controlled environment. | Implemented center-scoped project/order/resource reads and order writes, complete pending-order editing with scheduled-order field restrictions, partial-retest eligibility, no-running-step pause enforcement, resume/cancel, and transactionally persisted first-response idempotency replay. PostgreSQL integration coverage verifies byte-identical replay and rollback of a failed idempotency claim. Response bytes are retained in validated text rather than JSONB so PostgreSQL cannot reorder JSON object keys during replay. |
+| G5 | done | PostgreSQL, RabbitMQ 4, and Redis 7 Testcontainers; `go test -count=1 ./...`; `go vet ./...`; and `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run` passed in the Docker/listener-enabled controlled environment. | Resource-event Inbox/projection import, transactional Outbox publication with publisher confirms and idle retry, three durable retry queues plus DLQ, Redis debounce/outage retention, manual acknowledgements, duplicate/stale/center isolation, and rollback/recovery coverage completed. G5 publishes only `schedule.rebuild.requested` intent and does not invoke the scheduler or create previews. |
+| G6 | done | PostgreSQL and Redis Testcontainers plus HTTP partner stub; `go test -count=1 ./...`; `go vet ./...`; and `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run` passed in the Docker/listener-enabled controlled environment. | Immutable center snapshots preserve running and 120-minute frozen steps; controlled candidate callbacks bind preview/snapshot/hash/version; admins and schedulers approve/reject with Redis failure-closed locking, idempotent replay, audit, and Outbox. Partner HTTP 2xx alone formalizes a version, timeout/5xx retries, and 409/412 produces conflict without a formal version. No Python scheduler call was added. |
+| G7 | done | `go test -count=1 ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2`; PostgreSQL/RabbitMQ/Redis Testcontainers; frontend lint/typecheck/74 Vitest tests/build; main 5-flow and demo 1-flow Playwright checks | Formal-version step expansion/execution, event lifecycle, deterministic recipient de-duplication, RabbitMQ notification work/retry/DLQ path, transactional delivery state, injected sanitized health probes, and the bounded G4-G7 Go switch completed. PostgreSQL failure reports unavailable; RabbitMQ, Redis, partner, and notification failures report degraded. |
+| G8 | done | `go test -count=1 ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2`; PostgreSQL/RabbitMQ/Redis Testcontainers; OpenAPI Spectral (0 errors); frontend lint/typecheck/79 Vitest tests/build; main 5-flow and demo 1-flow Playwright checks | Go-only bounded A8 facade uses fixed-path Bearer service calls, deterministic degraded fallbacks, center-bound opaque candidate/draft references, deterministic preflight, transactional case-review and notification-send writes, and G8-only frontend API ownership. Knowledge and audit-list surfaces remain MSW-backed pending their later contracts. |
 | S1-S5 | pending | Scheduler checks defined in DEV_SPEC | Blocked by Phase 2. |
 | A1-A8 | pending | AI checks and G8/A8 interface mapping defined in DEV_SPEC | Blocked by Phase 3. |
 | I1-I6 | pending | Infrastructure checks defined in DEV_SPEC | Blocked by Phase 4. |
@@ -98,3 +132,20 @@
 | `apps/web/tests/**` | Vitest and Playwright regression suite | Frontend Gate behavior, accessibility, and visual coverage | keep | Formal regression coverage, not temporary test code. |
 | `docs/product/screenshots/**` | Gate evidence screenshots | Desktop visual acceptance record | keep | Required evidence for the completed frontend phase. |
 | `docs/product/demo-acceptance.md` | Manual acceptance guide | Reproducible scheduler/admin sign-off procedure | keep until G7 | It documents the current MSW-based acceptance workflow; revise when the real API integration replaces it. |
+
+## Phase 2 G7 Cleanup Audit
+
+| Path | Item | Purpose | Recommendation | Rationale |
+| --- | --- | --- | --- | --- |
+| `services/api-go/internal/services/notification_delivery.go` | controlled delivery adapter boundary | Persists deterministic in-app/webhook-stub delivery outcomes | keep | Formal G7 infrastructure boundary, not a temporary stub. |
+| `services/api-go/tests/g7_*_integration_test.go` | Testcontainers regression coverage | Verifies execution, notification, retry, and DLQ contracts | keep | Required delivery evidence. |
+| `apps/web/src/mocks/**` | fixture-only G8/demo support | Keeps G8 MSW-backed while G4-G7 uses Go | keep | Required bounded switch and demo acceptance surface. |
+
+## Phase 2 G8 Cleanup Audit
+
+| Path | Item | Purpose | Recommendation | Rationale |
+| --- | --- | --- | --- | --- |
+| `services/api-go/internal/clients/ai/client.go` | fixed-path service client | Calls only the six A8 contract endpoints with Bearer service identity | keep | Formal G8 boundary; it contains no AI implementation. |
+| `services/api-go/internal/services/g8*.go` | facade and signed-reference logic | Builds minimal persisted context and protects candidate/draft references | keep | Required center-isolation and no-browser-trust boundary. |
+| `services/api-go/tests/g8_assistance_integration_test.go` | PostgreSQL Testcontainers regression | Proves case/draft non-persistence, isolation, replay, and rollback | keep | Required delivery evidence. |
+| `apps/web/src/mocks/**` | fixture-only knowledge/demo surface | Keeps knowledge and demo fixtures outside the bounded G8 Go switch | keep | Knowledge remains a later A2/A3 contract; demo requires fixed data. |
