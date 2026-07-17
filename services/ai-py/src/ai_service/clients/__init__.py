@@ -11,6 +11,7 @@ from ai_service.clients.llm_gateway import (
     StructuredLLMGateway,
     normalize_json_payload,
 )
+from ai_service.clients.redis_memory import InMemoryRedisClient
 from ai_service.clients.reranker import (
     HeuristicCrossEncoderReranker,
     RerankerUnavailableError,
@@ -28,6 +29,7 @@ __all__ = [
     "LLMGateway",
     "LLMGatewayDisabled",
     "NormalizedLLMResponse",
+    "InMemoryRedisClient",
     "HeuristicCrossEncoderReranker",
     "StructuredLLMGateway",
     "RerankerUnavailableError",

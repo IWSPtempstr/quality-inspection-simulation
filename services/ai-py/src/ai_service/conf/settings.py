@@ -20,6 +20,10 @@ class AIServiceSettings(BaseSettings):
     prompt_directory: Path = Field(default=Path("prompts"))
     llm_timeout_seconds: float = Field(default=10.0, gt=0)
     default_model: str = Field(default="disabled")
+    memory_recent_ttl_seconds: int = Field(default=24 * 60 * 60, gt=0)
+    memory_summary_ttl_seconds: int = Field(default=7 * 24 * 60 * 60, gt=0)
+    memory_max_turns: int = Field(default=8, gt=0)
+    memory_max_tokens: int = Field(default=6000, gt=0)
     redact_fields: tuple[str, ...] = (
         "authorization",
         "token",

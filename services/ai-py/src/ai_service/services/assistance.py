@@ -8,6 +8,7 @@ from ai_service.agent import ExceptionDiagnosisAgent
 from ai_service.clients.bm25 import InMemoryBM25Client
 from ai_service.clients.chroma import InMemoryChromaClient
 from ai_service.clients.llm_gateway import DisabledLLMGateway, GatewayPrompt
+from ai_service.clients.redis_memory import InMemoryRedisClient
 from ai_service.clients.reranker import HeuristicCrossEncoderReranker
 from ai_service.conf.settings import Settings
 from ai_service.core.context import RequestContext
@@ -31,11 +32,13 @@ from ai_service.entities.models import (
 )
 from ai_service.entities.retrieval import RetrievalActivation
 from ai_service.prompt.loader import PromptLoader
+from ai_service.repositories.memory import RedisSessionMemoryRepository
 from ai_service.repositories.retrieval import (
     InMemoryActivationRepository,
     VersionedRetrievalRepository,
 )
 from ai_service.services.knowledge import KnowledgeService
+from ai_service.services.memory import SessionMemoryService
 from ai_service.services.retrieval import RetrievalService
 
 logger = logging.getLogger(__name__)
@@ -53,11 +56,13 @@ class AssistanceService:
         settings: Settings,
         knowledge_service: KnowledgeService | None = None,
         diagnosis_agent: ExceptionDiagnosisAgent | None = None,
+        memory_service: SessionMemoryService | None = None,
     ):
         self._gateway = DisabledLLMGateway()
         self._prompts = PromptLoader(settings)
         self._knowledge = knowledge_service or _default_knowledge_service()
         self._diagnosis_agent = diagnosis_agent or ExceptionDiagnosisAgent(self._knowledge)
+        self._memory = memory_service or _default_memory_service(settings)
 
     def query_knowledge(
         self,
@@ -80,6 +85,7 @@ class AssistanceService:
         log_payload(logger, "diagnosis_request", payload.model_dump())
         self._prompts.load("diagnosis/system")
         result = self._diagnosis_agent.diagnose(payload=payload, context=context)
+        self._memory.remember_diagnosis(payload=payload, result=result)
         return PlaceholderResult(
             value=result,
             is_placeholder=result.degraded,
@@ -213,4 +219,16 @@ def _default_knowledge_service() -> KnowledgeService:
     return KnowledgeService(
         retrieval_service=retrieval_service,
         reranker=reranker,
+    )
+
+
+def _default_memory_service(settings: Settings) -> SessionMemoryService:
+    return SessionMemoryService(
+        repository=RedisSessionMemoryRepository(
+            client=InMemoryRedisClient(),
+            recent_turns_ttl_seconds=settings.memory_recent_ttl_seconds,
+            summary_ttl_seconds=settings.memory_summary_ttl_seconds,
+        ),
+        max_recent_turns=settings.memory_max_turns,
+        max_recent_tokens=settings.memory_max_tokens,
     )
