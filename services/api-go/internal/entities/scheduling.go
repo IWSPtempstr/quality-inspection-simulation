@@ -24,6 +24,7 @@ type ScheduleSnapshot struct {
 }
 type SchedulePreview struct {
 	ID, CenterID, SnapshotID, Status string
+	NormalizedResultHash             *string
 	Candidate, NormalizedSteps       json.RawMessage
 	Version                          int64
 	PartnerFailure                   *string

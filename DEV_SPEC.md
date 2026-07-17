@@ -425,9 +425,22 @@ that belongs to G5.
   base schedule version, resource snapshot version, immutable JSON, and
   preview version.
 - `POST /internal/v1/schedule-previews/{preview_id}/candidate` requires
-  service authentication and matching `preview_id`, `snapshot_id`, and
-  `input_hash`. Mismatch, terminal state, and stale version are rejected. The
-  callback may only transition `pending_candidate` to `pending_review`.
+  the dedicated `X-Scheduler-Callback-Token` credential, sourced from
+  `SCHEDULER_CALLBACK_SERVICE_TOKEN`; it must not reuse the Go AI/internal
+  service token or the scheduler-ingress bearer token. Its exact body is
+  `snapshot_id`, `input_hash`, `version`, `normalized_result_hash`, and
+  `candidate`. `candidate` must satisfy the S1 `ScheduleCandidate` contract;
+  `candidate.schedule.steps` is the sole source from which Go derives and
+  persists normalized steps, so no separate `normalized_steps` input exists.
+  Go recomputes the S1 canonical JSON SHA-256 over `candidate` and rejects a
+  mismatching `normalized_result_hash` before changing state. It persists the
+  hash with the candidate; callback identity is
+  `preview_id + version + normalized_result_hash`. A repeat with that exact
+  identity returns the persisted first success, while a different hash,
+  snapshot, input hash, stale version, terminal state, or malformed request is
+  a terminal 4xx rejection. A matching callback may only atomically transition
+  `pending_candidate` to `pending_review`; it never approves, writes back, or
+  creates a formal schedule version.
 - Preview lifecycle is `pending_candidate -> pending_review -> rejected |
   approved_pending_writeback`; `approved_pending_writeback -> approved |
   conflicted | failed`. Only `approved` creates the next formal schedule
@@ -448,7 +461,10 @@ that belongs to G5.
 - G6 tests use PostgreSQL, Redis, and an HTTP partner stub for snapshot hash
   determinism, frozen invariance, callback mismatch, center isolation,
   idempotent replay, concurrent single approval, reject terminality, Redis
-  outage, write-back success, retry/recovery, and partner conflict. SQLite is
+  outage, write-back success, retry/recovery, and partner conflict. Callback
+  coverage additionally proves the dedicated scheduler token, canonical-hash
+  mismatch rollback, single `candidate.schedule.steps` derivation, and
+  exact-identity replay versus mismatching-hash/version rejection. SQLite is
   prohibited.
 
 ### 6.1.4 G7 confirmed execution and operations contracts
@@ -1030,12 +1046,57 @@ The existing OpenAPI Spectral lint remains required when
 `scheduler-internal.yaml` changes. `spec.md` records S1 as done only after all
 three Python checks pass.
 
+#### S4 confirmed scheduler ingress and resilient callback contract
+
+S4 connects the S1 immutable contracts and the S2/S3 pure scheduling functions
+to the existing G6 preview boundary. It owns only the authenticated FastAPI
+ingress, in-process worker lifecycle, callback client, and corresponding tests.
+It does not create or modify snapshots, persist a scheduler-side database
+record, consume RabbitMQ, invoke a partner, approve a preview, write a formal
+schedule, or change CP-SAT/SLA algorithms.
+
+- `POST /internal/v1/schedule` accepts only the service-authenticated
+  `ScheduleSubmission` envelope from `scheduler-internal.yaml`:
+  `preview_id`, `preview_version`, and immutable `snapshot`. Authentication is
+  `Authorization: Bearer <SCHEDULER_SERVICE_BEARER_TOKEN>`. The endpoint
+  validates the envelope and S1 snapshot before accepting a job, returns
+  `202` with `{preview_id, preview_version, snapshot_id, status:"accepted"}`,
+  and never exposes a candidate synchronously.
+- The worker retains the accepted envelope only for its in-process job
+  lifetime, selects CP-SAT first, and invokes the existing S3 fallback only
+  for its explicitly permitted non-feasible triggers. It normalizes the chosen
+  S1 candidate exactly once and uses its `normalized_result_hash` for every
+  callback attempt. It must never accept a browser request, make a scheduling
+  decision in Go, or create a G6 preview itself.
+- The callback client sends `POST
+  /internal/v1/schedule-previews/{preview_id}/candidate` to
+  `SCHEDULER_CALLBACK_BASE_URL`, using
+  `X-Scheduler-Callback-Token: <SCHEDULER_CALLBACK_SERVICE_TOKEN>`. Its body
+  is the exact G6 callback schema: `snapshot_id`, `input_hash`,
+  `version = preview_version`, `normalized_result_hash`, and `candidate`.
+  Secrets, authorization values, raw response bodies, and candidate payloads
+  are never logged.
+- Only connection errors, timeouts, and HTTP 5xx are transient. The worker
+  attempts the callback at most three times, immediately, after one second,
+  and after five seconds. It stops immediately on every 4xx. After all
+  transient attempts fail it records a sanitized local job failure while
+  leaving the G6 preview `pending_candidate`; it must not acknowledge success,
+  invent a preview state, or initiate approval/write-back. The G6 exact-identity
+  replay rule makes a post-success transport-loss retry safe.
+- S4 adds FastAPI/worker tests for invalid or missing Bearer authentication,
+  strict envelope validation, preview/version/snapshot binding, correct
+  callback authentication/body, all three transient attempts, immediate 4xx
+  stop, callback replay, and sanitized final failure. It also adds fixed
+  cross-language canonical-hash vectors shared with Go. The normal Phase 3
+  Ruff, mypy, and pytest gate remains mandatory; callback-schema changes also
+  require Spectral validation and the G6 Go test/vet/fixed-version lint gate.
+
 | ID | Scope | Allowed writes |
 | --- | --- | --- |
 | S1 | Apply the confirmed scheduler foundation contract above: solver-free package bootstrap, immutable snapshot/candidate contracts, typed configuration, and normalized result hash. No FastAPI route, worker, callback, queue, solver, persistence, or scheduling decision. | `services/scheduler-py/{pyproject.toml,src/scheduler/{__init__.py,conf/**,contracts/**,core/**,entities/**},tests/test_contracts.py,conf/config.example.env}`, `spec.md` |
 | S2 | CP-SAT constraints, lexicographic objective, metrics, blockers. | `services/scheduler-py/src/scheduler/cp_sat/**`, `services/scheduler-py/tests/**`, `spec.md` |
 | S3 | Python-only deterministic SLA fallback. | `services/scheduler-py/src/scheduler/sla_fallback/**`, `services/scheduler-py/tests/**`, `spec.md` |
-| S4 | Internal FastAPI endpoint/worker, authentication, callback resilience. | `services/scheduler-py/src/scheduler/{api/**,worker/**}`, `services/scheduler-py/tests/**`, `spec.md` |
+| S4 | Apply the confirmed scheduler ingress and resilient callback contract above. | `services/scheduler-py/{pyproject.toml,conf/config.example.env,src/scheduler/{conf/**,api/**,worker/**},tests/**}`, `services/api-go/{internal/api/g6.go,internal/services/scheduling.go,internal/entities/scheduling.go,internal/repositories/scheduling.go,internal/models/**,migrations/**,tests/**}`, `contracts/openapi/scheduler-internal.yaml`, `spec.md` |
 | S5 | Controlled-fixture regression harness and reproducible rule-validation report, never replay UI/API. | `services/scheduler-py/src/scheduler/evaluation/**`, `services/scheduler-py/tests/evaluation/**`, `docs/product/scheduling-evaluation.md`, `spec.md` |
 
 Checks in the conda environment: `ruff check .`, `mypy src`, and `pytest -q`.

@@ -3,8 +3,8 @@
 ## Baseline
 
 - Status: `in_progress`
-- Active phase: Phase 2
-- Active task: G8
+- Active phase: Phase 3
+- Active task: S4
 - Git baseline observed: `main` is ahead of `origin/main` by one commit; user
   worktree changes include deletion of the prior `DEV_SPEC.md` and unrelated
   untracked documentation. These changes must not be reverted or committed by
@@ -112,7 +112,11 @@
 | G6 | done | PostgreSQL and Redis Testcontainers plus HTTP partner stub; `go test -count=1 ./...`; `go vet ./...`; and `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run` passed in the Docker/listener-enabled controlled environment. | Immutable center snapshots preserve running and 120-minute frozen steps; controlled candidate callbacks bind preview/snapshot/hash/version; admins and schedulers approve/reject with Redis failure-closed locking, idempotent replay, audit, and Outbox. Partner HTTP 2xx alone formalizes a version, timeout/5xx retries, and 409/412 produces conflict without a formal version. No Python scheduler call was added. |
 | G7 | done | `go test -count=1 ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2`; PostgreSQL/RabbitMQ/Redis Testcontainers; frontend lint/typecheck/74 Vitest tests/build; main 5-flow and demo 1-flow Playwright checks | Formal-version step expansion/execution, event lifecycle, deterministic recipient de-duplication, RabbitMQ notification work/retry/DLQ path, transactional delivery state, injected sanitized health probes, and the bounded G4-G7 Go switch completed. PostgreSQL failure reports unavailable; RabbitMQ, Redis, partner, and notification failures report degraded. |
 | G8 | done | `go test -count=1 ./...`; `go vet ./...`; fixed `golangci-lint v2.12.2`; PostgreSQL/RabbitMQ/Redis Testcontainers; OpenAPI Spectral (0 errors); frontend lint/typecheck/79 Vitest tests/build; main 5-flow and demo 1-flow Playwright checks | Go-only bounded A8 facade uses fixed-path Bearer service calls, deterministic degraded fallbacks, center-bound opaque candidate/draft references, deterministic preflight, transactional case-review and notification-send writes, and G8-only frontend API ownership. Knowledge and audit-list surfaces remain MSW-backed pending their later contracts. |
-| S1-S5 | pending | Scheduler checks defined in DEV_SPEC | Blocked by Phase 2. |
+| S1 | done | `/root/anaconda3/bin/conda run --no-capture-output -n agent-learning ruff check .`; `mypy src`; `pytest -q tests/test_contracts.py` | Solver-free scheduler package foundation implements strict immutable snapshot/candidate contracts, frozen settings, canonical normalized result hashing, and later-phase import guards. No API, worker, queue, solver, persistence, or callback was added. |
+| S2 | done | `/root/anaconda3/bin/conda run --no-capture-output -n agent-learning ruff check .`; `mypy src`; `pytest -q` (23 passed) | Pure CP-SAT scheduling projects controlled immutable snapshot fixtures into ordered resource assignments. It enforces ordered steps; equipment capacity/no-overlap; employee eligibility, shifts and unavailability; maintenance/failure blackouts; consumables; frozen work; and explicit preprocessing/transfer resource windows. Five sequential objectives minimize weighted lateness, late-order count, late minutes, formal-schedule changes, and makespan; every blocked step is reported. No fallback, API, worker, transport, persistence, or scheduler callback was added. |
+| S3 | done | `/root/anaconda3/bin/conda run --no-capture-output -n agent-learning ruff check .`; `mypy src`; `pytest -q` (36 passed) | Pure Python deterministic SLA fallback accepts only explicit non-feasible CP-SAT failure triggers, preserves frozen capacity, applies stable overdue/slack/priority/promise/arrival/order ordering, enforces controlled hard constraints, reports blockers, and has no OR-Tools/API/worker/transport/persistence dependency. |
+| S4 | done | `PYTHONPATH=src /root/anaconda3/bin/conda run --no-capture-output -n agent-learning ruff check .`; `PYTHONPATH=src /root/anaconda3/bin/conda run --no-capture-output -n agent-learning mypy src`; `PYTHONPATH=src /root/anaconda3/bin/conda run --no-capture-output -n agent-learning pytest -q`; `apps/web/scripts/with-toolchain.sh npm --prefix apps/web exec -- spectral lint --ruleset contracts/openapi/.spectral.cjs contracts/openapi/scheduler-internal.yaml` (0 errors, 5 warnings); `GOCACHE=/tmp/go-build-cache /usr/local/go/bin/go test ./... -count=1`; `GOCACHE=/tmp/go-build-cache /usr/local/go/bin/go vet ./...`; `GOCACHE=/tmp/go-build-cache GOMODCACHE=/tmp/go-mod-cache /usr/local/go/bin/go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run` | Implemented the authenticated FastAPI scheduler ingress envelope, in-process CP-SAT-first worker, bounded callback retries with a dedicated callback token, sanitized local failure retention, and shared canonical candidate hashing. G6 now validates `normalized_result_hash`, derives persisted steps only from `candidate.schedule.steps`, accepts exact-identity replay, and persists callback hash identity. PostgreSQL migration `00007_s4_callback_contract.sql` adds the replay/hash column. Targeted and full Go tests passed in the Docker-enabled controlled environment; no RabbitMQ consumer, scheduler persistence, approval mutation, partner write-back initiation, or new solver behavior was added. |
+| S5 | pending | Scheduler checks defined in DEV_SPEC | S5 is next; it remains blocked only by task order, not by S4. |
 | A1-A8 | pending | AI checks and G8/A8 interface mapping defined in DEV_SPEC | Blocked by Phase 3. |
 | I1-I6 | pending | Infrastructure checks defined in DEV_SPEC | Blocked by Phase 4. |
 
@@ -149,3 +153,41 @@
 | `services/api-go/internal/services/g8*.go` | facade and signed-reference logic | Builds minimal persisted context and protects candidate/draft references | keep | Required center-isolation and no-browser-trust boundary. |
 | `services/api-go/tests/g8_assistance_integration_test.go` | PostgreSQL Testcontainers regression | Proves case/draft non-persistence, isolation, replay, and rollback | keep | Required delivery evidence. |
 | `apps/web/src/mocks/**` | fixture-only knowledge/demo surface | Keeps knowledge and demo fixtures outside the bounded G8 Go switch | keep | Knowledge remains a later A2/A3 contract; demo requires fixed data. |
+
+## Phase 3 S1 Cleanup Audit
+
+| Path | Item | Purpose | Recommendation | Rationale |
+| --- | --- | --- | --- | --- |
+| `services/scheduler-py/.ruff_cache` | Ruff cache | Local static-analysis acceleration | delete | Ignored generated cache; recreated on demand. |
+| `services/scheduler-py/.mypy_cache` | mypy cache | Local type-analysis acceleration | delete | Ignored generated cache; recreated on demand. |
+| `services/scheduler-py/.pytest_cache` | pytest cache | Local test-run metadata | delete | Ignored generated cache; recreated on demand. |
+| `services/scheduler-py/**/__pycache__` | Python bytecode | Import/test runtime cache | delete | Ignored generated cache; recreated on demand. |
+| `services/scheduler-py/src/scheduler/**` | S1 contract foundation | Immutable validation, settings, and hashing modules | keep | Formal Phase 3 business-contract foundation. |
+| `services/scheduler-py/tests/test_contracts.py` | S1 regression suite | Contract and forbidden-import coverage | keep | Required delivery evidence. |
+
+## Phase 3 S2 Cleanup Audit
+
+| Path | Item | Purpose | Recommendation | Rationale |
+| --- | --- | --- | --- | --- |
+| `services/scheduler-py/src/scheduler/cp_sat/solver.py` | CP-SAT implementation | Hard constraints, sequential objectives, blockers, and metrics | keep | Formal S2 production algorithm boundary. |
+| `services/scheduler-py/tests/test_cp_sat.py` | controlled-fixture regression suite | Proves core hard constraints and objective behavior | keep | Required S2 delivery evidence. |
+| `services/scheduler-py/**/__pycache__` and tool caches | validation outputs | Local interpreter and analysis caches | delete | Ignored and regenerated by the validation commands. |
+
+## Phase 3 S3 Cleanup Audit
+
+| Path | Item | Purpose | Recommendation | Rationale |
+| --- | --- | --- | --- | --- |
+| `services/scheduler-py/src/scheduler/sla_fallback/fallback.py` | deterministic fallback algorithm | Explicit failure-gated greedy candidate construction | keep | Formal S3 algorithm boundary. |
+| `services/scheduler-py/tests/test_sla_fallback.py` | fallback regression suite | Trigger, determinism, frozen work, and hard-rule evidence | keep | Required S3 delivery evidence. |
+| `services/scheduler-py/**/__pycache__` and tool caches | validation outputs | Local interpreter and analysis caches | delete | Ignored and regenerated by validation. |
+
+## Phase 3 S4 Cleanup Audit
+
+| Path | Item | Purpose | Recommendation | Rationale |
+| --- | --- | --- | --- | --- |
+| `services/scheduler-py/src/scheduler/api/**` | authenticated ingress boundary | Accepts immutable preview-bound submissions only from the Go service | keep | Formal S4 transport boundary with no persistence or browser entry. |
+| `services/scheduler-py/src/scheduler/worker/**` | in-process callback orchestration | Chooses CP-SAT/fallback, normalizes results once, and retries the callback with sanitized failure retention | keep | Formal S4 execution boundary; it is explicitly limited to in-process lifecycle and callback delivery. |
+| `services/scheduler-py/tests/test_s4_api_and_worker.py` | S4 regression suite | Verifies Bearer auth, envelope validation, callback body/auth, retries, 4xx stop, and hash vector stability | keep | Required S4 delivery evidence. |
+| `services/api-go/migrations/00007_s4_callback_contract.sql` | callback replay/hash migration | Persists the candidate hash needed for replay-safe G6 callback identity | keep | Formal S4/G6 persistence adjustment required by the amended contract. |
+| `services/api-go/internal/services/scheduling_test.go` | cross-language hash vector test | Keeps Go canonical hashing aligned with the Python scheduler contract | keep | Required guard against cross-language replay/hash drift. |
+| `services/scheduler-py/**/__pycache__` and tool caches | validation outputs | Local interpreter and analysis caches | delete | Ignored generated artifacts, not production state. |

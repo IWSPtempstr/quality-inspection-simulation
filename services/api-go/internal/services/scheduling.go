@@ -1,8 +1,10 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,12 +13,17 @@ import (
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/repositories"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"io"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
 var ErrApprovalLockUnavailable = errors.New("approval lock unavailable")
 var ErrInvalidPreviewTransition = errors.New("invalid preview transition")
+var ErrCandidateHashMismatch = errors.New("candidate hash mismatch")
 
 type ApprovalLocker interface {
 	AcquireApprovalLock(context.Context, string, time.Duration) (bool, error)
@@ -59,12 +66,19 @@ func (s ScheduleService) Create(ctx context.Context, actor entities.Actor) (enti
 	})
 	return preview, err
 }
-func (s ScheduleService) Candidate(ctx context.Context, previewID, snapshotID, inputHash string, version int64, candidate, steps json.RawMessage) (entities.SchedulePreview, error) {
-	if !json.Valid(candidate) || !json.Valid(steps) {
+func (s ScheduleService) Candidate(ctx context.Context, previewID, snapshotID, inputHash string, version int64, expectedHash string, candidate json.RawMessage) (entities.SchedulePreview, error) {
+	if !json.Valid(candidate) {
 		return entities.SchedulePreview{}, fmt.Errorf("invalid candidate JSON")
 	}
+	actualHash, steps, err := normalizeCandidateJSON(candidate)
+	if err != nil {
+		return entities.SchedulePreview{}, err
+	}
+	if expectedHash != actualHash {
+		return entities.SchedulePreview{}, ErrCandidateHashMismatch
+	}
 	var result entities.SchedulePreview
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		p, e := s.repo.Preview(ctx, tx, "", previewID, true)
 		if e != nil {
 			return e
@@ -73,12 +87,17 @@ func (s ScheduleService) Candidate(ctx context.Context, previewID, snapshotID, i
 		if e != nil {
 			return e
 		}
+		if p.Status == entities.PreviewPendingReview && p.Version == version+1 && p.SnapshotID == snapshotID && snap.InputHash == inputHash && p.NormalizedResultHash != nil && *p.NormalizedResultHash == actualHash {
+			result = p
+			return nil
+		}
 		if p.Status != entities.PreviewPendingCandidate || p.Version != version || p.SnapshotID != snapshotID || snap.InputHash != inputHash {
 			return ErrInvalidPreviewTransition
 		}
 		p.Status = entities.PreviewPendingReview
 		p.Candidate = append([]byte(nil), candidate...)
 		p.NormalizedSteps = append([]byte(nil), steps...)
+		p.NormalizedResultHash = &actualHash
 		p.Version++
 		p.UpdatedAt = time.Now().UTC()
 		if e = s.repo.UpdatePreview(ctx, tx, p, version); e != nil {
@@ -237,4 +256,153 @@ func scheduleStepsJSON(value any) ([]byte, error) {
 	default:
 		return json.Marshal(steps)
 	}
+}
+
+var rfc3339Timestamp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$`)
+
+func normalizeCandidateJSON(raw json.RawMessage) (string, json.RawMessage, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var payload any
+	if err := decoder.Decode(&payload); err != nil {
+		return "", nil, fmt.Errorf("decode candidate JSON: %w", err)
+	}
+	canonical, err := canonicalJSONBytes(payload)
+	if err != nil {
+		return "", nil, err
+	}
+	sum := sha256.Sum256(canonical)
+	steps, err := candidateScheduleSteps(payload)
+	if err != nil {
+		return "", nil, err
+	}
+	return "sha256:" + hex.EncodeToString(sum[:]), steps, nil
+}
+
+func NormalizeCandidateForTest(payload any) (string, json.RawMessage, error) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", nil, err
+	}
+	return normalizeCandidateJSON(data)
+}
+
+func candidateScheduleSteps(payload any) (json.RawMessage, error) {
+	root, ok := payload.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("candidate root must be an object")
+	}
+	schedule, ok := root["schedule"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("candidate schedule must be an object")
+	}
+	steps, ok := schedule["steps"]
+	if !ok {
+		return nil, fmt.Errorf("candidate schedule.steps is required")
+	}
+	data, err := json.Marshal(steps)
+	if err != nil {
+		return nil, fmt.Errorf("marshal candidate schedule steps: %w", err)
+	}
+	return json.RawMessage(data), nil
+}
+
+func canonicalJSONBytes(value any) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := writeCanonicalJSON(&buf, value); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func writeCanonicalJSON(w io.Writer, value any) error {
+	switch v := value.(type) {
+	case nil:
+		_, err := io.WriteString(w, "null")
+		return err
+	case bool:
+		if v {
+			_, err := io.WriteString(w, "true")
+			return err
+		}
+		_, err := io.WriteString(w, "false")
+		return err
+	case string:
+		normalized, err := canonicalJSONString(v)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, strconv.Quote(normalized))
+		return err
+	case json.Number:
+		_, err := io.WriteString(w, v.String())
+		return err
+	case float64:
+		_, err := io.WriteString(w, strconv.FormatFloat(v, 'f', -1, 64))
+		return err
+	case []any:
+		if _, err := io.WriteString(w, "["); err != nil {
+			return err
+		}
+		for i, item := range v {
+			if i > 0 {
+				if _, err := io.WriteString(w, ","); err != nil {
+					return err
+				}
+			}
+			if err := writeCanonicalJSON(w, item); err != nil {
+				return err
+			}
+		}
+		_, err := io.WriteString(w, "]")
+		return err
+	case map[string]any:
+		keys := make([]string, 0, len(v))
+		for key := range v {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		if _, err := io.WriteString(w, "{"); err != nil {
+			return err
+		}
+		for i, key := range keys {
+			if i > 0 {
+				if _, err := io.WriteString(w, ","); err != nil {
+					return err
+				}
+			}
+			if _, err := io.WriteString(w, strconv.Quote(key)); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, ":"); err != nil {
+				return err
+			}
+			if err := writeCanonicalJSON(w, v[key]); err != nil {
+				return err
+			}
+		}
+		_, err := io.WriteString(w, "}")
+		return err
+	default:
+		if text, ok := v.(encoding.TextMarshaler); ok {
+			bytes, err := text.MarshalText()
+			if err != nil {
+				return err
+			}
+			_, err = io.WriteString(w, strconv.Quote(string(bytes)))
+			return err
+		}
+		return fmt.Errorf("unsupported canonical JSON value %T", value)
+	}
+}
+
+func canonicalJSONString(value string) (string, error) {
+	if !rfc3339Timestamp.MatchString(value) {
+		return value, nil
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, strings.Replace(value, "Z", "+00:00", 1))
+	if err != nil {
+		return value, nil
+	}
+	return parsed.UTC().Format("2006-01-02T15:04:05.000000Z"), nil
 }

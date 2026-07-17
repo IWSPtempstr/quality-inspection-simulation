@@ -18,7 +18,7 @@ func (ScheduleRepository) CreateSnapshot(ctx context.Context, tx *gorm.DB, v ent
 	return tx.WithContext(ctx).Create(&models.ScheduleSnapshot{ID: v.ID, CenterID: v.CenterID, InputHash: v.InputHash, AsOf: v.AsOf, BaseScheduleVersion: v.BaseScheduleVersion, ResourceSnapshotVersion: v.ResourceSnapshotVersion, Payload: datatypes.JSON(v.Payload), CreatedAt: v.CreatedAt}).Error
 }
 func (ScheduleRepository) CreatePreview(ctx context.Context, tx *gorm.DB, v entities.SchedulePreview) error {
-	return tx.WithContext(ctx).Create(&models.SchedulePreview{ID: v.ID, CenterID: v.CenterID, SnapshotID: v.SnapshotID, Status: v.Status, Version: v.Version, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}).Error
+	return tx.WithContext(ctx).Create(&models.SchedulePreview{ID: v.ID, CenterID: v.CenterID, SnapshotID: v.SnapshotID, Status: v.Status, NormalizedResultHash: v.NormalizedResultHash, Version: v.Version, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}).Error
 }
 func (ScheduleRepository) Preview(ctx context.Context, db *gorm.DB, centerID, id string, lock bool) (entities.SchedulePreview, error) {
 	q := db.WithContext(ctx)
@@ -43,7 +43,7 @@ func (ScheduleRepository) Snapshot(ctx context.Context, db *gorm.DB, id string) 
 	return entities.ScheduleSnapshot{ID: v.ID, CenterID: v.CenterID, InputHash: v.InputHash, AsOf: v.AsOf, BaseScheduleVersion: v.BaseScheduleVersion, ResourceSnapshotVersion: v.ResourceSnapshotVersion, Payload: json.RawMessage(v.Payload), CreatedAt: v.CreatedAt}, nil
 }
 func (ScheduleRepository) UpdatePreview(ctx context.Context, tx *gorm.DB, v entities.SchedulePreview, expected int64) error {
-	r := tx.WithContext(ctx).Model(&models.SchedulePreview{}).Where("id = ? AND center_id = ? AND version = ?", v.ID, v.CenterID, expected).Updates(map[string]any{"status": v.Status, "candidate": datatypes.JSON(v.Candidate), "normalized_steps": datatypes.JSON(v.NormalizedSteps), "version": v.Version, "partner_failure": v.PartnerFailure, "updated_at": v.UpdatedAt})
+	r := tx.WithContext(ctx).Model(&models.SchedulePreview{}).Where("id = ? AND center_id = ? AND version = ?", v.ID, v.CenterID, expected).Updates(map[string]any{"status": v.Status, "candidate": datatypes.JSON(v.Candidate), "normalized_steps": datatypes.JSON(v.NormalizedSteps), "normalized_result_hash": v.NormalizedResultHash, "version": v.Version, "partner_failure": v.PartnerFailure, "updated_at": v.UpdatedAt})
 	if r.Error != nil {
 		return r.Error
 	}
@@ -62,5 +62,5 @@ func (ScheduleRepository) NextVersion(ctx context.Context, tx *gorm.DB, centerID
 }
 func (ScheduleRepository) IsMissing(err error) bool { return errors.Is(err, gorm.ErrRecordNotFound) }
 func previewEntity(v models.SchedulePreview) entities.SchedulePreview {
-	return entities.SchedulePreview{ID: v.ID, CenterID: v.CenterID, SnapshotID: v.SnapshotID, Status: v.Status, Candidate: json.RawMessage(v.Candidate), NormalizedSteps: json.RawMessage(v.NormalizedSteps), Version: v.Version, PartnerFailure: v.PartnerFailure, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+	return entities.SchedulePreview{ID: v.ID, CenterID: v.CenterID, SnapshotID: v.SnapshotID, Status: v.Status, NormalizedResultHash: v.NormalizedResultHash, Candidate: json.RawMessage(v.Candidate), NormalizedSteps: json.RawMessage(v.NormalizedSteps), Version: v.Version, PartnerFailure: v.PartnerFailure, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
 }

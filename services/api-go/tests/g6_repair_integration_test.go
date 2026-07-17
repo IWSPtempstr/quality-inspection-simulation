@@ -47,18 +47,44 @@ func TestG6PreviewReplayCandidateAuditAndOutboxClaimRelease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load snapshot: %v", err)
 	}
-	candidate := map[string]any{"snapshot_id": response.SnapshotID, "input_hash": snapshot.InputHash, "version": response.Version, "candidate": map[string]any{"score": 1}, "normalized_steps": []any{}}
+	candidateBody := map[string]any{"input_hash": snapshot.InputHash, "algorithm_used": "cp_sat", "solver_status": "optimal", "fallback_used": false, "fallback_reason": nil, "blocked_steps": []any{}, "schedule": map[string]any{"steps": []map[string]any{{"id": "11111111-1111-1111-1111-111111111111", "order_id": "22222222-2222-2222-2222-222222222222", "project_id": "33333333-3333-3333-3333-333333333333", "starts_at": "2026-07-16T00:00:00Z", "ends_at": "2026-07-16T00:30:00Z"}}}, "metrics": map[string]any{"scheduled_step_count": 1}}
+	hash, _, err := services.NormalizeCandidateForTest(candidateBody)
+	if err != nil {
+		t.Fatalf("normalize candidate: %v", err)
+	}
+	candidate := map[string]any{"snapshot_id": response.SnapshotID, "input_hash": snapshot.InputHash, "version": response.Version, "normalized_result_hash": hash, "candidate": candidateBody}
 	body, err := json.Marshal(candidate)
 	if err != nil {
 		t.Fatalf("marshal candidate: %v", err)
 	}
 	request := httptest.NewRequest(http.MethodPost, "/internal/v1/schedule-previews/"+response.ID+"/candidate", bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-Internal-Service-Token", "fixture-token")
+	request.Header.Set("X-Scheduler-Callback-Token", "fixture-token")
 	callback := httptest.NewRecorder()
 	router.ServeHTTP(callback, request)
 	if callback.Code != http.StatusOK {
 		t.Fatalf("candidate callback = %d: %s", callback.Code, callback.Body.String())
+	}
+	replayRequest := httptest.NewRequest(http.MethodPost, "/internal/v1/schedule-previews/"+response.ID+"/candidate", bytes.NewReader(body))
+	replayRequest.Header.Set("Content-Type", "application/json")
+	replayRequest.Header.Set("X-Scheduler-Callback-Token", "fixture-token")
+	callbackReplay := httptest.NewRecorder()
+	router.ServeHTTP(callbackReplay, replayRequest)
+	if callbackReplay.Code != http.StatusOK {
+		t.Fatalf("candidate replay = %d: %s, want 200", callbackReplay.Code, callbackReplay.Body.String())
+	}
+	if !g6JSONEqual(callbackReplay.Body.Bytes(), callback.Body.Bytes()) {
+		t.Fatalf("candidate replay = %s, want JSON-equivalent first success %s", callbackReplay.Body.String(), callback.Body.String())
+	}
+	preview, err := (repositories.ScheduleRepository{}).Preview(ctx, db, "center-g6", response.ID, false)
+	if err != nil {
+		t.Fatalf("load preview after callback: %v", err)
+	}
+	if !g6JSONEqual(
+		preview.NormalizedSteps,
+		[]byte(`[{"ends_at":"2026-07-16T00:30:00Z","id":"11111111-1111-1111-1111-111111111111","order_id":"22222222-2222-2222-2222-222222222222","project_id":"33333333-3333-3333-3333-333333333333","starts_at":"2026-07-16T00:00:00Z"}]`),
+	) {
+		t.Fatalf("stored normalized steps = %s", preview.NormalizedSteps)
 	}
 	var audits int64
 	if err := db.Model(&models.AuditLog{}).Where("entity_id = ? AND action = ?", response.ID, "schedule_preview_candidate_received").Count(&audits).Error; err != nil {
@@ -77,12 +103,12 @@ func TestG6PreviewReplayCandidateAuditAndOutboxClaimRelease(t *testing.T) {
 	if err := worker.PublishPending(ctx, 10); err != nil {
 		t.Fatalf("writeback worker: %v", err)
 	}
-	var stored models.OutboxEvent
-	if err := db.First(&stored, "id = ?", foreign.ID).Error; err != nil {
+	var outboxEvent models.OutboxEvent
+	if err := db.First(&outboxEvent, "id = ?", foreign.ID).Error; err != nil {
 		t.Fatalf("load G5 outbox event: %v", err)
 	}
-	if stored.ClaimedAt != nil || stored.PublishedAt != nil {
-		t.Fatalf("G5 outbox after G6 worker = claimed %v published %v, want released unpublished", stored.ClaimedAt, stored.PublishedAt)
+	if outboxEvent.ClaimedAt != nil || outboxEvent.PublishedAt != nil {
+		t.Fatalf("G5 outbox after G6 worker = claimed %v published %v, want released unpublished", outboxEvent.ClaimedAt, outboxEvent.PublishedAt)
 	}
 }
 
@@ -140,4 +166,45 @@ type g6RepairPartner struct{}
 
 func (g6RepairPartner) PutSchedule(context.Context, string, int64, []byte, string, int64) (int, string, error) {
 	return http.StatusNoContent, "", nil
+}
+
+func g6JSONEqual(left, right []byte) bool {
+	var a any
+	if err := json.Unmarshal(left, &a); err != nil {
+		return false
+	}
+	var b any
+	if err := json.Unmarshal(right, &b); err != nil {
+		return false
+	}
+	return g6DeepEqualJSON(a, b)
+}
+
+func g6DeepEqualJSON(left, right any) bool {
+	switch a := left.(type) {
+	case map[string]any:
+		b, ok := right.(map[string]any)
+		if !ok || len(a) != len(b) {
+			return false
+		}
+		for key, value := range a {
+			if !g6DeepEqualJSON(value, b[key]) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		b, ok := right.([]any)
+		if !ok || len(a) != len(b) {
+			return false
+		}
+		for index := range a {
+			if !g6DeepEqualJSON(a[index], b[index]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return a == right
+	}
 }

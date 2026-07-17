@@ -175,22 +175,33 @@ func TestG6CallbackSnapshotMismatchAndRedisOutage(t *testing.T) {
 		t.Fatalf("load snapshot: %v", err)
 	}
 	router := api.NewRouterWithScheduling(slog.New(slog.NewTextHandler(io.Discard, nil)), db, &g6RepairLocker{}, "fixture-token", g6RepairAuthenticator())
+	candidateBody := map[string]any{"input_hash": snap.InputHash, "algorithm_used": "cp_sat", "solver_status": "optimal", "fallback_used": false, "fallback_reason": nil, "blocked_steps": []any{}, "schedule": map[string]any{"steps": []map[string]any{{"id": "11111111-1111-1111-1111-111111111111", "order_id": "22222222-2222-2222-2222-222222222222", "project_id": "33333333-3333-3333-3333-333333333333", "starts_at": "2026-07-16T00:00:00Z", "ends_at": "2026-07-16T00:30:00Z"}}}, "metrics": map[string]any{"scheduled_step_count": 1}}
+	hash, _, err := services.NormalizeCandidateForTest(candidateBody)
+	if err != nil {
+		t.Fatalf("normalize candidate: %v", err)
+	}
 	for _, bad := range []map[string]any{
-		{"snapshot_id": "wrong", "input_hash": snap.InputHash, "version": p.Version, "candidate": map[string]any{}, "normalized_steps": []any{}},
-		{"snapshot_id": p.SnapshotID, "input_hash": "sha256:wrong", "version": p.Version, "candidate": map[string]any{}, "normalized_steps": []any{}},
-		{"snapshot_id": p.SnapshotID, "input_hash": snap.InputHash, "version": p.Version + 1, "candidate": map[string]any{}, "normalized_steps": []any{}},
+		{"snapshot_id": "wrong", "input_hash": snap.InputHash, "version": p.Version, "normalized_result_hash": hash, "candidate": candidateBody},
+		{"snapshot_id": p.SnapshotID, "input_hash": "sha256:wrong", "version": p.Version, "normalized_result_hash": hash, "candidate": candidateBody},
+		{"snapshot_id": p.SnapshotID, "input_hash": snap.InputHash, "version": p.Version + 1, "normalized_result_hash": hash, "candidate": candidateBody},
 	} {
 		body, marshalErr := json.Marshal(bad)
 		if marshalErr != nil {
 			t.Fatalf("marshal callback: %v", marshalErr)
 		}
 		req := httptest.NewRequest(http.MethodPost, "/internal/v1/schedule-previews/"+p.ID+"/candidate", bytes.NewReader(body))
-		req.Header.Set("X-Internal-Service-Token", "fixture-token")
+		req.Header.Set("X-Scheduler-Callback-Token", "fixture-token")
 		res := httptest.NewRecorder()
 		router.ServeHTTP(res, req)
 		if res.Code != http.StatusConflict {
 			t.Fatalf("mismatched callback = %d: %s, want 409", res.Code, res.Body.String())
 		}
+	}
+	unauthorizedReq := httptest.NewRequest(http.MethodPost, "/internal/v1/schedule-previews/"+p.ID+"/candidate", bytes.NewReader(bodyMust(json.Marshal(candidateBody))))
+	unauthorizedRes := httptest.NewRecorder()
+	router.ServeHTTP(unauthorizedRes, unauthorizedReq)
+	if unauthorizedRes.Code != http.StatusUnauthorized {
+		t.Fatalf("missing callback auth = %d: %s, want 401", unauthorizedRes.Code, unauthorizedRes.Body.String())
 	}
 
 	ready := g6ContractReadyPreview(t, ctx, db, service, actor)
@@ -214,6 +225,13 @@ func TestG6CallbackSnapshotMismatchAndRedisOutage(t *testing.T) {
 	if formal != 0 {
 		t.Fatalf("Redis outage formal schedules = %d, want 0", formal)
 	}
+}
+
+func bodyMust(data []byte, err error) []byte {
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
 
 func TestG6SnapshotPersistsFrozenStepEvidence(t *testing.T) {
@@ -268,7 +286,34 @@ func g6ContractReadyPreview(t *testing.T, ctx context.Context, db *gorm.DB, serv
 	if err != nil {
 		t.Fatalf("load snapshot: %v", err)
 	}
-	p, err = service.Candidate(ctx, p.ID, p.SnapshotID, snap.InputHash, p.Version, json.RawMessage(`{"score":1}`), json.RawMessage(`[]`))
+	candidate := map[string]any{
+		"input_hash":      snap.InputHash,
+		"algorithm_used":  "cp_sat",
+		"solver_status":   "optimal",
+		"fallback_used":   false,
+		"fallback_reason": nil,
+		"blocked_steps":   []any{},
+		"schedule": map[string]any{
+			"steps": []map[string]any{{
+				"id":         "11111111-1111-1111-1111-111111111111",
+				"order_id":   "22222222-2222-2222-2222-222222222222",
+				"project_id": "33333333-3333-3333-3333-333333333333",
+				"starts_at":  "2026-07-16T00:00:00Z",
+				"ends_at":    "2026-07-16T00:30:00Z",
+			}},
+		},
+		"metrics": map[string]any{"scheduled_step_count": 1},
+	}
+	hash, rawSteps, err := services.NormalizeCandidateForTest(candidate)
+	if err != nil {
+		t.Fatalf("normalize candidate: %v", err)
+	}
+	rawCandidate, err := json.Marshal(candidate)
+	if err != nil {
+		t.Fatalf("marshal candidate: %v", err)
+	}
+	_ = rawSteps
+	p, err = service.Candidate(ctx, p.ID, p.SnapshotID, snap.InputHash, p.Version, hash, rawCandidate)
 	if err != nil {
 		t.Fatalf("write candidate: %v", err)
 	}

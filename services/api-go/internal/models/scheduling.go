@@ -21,6 +21,7 @@ func (ScheduleSnapshot) TableName() string { return "schedule_snapshots" }
 type SchedulePreview struct {
 	ID                           string `gorm:"type:uuid;primaryKey"`
 	CenterID, SnapshotID, Status string
+	NormalizedResultHash         *string
 	Candidate, NormalizedSteps   datatypes.JSON `gorm:"type:jsonb"`
 	Version                      int64
 	PartnerFailure               *string

@@ -33,7 +33,7 @@ func mountG6Routes(api, root *gin.RouterGroup, authenticator Authenticator, db *
 	internal.POST("/schedule-previews/:preview_id/candidate", h.internalAuth, h.candidate)
 }
 func (h g6Handler) internalAuth(c *gin.Context) {
-	if h.serviceToken == "" || c.GetHeader("X-Internal-Service-Token") != h.serviceToken {
+	if h.serviceToken == "" || c.GetHeader("X-Scheduler-Callback-Token") != h.serviceToken {
 		writeProblem(c, http.StatusUnauthorized, "urn:problem:unauthorized", "未认证", "需要有效服务凭据")
 		return
 	}
@@ -70,17 +70,17 @@ func (h g6Handler) reject(c *gin.Context) {
 }
 func (h g6Handler) candidate(c *gin.Context) {
 	var input struct {
-		SnapshotID      string          `json:"snapshot_id"`
-		InputHash       string          `json:"input_hash"`
-		Version         int64           `json:"version"`
-		Candidate       json.RawMessage `json:"candidate"`
-		NormalizedSteps json.RawMessage `json:"normalized_steps"`
+		SnapshotID           string          `json:"snapshot_id"`
+		InputHash            string          `json:"input_hash"`
+		Version              int64           `json:"version"`
+		NormalizedResultHash string          `json:"normalized_result_hash"`
+		Candidate            json.RawMessage `json:"candidate"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		writeProblem(c, http.StatusBadRequest, "urn:problem:invalid-request", "请求无效", "候选结果无效")
 		return
 	}
-	p, err := h.schedules.Candidate(c, c.Param("preview_id"), input.SnapshotID, input.InputHash, input.Version, input.Candidate, input.NormalizedSteps)
+	p, err := h.schedules.Candidate(c, c.Param("preview_id"), input.SnapshotID, input.InputHash, input.Version, input.NormalizedResultHash, input.Candidate)
 	if err != nil {
 		writeG6Error(c, err)
 		return
@@ -157,6 +157,8 @@ func writeG6Error(c *gin.Context, err error) {
 		writeProblem(c, http.StatusServiceUnavailable, "urn:problem:service-degraded", "服务降级", "审批锁不可用")
 	case errors.Is(err, entities.ErrVersionConflict):
 		writeProblem(c, http.StatusConflict, "urn:problem:version-conflict", "版本冲突", "资源已更新")
+	case errors.Is(err, services.ErrCandidateHashMismatch):
+		writeProblem(c, http.StatusConflict, "urn:problem:candidate-hash-mismatch", "请求冲突", "候选结果哈希不匹配")
 	case errors.Is(err, services.ErrInvalidPreviewTransition):
 		writeProblem(c, http.StatusConflict, "urn:problem:invalid-transition", "状态冲突", "预览状态不允许该操作")
 	case strings.Contains(err.Error(), "record not found"):

@@ -11,8 +11,8 @@ paths:
       operationId: calculateSchedule
       security:
         - ServiceBearerAuth: []
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SchedulingSnapshot' } } } }
-      responses: { '200': { description: Candidate result, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleCandidate' } } } }, '401': { description: Invalid service authentication } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleSubmission' } } } }
+      responses: { '202': { description: Accepted immutable scheduling job, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleAccepted' } } } }, '400': { description: Invalid immutable scheduling submission }, '401': { description: Invalid service authentication } }
 components:
   securitySchemes:
     ServiceBearerAuth:
@@ -21,8 +21,26 @@ components:
       bearerFormat: JWT
       description: Service-issued bearer token required for internal calls. The scheduler accepts immutable snapshots only from the authenticated Go business API.
   schemas:
+    ScheduleSubmission:
+      type: object
+      additionalProperties: false
+      required: [preview_id, preview_version, snapshot]
+      properties:
+        preview_id: { type: string }
+        preview_version: { type: integer, minimum: 1 }
+        snapshot: { $ref: '#/components/schemas/SchedulingSnapshot' }
+    ScheduleAccepted:
+      type: object
+      additionalProperties: false
+      required: [preview_id, preview_version, snapshot_id, status]
+      properties:
+        preview_id: { type: string }
+        preview_version: { type: integer, minimum: 1 }
+        snapshot_id: { type: string }
+        status: { type: string, const: accepted }
     SchedulingSnapshot:
       type: object
+      additionalProperties: false
       required: [snapshot_id, input_hash, as_of, base_schedule_version, resource_snapshot_version, orders, resources, frozen_steps]
       properties:
         snapshot_id: { type: string }
