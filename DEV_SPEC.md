@@ -590,6 +590,31 @@ clause, page, source text, and evidence state. Chroma and BM25 retrieval
 failures must return a degraded no-evidence response; neither may affect
 formal scheduling or approval consistency.
 
+For A1-A3 delivery, `services/ai-py` progresses in three explicit layers.
+A1 owns only the bounded service shell: typed settings, internal FastAPI
+routes, prompt loading, redaction/observability helpers, structured-output
+normalization, and citation-shape validation. It may return only deterministic
+degraded placeholders and must not imply retrieval, diagnosis reasoning, case
+indexing, or business-write capability that is not yet implemented.
+
+A2 owns only versioned retrieval foundations. It introduces typed retrieval
+queries/results, metadata filters, version activation records, Chroma and BM25
+client boundaries, and activation-aware fallback search. It may search the
+active version and a configured rollback version only, and every fallback path
+must remain explicit in the returned degraded state. A2 does not fuse ranks,
+rerank candidates, synthesize cited answers, or invoke diagnosis tools.
+
+A3 owns only the hybrid retrieval and answer-assembly layer above A2. It must
+take Chroma Top 50 plus BM25 Top 50 from the active or fallback version chosen
+by A2, de-duplicate shared IDs, apply reciprocal-rank fusion with `k=60`,
+rerank the first 20 unique candidates with the local CPU Cross-Encoder, and
+return at most five cited standard results. If the Cross-Encoder is
+unavailable, A3 may fall back to the fused order and must mark the response
+degraded; if both Chroma and BM25 are unavailable, it must return degraded
+no-evidence. A3 also owns deterministic standard impact analysis over the same
+cited retrieval set. It must not add diagnosis-agent planning, case memory,
+human-review indexing, or browser-driven free-form tool dispatch.
+
 The short memory is per center, user, event, and session in Redis. Raw recent
 turns have a 24-hour TTL; after eight turns or 6,000 tokens, the AI replaces
 older turns with a structured summary whose TTL is seven days. Redis never
@@ -1112,7 +1137,7 @@ acceptance gate until the data corpus and evaluation protocol are approved.
 | --- | --- | --- |
 | A1 | Create the AI-service directory skeleton defined in 4.3; internal API, typed config, core redaction/observability, LLM gateway, prompt loader, and structured output/citation validation. | `services/ai-py/**`, `contracts/openapi/ai-internal.yaml`, `spec.md` |
 | A2 | Chroma standard/case collections, BM25 version indexes, metadata filters, activation and fallback search. | `services/ai-py/**`, `spec.md` |
-| A3 | RRF hybrid retrieval, local Cross-Encoder reranking, cited standard Q&A and impact analysis. | `services/ai-py/**`, `spec.md` |
+| A3 | RRF hybrid retrieval, local Cross-Encoder reranking, cited standard Q&A and impact analysis. The step consumes only A2 retrieval outputs, keeps A2 activation/fallback semantics, returns at most five cited results, and degrades safely when the Cross-Encoder or retrieval backends are unavailable. | `services/ai-py/**`, `spec.md` |
 | A4 | Evidence-bounded `ExceptionDiagnosisAgent` and six read-only tools. | `services/ai-py/**`, `contracts/openapi/ai-internal.yaml`, `spec.md` |
 | A5 | Redis short memory and structured session compression. | `services/ai-py/**`, `spec.md` |
 | A6 | PostgreSQL review queue, Outbox, and approved exception-memory Chroma indexing. | `services/ai-py/**`, `spec.md` |

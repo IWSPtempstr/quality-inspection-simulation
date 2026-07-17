@@ -12,49 +12,75 @@ paths:
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgeQuery' } } } }
-      responses: { '200': { description: Cited answer, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgeAnswer' } } } } }
+      responses:
+        '200': { description: Cited answer, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgeAnswer' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /internal/v1/diagnoses:
     post:
       operationId: diagnoseException
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosisRequest' } } } }
-      responses: { '200': { description: Evidence-bounded diagnosis, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosisResult' } } } }, '503': { description: Retrieval service degraded } }
+      responses:
+        '200': { description: Evidence-bounded diagnosis, content: { application/json: { schema: { $ref: '#/components/schemas/DiagnosisResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /internal/v1/schedule-explanations:
     post:
       operationId: explainScheduleResult
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanationRequest' } } } }
-      responses: { '200': { description: Result-scoped explanation, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanationResult' } } } }, '503': { description: Service degraded } }
+      responses:
+        '200': { description: Result-scoped explanation, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleExplanationResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceDegraded' }
   /internal/v1/data-quality-explanations:
     post:
       operationId: explainFailedRules
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityExplanationRequest' } } } }
-      responses: { '200': { description: Non-binding failed-rule explanation, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityExplanationResult' } } } }, '503': { description: Service degraded } }
+      responses:
+        '200': { description: Non-binding failed-rule explanation, content: { application/json: { schema: { $ref: '#/components/schemas/DataQualityExplanationResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceDegraded' }
   /internal/v1/exception-case-candidates:
     post:
       operationId: extractExceptionCaseCandidate
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidateRequest' } } } }
-      responses: { '200': { description: Non-persistent candidate content, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidateResult' } } } }, '503': { description: Service degraded } }
+      responses:
+        '200': { description: Non-persistent candidate content, content: { application/json: { schema: { $ref: '#/components/schemas/ExceptionCaseCandidateResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceDegraded' }
   /internal/v1/audit-filter-suggestions:
     post:
       operationId: suggestAuditFilters
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestionRequest' } } } }
-      responses: { '200': { description: Structured filter suggestion only, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestionResult' } } } }, '503': { description: Service degraded } }
+      responses:
+        '200': { description: Structured filter suggestion only, content: { application/json: { schema: { $ref: '#/components/schemas/AuditFilterSuggestionResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceDegraded' }
   /internal/v1/notification-body-drafts:
     post:
       operationId: draftNotificationBody
       security:
         - ServiceBearerAuth: []
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationBodyDraftRequest' } } } }
-      responses: { '200': { description: Body-text draft only, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationBodyDraftResult' } } } }, '503': { description: Service degraded } }
+      responses:
+        '200': { description: Body-text draft only, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationBodyDraftResult' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/ServiceDegraded' }
 components:
   securitySchemes:
     ServiceBearerAuth:
@@ -62,7 +88,31 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Service-issued bearer token required for internal calls. The AI service accepts actor and center context only from the authenticated Go business API.
+  responses:
+    Unauthorized:
+      description: Missing or malformed service bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Service bearer token is not authorized.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceDegraded:
+      description: Capability is intentionally unavailable or degraded until later AI phases are implemented.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail: { type: string }
     KnowledgeQuery:
       type: object
       description: Actor and center context is derived by the Go API from verified OIDC claims and forwarded only after ServiceBearerAuth succeeds. These fields are not accepted as authority from unauthenticated callers.
@@ -78,7 +128,7 @@ components:
         standard_title: { type: string }
         version: { type: string }
         clause: { type: string }
-        page: { type: integer }
+        page: { type: integer, minimum: 1 }
         content: { type: string }
     KnowledgeAnswer:
       type: object
@@ -98,9 +148,68 @@ components:
         schedule_version: { type: integer }
         resource_snapshot_version: { type: integer }
         session_id: { type: string }
+        event_snapshot: { $ref: '#/components/schemas/DiagnosisEventSnapshot' }
+        order_snapshots:
+          type: array
+          items: { $ref: '#/components/schemas/DiagnosisOrderSnapshot' }
+        resource_snapshots:
+          type: array
+          items: { $ref: '#/components/schemas/DiagnosisResourceSnapshot' }
+        schedule_snapshot: { $ref: '#/components/schemas/DiagnosisScheduleSnapshot' }
+    DiagnosisEventSnapshot:
+      type: object
+      required: [event_type, summary]
+      properties:
+        event_type: { type: string }
+        summary: { type: string, minLength: 1 }
+        affected_order_ids: { type: array, items: { type: string } }
+        affected_resource_ids: { type: array, items: { type: string } }
+        equipment_ids: { type: array, items: { type: string } }
+        project_codes: { type: array, items: { type: string } }
+        related_step_ids: { type: array, items: { type: string } }
+    DiagnosisOrderSnapshot:
+      type: object
+      required: [order_id, title]
+      properties:
+        order_id: { type: string }
+        title: { type: string }
+        priority: { type: [string, 'null'] }
+        status: { type: [string, 'null'] }
+        project_codes: { type: array, items: { type: string } }
+    DiagnosisResourceSnapshot:
+      type: object
+      required: [resource_id, resource_type]
+      properties:
+        resource_id: { type: string }
+        resource_type: { type: string, enum: [equipment, employee] }
+        display_name: { type: [string, 'null'] }
+        status: { type: [string, 'null'] }
+    DiagnosisSLARisk:
+      type: object
+      required: [order_id, risk]
+      properties:
+        order_id: { type: string }
+        risk: { type: string }
+        late_by_minutes: { type: [integer, 'null'] }
+    DiagnosisScheduleStep:
+      type: object
+      required: [step_id, order_id, frozen]
+      properties:
+        step_id: { type: string }
+        order_id: { type: string }
+        frozen: { type: boolean }
+        status: { type: [string, 'null'] }
+        equipment_id: { type: [string, 'null'] }
+        employee_id: { type: [string, 'null'] }
+    DiagnosisScheduleSnapshot:
+      type: object
+      properties:
+        frozen_step_ids: { type: array, items: { type: string } }
+        sla_risks: { type: array, items: { $ref: '#/components/schemas/DiagnosisSLARisk' } }
+        steps: { type: array, items: { $ref: '#/components/schemas/DiagnosisScheduleStep' } }
     DiagnosisResult:
       type: object
-      required: [event_id, affected_orders, frozen_step_ids, sla_risks, affected_resources, evidence, resolved_case_ids, recommendations, evidence_gaps, confidence, tool_calls]
+      required: [event_id, affected_orders, frozen_step_ids, sla_risks, affected_resources, evidence, resolved_case_ids, recommendations, evidence_gaps, confidence, degraded, tool_calls]
       properties:
         event_id: { type: string }
         affected_orders: { type: array, items: { type: object } }
@@ -112,6 +221,7 @@ components:
         recommendations: { type: array, items: { type: string } }
         evidence_gaps: { type: array, items: { type: string } }
         confidence: { type: string, enum: [high, medium, low, insufficient] }
+        degraded: { type: boolean }
         tool_calls: { type: array, maxItems: 5, items: { type: string, enum: [get_event_snapshot, get_order_snapshot, get_resource_snapshot, get_schedule_snapshot, search_standards, search_resolved_cases] } }
     AssistanceContext:
       type: object
