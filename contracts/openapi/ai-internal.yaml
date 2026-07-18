@@ -209,7 +209,7 @@ components:
         steps: { type: array, items: { $ref: '#/components/schemas/DiagnosisScheduleStep' } }
     DiagnosisResult:
       type: object
-      required: [event_id, affected_orders, frozen_step_ids, sla_risks, affected_resources, evidence, resolved_case_ids, recommendations, evidence_gaps, confidence, degraded, tool_calls]
+      required: [event_id, affected_orders, frozen_step_ids, sla_risks, affected_resources, evidence, resolved_case_ids, recommendations, evidence_gaps, confidence, memory_status, degraded, tool_calls]
       properties:
         event_id: { type: string }
         affected_orders: { type: array, items: { type: object } }
@@ -221,8 +221,18 @@ components:
         recommendations: { type: array, items: { type: string } }
         evidence_gaps: { type: array, items: { type: string } }
         confidence: { type: string, enum: [high, medium, low, insufficient] }
+        memory_status: { $ref: '#/components/schemas/DiagnosisMemoryStatus' }
         degraded: { type: boolean }
         tool_calls: { type: array, maxItems: 5, items: { type: string, enum: [get_event_snapshot, get_order_snapshot, get_resource_snapshot, get_schedule_snapshot, search_standards, search_resolved_cases] } }
+    DiagnosisMemoryStatus:
+      type: object
+      required: [enabled, session_scoped, recent_turn_count, summary_available, compressed_turn_count]
+      properties:
+        enabled: { type: boolean }
+        session_scoped: { type: boolean }
+        recent_turn_count: { type: integer, minimum: 0 }
+        summary_available: { type: boolean }
+        compressed_turn_count: { type: integer, minimum: 0 }
     AssistanceContext:
       type: object
       required: [center_id, actor_id, correlation_id]

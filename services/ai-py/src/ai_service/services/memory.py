@@ -9,7 +9,7 @@ from ai_service.entities.memory import (
     SessionSummary,
     SessionTurn,
 )
-from ai_service.entities.models import DiagnosisRequest, DiagnosisResult
+from ai_service.entities.models import DiagnosisMemoryStatus, DiagnosisRequest, DiagnosisResult
 from ai_service.repositories.memory import RedisSessionMemoryRepository
 
 SUMMARY_KEEP_TURNS = 4
@@ -65,6 +65,22 @@ class SessionMemoryService:
         if key is None:
             return None
         return self.repository.load(key)
+
+    def build_status(
+        self,
+        *,
+        payload: DiagnosisRequest,
+        state: SessionMemoryState | None,
+    ) -> DiagnosisMemoryStatus:
+        summary = state.summary if state is not None else None
+        recent_turns = state.recent_turns if state is not None else ()
+        return DiagnosisMemoryStatus(
+            enabled=payload.session_id is not None,
+            session_scoped=payload.session_id is not None,
+            recent_turn_count=len(recent_turns),
+            summary_available=summary is not None,
+            compressed_turn_count=summary.compressed_turn_count if summary is not None else 0,
+        )
 
 
 def _session_key(payload: DiagnosisRequest) -> SessionMemoryKey | None:

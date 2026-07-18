@@ -81,7 +81,14 @@ def test_diagnosis_returns_structured_insufficient_result() -> None:
         "recommendations": [],
         "evidence_gaps": ["Event snapshot was not provided."],
         "confidence": "insufficient",
-        "degraded": True,
+        "memory_status": {
+            "enabled": False,
+            "session_scoped": False,
+            "recent_turn_count": 0,
+            "summary_available": False,
+            "compressed_turn_count": 0,
+        },
+        "degraded": False,
         "tool_calls": ["get_event_snapshot"],
     }
 
@@ -108,6 +115,13 @@ def test_diagnosis_returns_200_when_retrieval_is_degraded() -> None:
     )
     assert response.status_code == 200
     assert response.json()["degraded"] is True
+    assert response.json()["memory_status"] == {
+        "enabled": False,
+        "session_scoped": False,
+        "recent_turn_count": 0,
+        "summary_available": False,
+        "compressed_turn_count": 0,
+    }
     assert response.json()["tool_calls"] == [
         "get_event_snapshot",
         "get_order_snapshot",
@@ -133,6 +147,56 @@ def test_notification_draft_returns_degraded_placeholder() -> None:
     )
     assert response.status_code == 200
     assert response.json() == {
-        "body": "Notification drafting is not available in A1.",
-        "degraded": True,
+        "body": "Title\n\nsecret body",
+        "degraded": False,
     }
+
+
+def test_schedule_explanation_returns_structured_result() -> None:
+    response = _request(
+        "POST",
+        "/internal/v1/schedule-explanations",
+        headers={"Authorization": "Bearer test-token", "X-Correlation-ID": "corr-2"},
+        json={
+            "center_id": "c1",
+            "actor_id": "a1",
+            "correlation_id": "corr-2",
+            "preview_id": "preview-1",
+            "subject_type": "preview",
+            "subject_id": "preview-1",
+            "persisted_result": {
+                "algorithm_used": "cp_sat",
+                "solver_status": "FEASIBLE",
+                "changes": [{"step_id": "step-1"}],
+                "frozen_step_ids": ["step-9"],
+            },
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["degraded"] is False
+    assert response.json()["frozen_step_ids"] == ["step-9"]
+
+
+def test_case_candidate_endpoint_returns_structured_candidate() -> None:
+    response = _request(
+        "POST",
+        "/internal/v1/exception-case-candidates",
+        headers={"Authorization": "Bearer test-token", "X-Correlation-ID": "corr-3"},
+        json={
+            "center_id": "c1",
+            "actor_id": "a1",
+            "correlation_id": "corr-3",
+            "event_id": "evt-9",
+            "closed_event_snapshot": {
+                "event_type": "resource",
+                "summary": "Compressor outage",
+                "trigger": "outage",
+                "impact": "delay",
+                "disposition": "reroute",
+                "outcome": "recovered",
+            },
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["degraded"] is False
+    assert response.json()["trigger"] == "outage"

@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "kid": "deploy-placeholder-key",
+      "alg": "RS256",
+      "n": "sXchf9jVqU0u0vGm2vD8m9bq7YwD0W7mP6e7ud5D5Qy3SxYv9m7g5L2QkCszmW85QeL8a0ts6lB3o7Q8yK4rSVhJkqX1QPOuQkM5hA2Vd8Gq0v91iIh6P8_H2wB8C4x6F12m2O6yB8K8gQWQv4Q3vVt5p4Xv8Nn0O7_jlR1Q2V9F6Gqk4tM3zN0b2wL1vP8A7jC2bK4qJ7pW0lX8Yp2Q8uM7rF3cN8oK1nB6mW4uV2pS5eR6dT7aW8zX9cV0bN1mQ2pR3sT4uV5wX6yZ7",
+      "e": "AQAB"
+    }
+  ]
+}

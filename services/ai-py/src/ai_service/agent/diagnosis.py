@@ -7,6 +7,7 @@ from ai_service.core.context import RequestContext
 from ai_service.entities.models import (
     Citation,
     DiagnosisEventSnapshot,
+    DiagnosisMemoryStatus,
     DiagnosisOrderSnapshot,
     DiagnosisRequest,
     DiagnosisResourceSnapshot,
@@ -152,6 +153,7 @@ class ExceptionDiagnosisAgent:
                 recommendations=[],
                 evidence_gaps=["Diagnosis tool budget was exceeded."],
                 confidence="insufficient",
+                memory_status=_empty_memory_status(),
                 degraded=True,
                 tool_calls=toolbox.tool_calls,
             )
@@ -175,7 +177,8 @@ class ExceptionDiagnosisAgent:
                 recommendations=[],
                 evidence_gaps=toolbox.evidence_gaps,
                 confidence="insufficient",
-                degraded=True,
+                memory_status=_empty_memory_status(),
+                degraded=False,
                 tool_calls=toolbox.tool_calls,
             )
 
@@ -223,6 +226,7 @@ class ExceptionDiagnosisAgent:
                 resolved_case_ids=resolved_case_ids,
                 degraded=toolbox.degraded,
             ),
+            memory_status=_empty_memory_status(),
             degraded=toolbox.degraded,
             tool_calls=toolbox.tool_calls,
         )
@@ -348,3 +352,13 @@ def _confidence(
     if citations and not degraded:
         return "medium"
     return "low"
+
+
+def _empty_memory_status() -> DiagnosisMemoryStatus:
+    return DiagnosisMemoryStatus(
+        enabled=False,
+        session_scoped=False,
+        recent_turn_count=0,
+        summary_available=False,
+        compressed_turn_count=0,
+    )

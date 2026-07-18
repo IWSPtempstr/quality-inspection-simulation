@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rabbitmq/amqp091-go"
@@ -30,6 +31,8 @@ var notificationRetryQueues = []struct {
 }{{"api-go.g7.notification.retry.1m", time.Minute}, {"api-go.g7.notification.retry.5m", 5 * time.Minute}, {"api-go.g7.notification.retry.30m", 30 * time.Minute}}
 
 type Client struct {
+	url        string
+	mu         sync.Mutex
 	connection *amqp091.Connection
 	channel    *amqp091.Channel
 }
@@ -38,24 +41,56 @@ func Open(url string) (*Client, error) {
 	if strings.TrimSpace(url) == "" {
 		return nil, fmt.Errorf("RABBITMQ_URL must not be empty")
 	}
-	connection, err := amqp091.Dial(url)
-	if err != nil {
-		return nil, fmt.Errorf("connect RabbitMQ: %w", err)
-	}
-	channel, err := connection.Channel()
-	if err != nil {
-		_ = connection.Close()
-		return nil, fmt.Errorf("open RabbitMQ channel: %w", err)
-	}
-	client := &Client{connection: connection, channel: channel}
-	if err := client.Declare(); err != nil {
-		_ = client.Close()
+	client := &Client{url: url}
+	if err := client.reconnect(); err != nil {
 		return nil, err
 	}
 	return client, nil
 }
 
+func (c *Client) reconnect() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.reconnectLocked()
+}
+
+func (c *Client) reconnectLocked() error {
+	if c.channel != nil {
+		_ = c.channel.Close()
+		c.channel = nil
+	}
+	if c.connection != nil {
+		_ = c.connection.Close()
+		c.connection = nil
+	}
+	connection, err := amqp091.Dial(c.url)
+	if err != nil {
+		return fmt.Errorf("connect RabbitMQ: %w", err)
+	}
+	channel, err := connection.Channel()
+	if err != nil {
+		_ = connection.Close()
+		return fmt.Errorf("open RabbitMQ channel: %w", err)
+	}
+	c.connection = connection
+	c.channel = channel
+	if err := c.declareLocked(); err != nil {
+		_ = c.channel.Close()
+		_ = c.connection.Close()
+		c.channel = nil
+		c.connection = nil
+		return err
+	}
+	return nil
+}
+
 func (c *Client) Declare() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.declareLocked()
+}
+
+func (c *Client) declareLocked() error {
 	if err := c.channel.ExchangeDeclare(PartnerExchange, "topic", true, false, false, false, nil); err != nil {
 		return fmt.Errorf("declare partner exchange: %w", err)
 	}
@@ -183,16 +218,29 @@ func (c *Client) PublishConfirmed(ctx context.Context, routingKey string, payloa
 // Ping opens a short-lived channel so health reflects a usable broker
 // connection rather than only the local connection object's closed flag.
 func (c *Client) Ping(_ context.Context) error {
-	if c == nil || c.connection == nil || c.connection.IsClosed() {
+	if c == nil {
 		return fmt.Errorf("RabbitMQ connection is unavailable")
+	}
+	if c.connection == nil || c.connection.IsClosed() {
+		if err := c.reconnect(); err != nil {
+			return fmt.Errorf("RabbitMQ connection is unavailable: %w", err)
+		}
 	}
 	channel, err := c.connection.Channel()
 	if err != nil {
-		return fmt.Errorf("open RabbitMQ probe channel: %w", err)
+		if reconnectErr := c.reconnect(); reconnectErr != nil {
+			return fmt.Errorf("open RabbitMQ probe channel: %w", err)
+		}
+		channel, err = c.connection.Channel()
+		if err != nil {
+			return fmt.Errorf("open RabbitMQ probe channel after reconnect: %w", err)
+		}
 	}
 	return channel.Close()
 }
 func (c *Client) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.channel != nil {
 		_ = c.channel.Close()
 	}

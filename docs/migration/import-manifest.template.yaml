@@ -1,0 +1,96 @@
+run_id: I2-YYYYMMDD-001
+status: draft
+execution_timezone: Asia/Shanghai
+target_environment: production-like
+cutover_window:
+  freeze_start: "2026-07-17T00:00:00+08:00"
+  import_start: "2026-07-17T00:30:00+08:00"
+  user_enablement_target: "2026-07-17T02:30:00+08:00"
+  rollback_deadline: "2026-07-24T23:59:59+08:00"
+owners:
+  migration_operator: ""
+  business_verifier: ""
+  platform_verifier: ""
+source_export:
+  source_system_label: legacy-desensitized-reference
+  export_version: ""
+  export_created_at: ""
+  center_ids: []
+  files:
+    - path: exports/projects.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/equipment.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/employees.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/skills.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/shifts.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/unavailability.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/orders.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/order_projects.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/schedule_versions.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/schedule_steps.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/events.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/notifications.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/standard_versions.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/standard_chunks.csv
+      sha256: ""
+      row_count: 0
+    - path: exports/approved_exception_cases.csv
+      sha256: ""
+      row_count: 0
+preflight:
+  target_stack_healthy: false
+  target_business_tables_empty_or_disposable: false
+  postgres_backup_created: false
+  chroma_backup_created: false
+  source_desensitization_verified: false
+  legacy_write_freeze_confirmed: false
+  rollback_owner_confirmed: false
+execution:
+  imported_entities: []
+  rejected_entities: []
+  active_standard_collection_version: ""
+  active_case_collection_version: ""
+  active_standard_bm25_version: ""
+  active_case_bm25_version: ""
+  rollback_standard_collection_version: ""
+  rollback_case_collection_version: ""
+  rollback_standard_bm25_version: ""
+  rollback_case_bm25_version: ""
+reconciliation:
+  count_check: pending
+  integrity_check: pending
+  business_visibility_check: pending
+  retrieval_check: pending
+  evidence_complete: pending
+exceptions: []
+signoff:
+  final_state: pending
+  completed_at: ""
+  migration_operator: ""
+  business_verifier: ""
+  platform_verifier: ""

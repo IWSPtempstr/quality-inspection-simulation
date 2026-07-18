@@ -5,7 +5,12 @@ from datetime import UTC, datetime, timedelta
 from ai_service.clients.redis_memory import InMemoryRedisClient
 from ai_service.conf.settings import Settings
 from ai_service.core.context import RequestContext
-from ai_service.entities.models import DiagnosisEventSnapshot, DiagnosisRequest, DiagnosisResult
+from ai_service.entities.models import (
+    DiagnosisEventSnapshot,
+    DiagnosisMemoryStatus,
+    DiagnosisRequest,
+    DiagnosisResult,
+)
 from ai_service.repositories.memory import RedisSessionMemoryRepository
 from ai_service.services.assistance import AssistanceService
 from ai_service.services.memory import SessionMemoryService
@@ -58,6 +63,13 @@ def _result(*, recommendation: str = "Inspect clause 4.2 first.") -> DiagnosisRe
         recommendations=[recommendation],
         evidence_gaps=["Event snapshot needs more detail."],
         confidence="insufficient",
+        memory_status=DiagnosisMemoryStatus(
+            enabled=False,
+            session_scoped=False,
+            recent_turn_count=0,
+            summary_available=False,
+            compressed_turn_count=0,
+        ),
         degraded=True,
         tool_calls=["get_event_snapshot"],
     )
@@ -183,6 +195,14 @@ def test_assistance_service_records_diagnosis_memory_when_session_exists() -> No
 
     assert state is not None
     assert len(state.recent_turns) == 2
+    result = service.diagnose_exception(payload=payload, context=_context()).value
+    assert result.memory_status.model_dump() == {
+        "enabled": True,
+        "session_scoped": True,
+        "recent_turn_count": 4,
+        "summary_available": False,
+        "compressed_turn_count": 0,
+    }
 
 
 def test_assistance_service_skips_memory_without_session_id() -> None:
@@ -197,3 +217,11 @@ def test_assistance_service_skips_memory_without_session_id() -> None:
     service.diagnose_exception(payload=payload, context=_context())
 
     assert memory_service.get_state(payload=payload) is None
+    result = service.diagnose_exception(payload=payload, context=_context()).value
+    assert result.memory_status.model_dump() == {
+        "enabled": False,
+        "session_scoped": False,
+        "recent_turn_count": 0,
+        "summary_available": False,
+        "compressed_turn_count": 0,
+    }

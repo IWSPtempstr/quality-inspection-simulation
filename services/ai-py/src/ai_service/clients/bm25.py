@@ -65,6 +65,34 @@ class InMemoryBM25Client:
         scored.sort(key=lambda item: item[1], reverse=True)
         return scored[:limit]
 
+    def replace_records(
+        self,
+        *,
+        index_name: str,
+        document_id_prefix: str,
+        records: list[BM25Record],
+    ) -> None:
+        existing = [
+            record
+            for record in self._indexes.get(index_name, [])
+            if not record.document_id.startswith(document_id_prefix)
+        ]
+        self._indexes[index_name] = [*existing, *records]
+
+    def delete_records(
+        self,
+        *,
+        index_name: str,
+        document_id_prefix: str,
+    ) -> None:
+        if index_name not in self._indexes:
+            return
+        self._indexes[index_name] = [
+            record
+            for record in self._indexes[index_name]
+            if not record.document_id.startswith(document_id_prefix)
+        ]
+
 
 def _tokenize(text: str) -> Counter[str]:
     normalized = [token for token in text.lower().replace("-", " ").split() if token]

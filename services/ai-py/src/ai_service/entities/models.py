@@ -95,6 +95,14 @@ class DiagnosisScheduleSnapshot(StrictModel):
     steps: tuple[DiagnosisScheduleStep, ...] = ()
 
 
+class DiagnosisMemoryStatus(StrictModel):
+    enabled: bool
+    session_scoped: bool
+    recent_turn_count: int = Field(ge=0)
+    summary_available: bool
+    compressed_turn_count: int = Field(ge=0)
+
+
 class DiagnosisResult(StrictModel):
     event_id: str
     affected_orders: list[dict[str, Any]]
@@ -106,6 +114,7 @@ class DiagnosisResult(StrictModel):
     recommendations: list[str]
     evidence_gaps: list[str]
     confidence: Literal["high", "medium", "low", "insufficient"]
+    memory_status: DiagnosisMemoryStatus
     degraded: bool
     tool_calls: list[
         Literal[

@@ -1,0 +1,92 @@
+services:
+  partner-recorder:
+    image: ${PARTNER_RECORDER_IMAGE:-python:3.12-alpine}
+    profiles: ["e2e"]
+    working_dir: /app
+    command: ["python", "/app/server.py"]
+    environment:
+      PORT: "8080"
+      STORE_FILE: /data/requests.jsonl
+    volumes:
+      - ../../tests/e2e/partner-recorder:/app:ro
+      - partner_recorder_data:/data
+    ports:
+      - "${PARTNER_RECORDER_PORT:-18081}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    networks: [internal]
+    restart: unless-stopped
+
+  migrate:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    profiles: ["e2e"]
+    entrypoint: ["/bin/sh", "/scripts/apply-goose-sql.sh"]
+    env_file:
+      - ./env/postgres.env.example
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../../services/api-go/migrations:/migrations:ro
+      - ./scripts:/scripts:ro
+    networks: [internal]
+
+  api-worker:
+    profiles: ["e2e"]
+    build:
+      context: ../../services/api-go
+      dockerfile: ../../deploy/compose/api-go.e2e.Dockerfile
+      target: worker-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      partner-recorder:
+        condition: service_healthy
+    environment:
+      PARTNER_SCHEDULE_URL: http://partner-recorder:8080
+
+  postgres:
+    ports:
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
+
+  rabbitmq:
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5673}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+
+  redis:
+    ports:
+      - "${REDIS_HOST_PORT:-16379}:6379"
+
+  ops-stub:
+    ports:
+      - "${OPS_STUB_PORT:-18082}:8080"
+
+  chroma:
+    ports:
+      - "${CHROMA_HOST_PORT:-18083}:8000"
+
+  chroma-volume-helper:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    profiles: ["e2e"]
+    entrypoint: ["/bin/sh", "-lc"]
+    volumes:
+      - chroma_data:/data
+    networks: [internal]
+
+  chroma-backup:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+
+  chroma-restore:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+
+volumes:
+  partner_recorder_data: {}

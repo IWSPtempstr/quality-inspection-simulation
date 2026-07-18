@@ -185,6 +185,7 @@ def test_diagnosis_returns_grounded_result_within_tool_budget() -> None:
 
     assert result.confidence == "high"
     assert result.degraded is False
+    assert result.memory_status.enabled is False
     assert [citation.standard_title for citation in result.evidence] == ["Inspection Standard"]
     assert result.resolved_case_ids == ["case-1"]
     assert result.frozen_step_ids == ["step-1"]
@@ -209,6 +210,7 @@ def test_diagnosis_degrades_when_retrieval_backends_are_unavailable() -> None:
 
     assert result.degraded is True
     assert result.confidence == "insufficient"
+    assert result.memory_status.enabled is False
     assert result.evidence == []
     assert result.resolved_case_ids == []
     assert len(result.tool_calls) <= TOOL_LIMIT
@@ -229,7 +231,8 @@ def test_diagnosis_is_evidence_insufficient_without_event_snapshot() -> None:
         context=_context(),
     )
 
-    assert result.degraded is True
+    assert result.degraded is False
     assert result.confidence == "insufficient"
+    assert result.memory_status.enabled is False
     assert result.tool_calls == ["get_event_snapshot"]
     assert result.evidence_gaps == ["Event snapshot was not provided."]

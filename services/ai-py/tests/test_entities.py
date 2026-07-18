@@ -1,8 +1,8 @@
-"""Schema validation coverage for A1 contract models."""
+"""Schema validation coverage for A1/A5 contract models."""
 
 import pytest
 
-from ai_service.entities.models import DiagnosisResult, KnowledgeAnswer
+from ai_service.entities.models import DiagnosisMemoryStatus, DiagnosisResult, KnowledgeAnswer
 
 
 def test_knowledge_answer_requires_citations_when_evidence_exists() -> None:
@@ -23,6 +23,13 @@ def test_diagnosis_without_evidence_requires_insufficient_confidence() -> None:
             resolved_case_ids=(),
             recommendations=(),
             evidence_gaps=(),
+            memory_status=DiagnosisMemoryStatus(
+                enabled=False,
+                session_scoped=False,
+                recent_turn_count=0,
+                summary_available=False,
+                compressed_turn_count=0,
+            ),
             degraded=True,
             tool_calls=(),
         )

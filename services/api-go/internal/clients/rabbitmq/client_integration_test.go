@@ -107,6 +107,35 @@ func TestClientPublishesInternalEventsWithBrokerConfirmation(t *testing.T) {
 	}
 }
 
+func TestClientPingRecoversAfterBrokerRestart(t *testing.T) {
+	ctx := context.Background()
+	container := startRabbitMQ(t, ctx)
+	t.Cleanup(func() { _ = container.Terminate(ctx) })
+
+	client, err := Open(rabbitURL(t, ctx, container))
+	if err != nil {
+		t.Fatalf("open RabbitMQ client: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+
+	if err := client.Ping(ctx); err != nil {
+		t.Fatalf("initial Ping() error = %v", err)
+	}
+	if exitCode, _, err := container.Exec(ctx, []string{"rabbitmqctl", "stop_app"}); err != nil || exitCode != 0 {
+		t.Fatalf("stop RabbitMQ app: exit=%d err=%v", exitCode, err)
+	}
+	waitForPingError(t, client, 10*time.Second)
+
+	if exitCode, _, err := container.Exec(ctx, []string{"rabbitmqctl", "start_app"}); err != nil || exitCode != 0 {
+		t.Fatalf("start RabbitMQ app: exit=%d err=%v", exitCode, err)
+	}
+	waitForPingSuccess(t, client, 30*time.Second)
+
+	if _, err := client.channel.QueueDeclarePassive(ResourceQueue, true, false, false, false, nil); err != nil {
+		t.Fatalf("topology missing after reconnect: %v", err)
+	}
+}
+
 func startRabbitMQ(t *testing.T, ctx context.Context) testcontainers.Container {
 	t.Helper()
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -166,4 +195,31 @@ func waitForQueueMessages(t *testing.T, channel *amqp091.Channel, queue string, 
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
+}
+
+func waitForPingError(t *testing.T, client *Client, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if err := client.Ping(context.Background()); err != nil {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for RabbitMQ ping failure")
+}
+
+func waitForPingSuccess(t *testing.T, client *Client, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		if err := client.Ping(context.Background()); err == nil {
+			return
+		} else {
+			lastErr = err
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for RabbitMQ ping recovery: %v", lastErr)
 }

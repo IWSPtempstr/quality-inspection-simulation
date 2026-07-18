@@ -1144,6 +1144,23 @@ acceptance gate until the data corpus and evaluation protocol are approved.
 | A7 | Retrieval, citation, isolation, and outage evaluation gate. | `services/ai-py/**`, `spec.md` |
 | A8 | Bounded assistance services: deterministic schedule-result explanation, failed-rule explanation, closure-case candidate extraction, audited filter suggestion, and notification-body draft generation. Each accepts only a minimal immutable context, emits structured evidence/degraded state, and has no mutation or generic tool capability. | `services/ai-py/**`, `contracts/openapi/ai-internal.yaml`, `spec.md` |
 
+A4 is now implemented on the existing `/internal/v1/diagnoses` route. The
+service validates the structured diagnosis result, enforces the six declared
+read-only tools and five-call ceiling in code, records tool names in the
+result, returns evidence-insufficient responses when required snapshots are
+absent, and returns structured degraded results when retrieval dependencies
+fail without usable evidence. The diagnosis path remains
+write-free and does not add review indexing, session compression, or browser
+tool dispatch.
+
+A5 is now implemented as short diagnosis memory only. Redis-scoped session
+memory is isolated by `center_id + actor_id + event_id + session_id`; paired
+user/assistant diagnosis turns retain a 24-hour TTL; once recent turns exceed
+eight turns or the configured token budget, older turns compress into a
+structured summary with a seven-day TTL. The diagnosis service records short
+memory only when a `session_id` exists and never stores long-term cases,
+PostgreSQL review data, or Chroma-approved exception memory.
+
 A8 owns the five non-diagnosis internal endpoints in the G8/A8 interface
 mapping. Each request must include a Go-issued service identity, actor/center
 scope, correlation ID, immutable context version/hash where applicable, and a
@@ -1178,6 +1195,73 @@ not send without the normal authorized action.
 | I4 | Performance, security, backup/restore, outage, and concurrency acceptance. | `tests/e2e/**`, `docs/migration/**`, `spec.md` |
 | I5 | Delete legacy runtime only after cutover rollback window ends. | exact legacy files listed in a human-approved I5 DEV_SPEC amendment, `spec.md` |
 | I6 | Final cleanup audit. | `docs/audits/**`, `spec.md` |
+
+### I5 approved legacy runtime deletion scope
+
+I5 may delete only the legacy runtime paths listed below, and only after the
+cutover rollback window ends and I4 acceptance remains green in the current
+worktree.
+
+Exact delete scope:
+
+- `app.py`
+- `requirements.txt`
+- `api/**`
+- `web/**`
+- `agents/**`
+- `mcp_server/**`
+- `rag/__init__.py`
+- `rag/retriever.py`
+- `rag/vector_store.py`
+- `rag/index/index.faiss`
+- `rag/index/metadata.json`
+- `services/__init__.py`
+- `services/cp_sat_schedule_service.py`
+- `services/llm_client.py`
+- `services/mcp_client.py`
+- `services/notification_service.py`
+- `services/queue_service.py`
+- `services/scheduler_service.py`
+- `services/security_service.py`
+- `services/simulation_service.py`
+- `services/tool_client.py`
+
+Explicit non-delete scope for this amendment:
+
+- `services/api-go/**`
+- `services/scheduler-py/**`
+- `services/ai-py/**`
+- `contracts/**`
+- `deploy/**`
+- `tests/**`
+- `docs/**`
+- `data/evaluation/**`
+- `data/evaluation_reports/**`
+- `data/mechanism_validation/**`
+- `data/scenario_synthetic_center*/**`
+
+Deferred review items not covered by this amendment:
+
+- `config/**`
+- `db/**`
+- `domain/**`
+- `prototype/**`
+- `README.md`
+- `.mcp.json`
+- root `openapitools.json`
+- `services/dataset_replay_service.py`
+- `services/evaluation_gate.py`
+- `services/evaluation_service.py`
+- `services/monitoring_service.py`
+- `services/schedule_formatter.py`
+- `services/schedule_metrics.py`
+- `scripts/**`
+- `data/simulation.db`
+
+I5 must update `spec.md` with the exact commands run, the deleted paths, and
+any follow-up review required for the deferred items. I6 must audit temporary
+caches, generated artifacts, and any remaining review-only legacy assets after
+the approved I5 deletion completes.
 
 ## 13. Production Risks That Must Be Tested
 
