@@ -983,8 +983,9 @@ frontend build.
   owner or repository names are prohibited. Asset paths must work both under
   the Pages project subpath and the local static preview command.
 - I8 creates `.github/workflows/pages-showcase.yml`. It runs only on a push to
-  the default branch and `workflow_dispatch`, uses immutable major action
-  versions, and has exactly the minimum GitHub Pages permissions:
+  the default branch and `workflow_dispatch`, pins every action to the full
+  commit SHA of an approved major release, and has exactly the minimum GitHub
+  Pages permissions:
   `contents: read`, `pages: write`, and `id-token: write`. It may install
   frontend dependencies and upload `apps/web/dist` only. The workflow must
   not receive deployment, OIDC, partner, notification, database, queue, or AI
