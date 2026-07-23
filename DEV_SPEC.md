@@ -947,6 +947,72 @@ It is a browser fixture surface, not a login or an authentication mechanism.
 | --- | --- | --- | --- |
 | F9 | Development-only browser MSW bootstrap, fixed role switching, and manual acceptance guide. | `apps/web/{package.json,package-lock.json,public/mockServiceWorker.js,src/main.tsx,src/app/**,src/mocks/**,src/**/*.test.*}`, `docs/product/**`, `spec.md` | `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run dev:demo`, manual browser smoke test |
 
+### I8 public GitHub Pages showcase contract
+
+I8 adds a separate public static showcase after I7. It is a browsable product
+presentation on GitHub Pages, not a production environment and not an
+alternative authentication path. I8 must preserve the F9 rule: development
+MSW remains development-only and is never activated by a normal or production
+frontend build.
+
+- The showcase is built only by the explicit `npm run build:showcase` command.
+  It sets `VITE_PUBLIC_SHOWCASE=true` and a GitHub Pages base path; it does not
+  set `VITE_DEMO_MODE`, start an MSW service worker, or reference an API base
+  URL. Normal `npm run build` remains the production-web build and must retain
+  the existing OIDC/BFF session behavior.
+- Showcase data is an immutable, reviewed, desensitized in-bundle data set
+  under `apps/web/src/showcase/**`. It must be distinct from `src/mocks/**`,
+  contain no live identifiers, credentials, URLs, access tokens, raw partner
+  bodies, or personal data, and must not be fetched at runtime. The showcase
+  data adapter may serve only the view models required by the existing pages;
+  it must not duplicate a scheduling algorithm, domain write rule, API
+  implementation, or OIDC behavior.
+- The showcase has a fixed display access policy rather than an actor, a role
+  selector, a session, or an authentication bypass. It may render all public
+  workbench pages: dashboard, orders, resources, scheduling, execution,
+  events, knowledge, notifications, audit, and system health. `/login` is not
+  an interactive showcase route. Every command that would create, update,
+  approve, execute, close, send, write back, or otherwise mutate business
+  state is unavailable in the showcase and cannot issue `fetch`, WebSocket,
+  EventSource, form submission, navigation to an external system, or browser
+  storage write.
+- GitHub Pages has no SPA rewrite rule. Showcase routing must therefore use a
+  hash router, so every documented public URL has the form
+  `https://<owner>.github.io/<repository>/#/orders`. The Vite base path must
+  be derived from the repository name in the deployment workflow; hard-coded
+  owner or repository names are prohibited. Asset paths must work both under
+  the Pages project subpath and the local static preview command.
+- I8 creates `.github/workflows/pages-showcase.yml`. It runs only on a push to
+  the default branch and `workflow_dispatch`, uses immutable major action
+  versions, and has exactly the minimum GitHub Pages permissions:
+  `contents: read`, `pages: write`, and `id-token: write`. It may install
+  frontend dependencies and upload `apps/web/dist` only. The workflow must
+  not receive deployment, OIDC, partner, notification, database, queue, or AI
+  secrets; it must not build or publish Docker images; and it must not execute
+  a privileged pull-request workflow.
+- The published surface identifies itself as a `公开产品展示` in static UI
+  metadata without describing test data as live business state. It links to
+  the repository and documents that interactive business operations require
+  the separately deployed application. This disclosure must not expose
+  internal endpoints, hostnames, credentials, or operational details.
+
+I8 allowed writes are `.github/workflows/pages-showcase.yml`,
+`apps/web/{package.json,package-lock.json,vite.config.ts,src/{app/**,api/**,auth/**,components/ui/**,features/**,showcase/**},public/**,tests/**}`, the
+relevant Playwright configuration, `README.md`, `DEV_SPEC.md`, and `spec.md`.
+I8 must not modify Go/Python services, OpenAPI contracts, production Compose,
+OIDC settings, service authentication, scheduler behavior, Inbox/Outbox
+semantics, or the F9 development-demo boundary.
+
+I8 delivery gates are frontend lint, typecheck, unit tests, normal production
+build, showcase build, and a Pages-base-path static preview/browser suite.
+Tests must prove that every listed workbench route renders at its hash URL;
+no showcase route makes a network request or writes browser storage; all
+mutating commands are unavailable; no role selector/login form appears; the
+showcase bundle contains no configured secret value or internal service URL;
+and the generated Pages artifact uses the repository-relative asset base path.
+The workflow YAML must be rendered/validated, and a GitHub Actions deployment
+must complete successfully before I8 is marked done.
+
 ### Phase 2: Go, Gin, Gorm, PostgreSQL
 
 | ID | Scope | Allowed writes |
@@ -1196,6 +1262,7 @@ not send without the normal authorized action.
 | I5 | Delete legacy runtime only after cutover rollback window ends. | exact legacy files listed in a human-approved I5 DEV_SPEC amendment, `spec.md` |
 | I6 | Final cleanup audit. | `docs/audits/**`, `spec.md` |
 | I7 | Production deployment readiness and browser OIDC/BFF login. This task extends I1-I6 without changing G4-G8, S1-S5, or A1-A8 business behavior. | `DEV_SPEC.md`, `deploy/**`, `contracts/openapi/public-v1.yaml`, `apps/web/src/{app,auth,api,components/ui}/**`, relevant `apps/web` tests, `services/api-go/{cmd/{api,worker}/**,internal/api/{auth.go,auth_test.go,g4.go,router.go,security.go,security_test.go,router_test.go,generated/**},internal/clients/{oidc/**,redis/**},internal/conf/**,internal/services/{authorization.go,authentication.go,authentication_test.go,external_delivery_test.go,notification_delivery.go,schedule_writeback.go},tests/**}`, and `spec.md` |
+| I8 | Public GitHub Pages showcase: static all-page read-only presentation, hash routing, independent in-bundle display data, and GitHub Actions Pages deployment. It does not expose production services or relax OIDC. | `.github/workflows/pages-showcase.yml`, `apps/web/{package.json,package-lock.json,vite.config.ts,src/{app/**,api/**,auth/**,components/ui/**,features/**,showcase/**},public/**,tests/**}`, relevant Playwright configuration, `README.md`, `DEV_SPEC.md`, `spec.md` |
 
 ### I7 production deployment and OIDC/BFF login contract
 
