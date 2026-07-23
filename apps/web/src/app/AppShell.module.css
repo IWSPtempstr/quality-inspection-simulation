@@ -15,4 +15,5 @@
 .demoRole { display: flex; align-items: center; gap: 6px; margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--border-subtle); color: var(--ink-muted); font-size: 12px; }
 .demoRole select { min-width: 92px; min-height: 30px; border: 1px solid var(--border-subtle); border-radius: 4px; background: var(--surface-raised); color: var(--ink-strong); font: inherit; }
 .content { padding: 24px; outline: none; }
+.showcaseReadOnly { min-width: 0; margin: 0; padding: 0; border: 0; }
 @media (max-width: 900px) { .shell { grid-template-columns: 64px minmax(0, 1fr); } .brand span, .navItem span, .groupLabel, .demoRole > span { display: none; } .rail { align-items: center; padding-inline: 8px; } .navItem { justify-content: center; width: 40px; padding: 0; } .header, .content { padding-inline: 16px; } .demoRole { margin-left: 0; padding-left: 0; border-left: 0; } .demoRole select { min-width: 84px; } }

@@ -5,6 +5,7 @@ import { can } from "@/auth/permissions";
 import { useSessionStore } from "@/auth/sessionStore";
 import { demoSessionForRole } from "@/mocks/demo";
 import type { Role } from "@/api/types";
+import { isPublicShowcase } from "@/showcase/mode";
 
 const navigation = [
   ["/", "总览", LayoutDashboard, "schedule:read"],
@@ -26,8 +27,9 @@ export function AppShell() {
   const location = useLocation();
   const session = useSessionStore((state) => state.session);
   const setSession = useSessionStore((state) => state.setSession);
-  const visibleNavigation = navigation.filter(([, , , capability]) => can(session?.role, capability));
-  const visibleAdministration = administration.filter(([, , , capability]) => can(session?.role, capability));
+  const showcase = isPublicShowcase();
+  const visibleNavigation = showcase ? navigation : navigation.filter(([, , , capability]) => can(session?.role, capability));
+  const visibleAdministration = showcase ? administration : administration.filter(([, , , capability]) => can(session?.role, capability));
   const pageTitle = [...navigation, ...administration].find(([path]) => path === location.pathname)?.[1] ?? "工作台";
 
   return (
@@ -46,8 +48,8 @@ export function AppShell() {
           <div><p className={styles.crumb}>检测中心 / 工作台</p><strong>{pageTitle}</strong></div>
           <div className={styles.user} aria-label="当前用户">
             <span className={styles.presence} aria-hidden="true" />
-            <span>{session?.display_name ?? "未知用户"}</span>
-            <span>{session?.role ?? "未知角色"}</span>
+            <span>{showcase ? "公开产品展示" : session?.display_name ?? "未知用户"}</span>
+            <span>{showcase ? "只读" : session?.role ?? "未知角色"}</span>
             {import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === "true" && (
               <label className={styles.demoRole}>
                 <span>演示角色</span>
@@ -61,7 +63,7 @@ export function AppShell() {
             )}
           </div>
         </header>
-        <main id="main-content" className={styles.content} tabIndex={-1}><Outlet /></main>
+        <main id="main-content" className={styles.content} tabIndex={-1}>{showcase ? <fieldset className={styles.showcaseReadOnly} disabled><Outlet /></fieldset> : <Outlet />}</main>
       </div>
     </div>
   );

@@ -8,11 +8,6 @@ const queryClient = new QueryClient({
 });
 
 async function bootstrap() {
-  if (import.meta.env.VITE_PUBLIC_SHOWCASE === "true") {
-    const { PublicShowcaseApp } = await import("@/showcase/PublicShowcaseApp");
-    createRoot(document.getElementById("root")!).render(<StrictMode><PublicShowcaseApp /></StrictMode>);
-    return;
-  }
   if (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === "true") {
     const { startDemoWorker } = await import("@/mocks/browser");
     await startDemoWorker();

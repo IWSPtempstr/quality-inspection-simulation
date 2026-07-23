@@ -1,5 +1,7 @@
 import { ApiProblem } from "@/api/problem";
 import { isGoOwnedPath } from "@/api/ownership";
+import { isPublicShowcase } from "@/showcase/mode";
+import { showcaseRequest } from "@/showcase/request";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 let csrfToken: string | null = null;
@@ -41,6 +43,7 @@ export function clearCsrfToken(): void {
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (isPublicShowcase()) return showcaseRequest<T>(path, init);
   const headers = new Headers(init.headers);
   if (init.body) headers.set("Content-Type", "application/json");
   if (init.method && !["GET", "HEAD"].includes(init.method) && !headers.has("Idempotency-Key")) headers.set("Idempotency-Key", createIdempotencyKey());

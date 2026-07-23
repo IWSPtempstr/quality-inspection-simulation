@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createBrowserRouter, Navigate, useLocation } from "react-router-dom";
+import { createBrowserRouter, createHashRouter, Navigate, useLocation } from "react-router-dom";
+import { isPublicShowcase } from "@/showcase/mode";
 import { AppShell } from "@/app/AppShell";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { OrdersPage } from "@/features/orders/OrdersPage";
@@ -30,7 +31,8 @@ export function SessionGate() {
   const clearSession = useSessionStore((state) => state.clearSession);
   const location = useLocation();
   const usesDemoFixtures = import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === "true";
-  const session = useQuery({ queryKey: queryKeys.session, queryFn: () => apiRequest<Session>("/session/me") });
+  const showcase = isPublicShowcase();
+  const session = useQuery({ queryKey: queryKeys.session, queryFn: () => apiRequest<Session>("/session/me"), enabled: !showcase });
   // MSW fixtures intentionally do not simulate a production browser session.
   const csrf = useQuery({ queryKey: ["auth", "csrf"], queryFn: primeCsrfToken, enabled: Boolean(session.data) && !usesDemoFixtures, retry: false });
   const sessionExpired = session.isError && session.error instanceof ApiProblem && session.error.problem.status === 401;
@@ -43,6 +45,7 @@ export function SessionGate() {
     clearCsrfToken();
     clearSession();
   }, [clearSession, sessionExpired]);
+  if (showcase) return <AppShell />;
   if (session.isLoading) return <main aria-busy="true">正在验证会话…</main>;
   if (sessionExpired) {
     const returnTo = currentReturnTo(location.pathname, location.search, location.hash);
@@ -54,7 +57,8 @@ export function SessionGate() {
   return <AppShell />;
 }
 
-export const router = createBrowserRouter([
+const routeFactory = isPublicShowcase() ? createHashRouter : createBrowserRouter;
+export const router = routeFactory([
   { path: "/login", element: <LoginPage /> },
   {
     element: <SessionGate />,
