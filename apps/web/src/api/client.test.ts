@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiRequest, createIdempotencyKey } from "@/api/client";
+import { apiRequest, clearCsrfToken, createIdempotencyKey, primeCsrfToken } from "@/api/client";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { clearCsrfToken(); vi.unstubAllGlobals(); });
 
 describe("apiRequest", () => {
   it("preserves a caller-supplied Idempotency-Key for a write", async () => {
@@ -46,5 +46,20 @@ describe("apiRequest", () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init.credentials).toBeUndefined();
+  });
+
+  it("keeps the CSRF token in memory and adds it to unsafe Go requests", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ csrf_token: "session-bound-csrf" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+    await primeCsrfToken();
+    await apiRequest("/orders", { method: "POST", body: JSON.stringify({}) });
+
+    const [, request] = fetchMock.mock.calls[1];
+    expect(new Headers(request.headers).get("X-CSRF-Token")).toBe("session-bound-csrf");
+    expect(setItem).not.toHaveBeenCalled();
   });
 });

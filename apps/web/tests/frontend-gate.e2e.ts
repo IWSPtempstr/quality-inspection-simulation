@@ -62,6 +62,7 @@ class BrowserApi {
     const method = request.method();
 
     if (method === "GET" && path === "/session/me") return this.json(route, { user_id: `${this.role}-001`, role: this.role, display_name: this.role });
+    if (method === "GET" && path === "/auth/csrf") return this.json(route, { csrf_token: `browser-session-${this.role}-csrf` });
     if (method === "GET" && path === "/system/health") return this.json(route, { status: "healthy", services: { api: "healthy", scheduler: "healthy" } });
     if (method === "GET" && path === "/orders") return this.json(route, pageResult(this.orders));
     if (method === "POST" && path === "/orders") {

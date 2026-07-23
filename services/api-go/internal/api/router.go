@@ -52,20 +52,39 @@ func NewRouterWithG8(logger *slog.Logger, db *gorm.DB, locks services.ApprovalLo
 	return newRouterWithG8(logger, db, locks, serviceToken, probes, assistance, authenticators...)
 }
 
+// NewRouterWithG8AndAuthentication installs the I7 opaque BFF-session flow.
+// Existing constructors remain for bounded legacy and integration test setup.
+func NewRouterWithG8AndAuthentication(logger *slog.Logger, db *gorm.DB, locks services.ApprovalLocker, serviceToken string, probes HealthProbes, assistance services.AssistanceClient, authentication *services.Authentication, secureCookie bool) *gin.Engine {
+	if probes.Postgres == nil {
+		probes.Postgres = gormHealthProbe{db: db}
+	}
+	return newRouterWithAuthentication(logger, db, locks, serviceToken, probes, assistance, authentication, secureCookie)
+}
+
 func newRouter(logger *slog.Logger, db *gorm.DB, locks services.ApprovalLocker, serviceToken string, probes HealthProbes, authenticators ...Authenticator) *gin.Engine {
 	return newRouterWithG8(logger, db, locks, serviceToken, probes, nil, authenticators...)
 }
 
 func newRouterWithG8(logger *slog.Logger, db *gorm.DB, locks services.ApprovalLocker, serviceToken string, probes HealthProbes, assistance services.AssistanceClient, authenticators ...Authenticator) *gin.Engine {
+	var authenticator Authenticator = AuthenticatorFunc(rejectAuthenticator)
+	if len(authenticators) > 0 && authenticators[0] != nil {
+		authenticator = authenticators[0]
+	}
+	return buildRouter(logger, db, locks, serviceToken, probes, assistance, authenticator, nil, false)
+}
+
+func newRouterWithAuthentication(logger *slog.Logger, db *gorm.DB, locks services.ApprovalLocker, serviceToken string, probes HealthProbes, assistance services.AssistanceClient, authentication *services.Authentication, secureCookie bool) *gin.Engine {
+	return buildRouter(logger, db, locks, serviceToken, probes, assistance, authentication, authentication, secureCookie)
+}
+
+func buildRouter(logger *slog.Logger, db *gorm.DB, locks services.ApprovalLocker, serviceToken string, probes HealthProbes, assistance services.AssistanceClient, authenticator Authenticator, authentication *services.Authentication, secureCookie bool) *gin.Engine {
 	router := gin.New()
 	router.Use(core.CorrelationMiddleware(), gin.LoggerWithConfig(gin.LoggerConfig{Output: core.NewLogWriter(logger)}), gin.Recovery())
 
 	api := router.Group("/api/v1")
 	api.GET("/system/health", probes.handler())
-	var authenticator Authenticator = AuthenticatorFunc(rejectAuthenticator)
-	if len(authenticators) > 0 && authenticators[0] != nil {
-		authenticator = authenticators[0]
-	}
+	api.Use(CSRFProtection(authenticator))
+	mountAuthenticationRoutes(api, authentication, secureCookie)
 	api.GET("/session/me", ActorMiddleware(authenticator), session)
 	if db != nil {
 		mountG4Routes(api, authenticator, db)

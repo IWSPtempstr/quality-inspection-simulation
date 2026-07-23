@@ -8,6 +8,27 @@ servers:
 security:
   - OidcSessionCookie: []
 paths:
+  /auth/login:
+    get:
+      operationId: startLogin
+      security: []
+      parameters: [ { name: return_to, in: query, required: false, schema: { type: string, default: / } } ]
+      responses: { '302': { description: Redirect to configured OIDC provider }, '400': { $ref: '#/components/responses/Problem' }, '503': { $ref: '#/components/responses/Problem' } }
+  /auth/callback:
+    get:
+      operationId: completeLogin
+      security: []
+      parameters: [ { name: state, in: query, required: true, schema: { type: string } }, { name: code, in: query, required: true, schema: { type: string } } ]
+      responses: { '302': { description: Redirect to validated local return path }, '400': { $ref: '#/components/responses/Problem' }, '502': { $ref: '#/components/responses/Problem' } }
+  /auth/csrf:
+    get:
+      operationId: getCsrfToken
+      responses: { '200': { $ref: '#/components/responses/CsrfTokenResponse' }, '401': { $ref: '#/components/responses/Problem' }, '503': { $ref: '#/components/responses/Problem' } }
+  /auth/logout:
+    post:
+      operationId: logout
+      parameters: [ { $ref: '#/components/parameters/CsrfToken' } ]
+      responses: { '204': { description: Logged out }, '401': { $ref: '#/components/responses/Problem' }, '403': { $ref: '#/components/responses/Problem' }, '503': { $ref: '#/components/responses/Problem' } }
   /session/me:
     get:
       operationId: getSession
@@ -185,6 +206,7 @@ components:
       name: __Host-public_session
       description: OIDC-authenticated BFF session cookie for same-origin browser requests. The BFF sets this cookie after the OIDC login flow with HttpOnly, Secure, and SameSite protections; the React client does not attach a Bearer token and the browser sends the cookie automatically. The BFF validates the OIDC-authenticated session and derives actor identity, center scope, and roles exclusively from verified claims.
   parameters:
+    CsrfToken: { name: X-CSRF-Token, in: header, required: true, schema: { type: string } }
     Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
     PageSize: { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 25 } }
     Query: { name: q, in: query, schema: { type: string } }
@@ -200,6 +222,7 @@ components:
   responses:
     Problem: { description: Problem details, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
     SessionResponse: { description: Session, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
+    CsrfTokenResponse: { description: Session-bound CSRF token, content: { application/json: { schema: { $ref: '#/components/schemas/CsrfToken' } } } }
     OrderResponse: { description: Order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
     DetectionProjectList: { description: Center-selectable detection projects, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/DetectionProject' } } } } }
     OrderPage: { description: Order page, content: { application/json: { schema: { $ref: '#/components/schemas/OrderPage' } } } }
@@ -228,6 +251,7 @@ components:
   schemas:
     Problem: { type: object, required: [type, title, status], properties: { type: { type: string }, title: { type: string }, status: { type: integer }, detail: { type: string }, instance: { type: string } } }
     Session: { type: object, required: [user_id, role], properties: { user_id: { type: string }, role: { type: string, enum: [admin, scheduler, operator, viewer] }, display_name: { type: string } } }
+    CsrfToken: { type: object, required: [csrf_token], properties: { csrf_token: { type: string } } }
     CertificationType: { type: string, enum: [CCC, CVC, international] }
     OrderStatus: { type: string, enum: [pending_schedule, scheduled, in_progress, paused, completed, cancelled] }
     OrderInput: { type: object, required: [sample_name, sample_quantity, certification_type, priority, promised_finish_time, project_ids], properties: { sample_name: { type: string }, sample_quantity: { type: integer, minimum: 1 }, certification_type: { $ref: '#/components/schemas/CertificationType' }, priority: { type: string, enum: [normal, urgent, vip] }, promised_finish_time: { type: string, format: date-time }, project_ids: { type: array, minItems: 1, items: { type: string } } } }

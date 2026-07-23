@@ -1,7 +1,12 @@
 #!/bin/sh
 set -eu
 
-export PGPASSWORD="${POSTGRES_PASSWORD:-postgres}"
+if [ -n "${POSTGRES_PASSWORD_FILE:-}" ]; then
+  PGPASSWORD="$(cat "$POSTGRES_PASSWORD_FILE")"
+else
+  PGPASSWORD="${POSTGRES_PASSWORD:-postgres}"
+fi
+export PGPASSWORD
 host="${POSTGRES_HOST:-postgres}"
 user="${POSTGRES_USER:-postgres}"
 db="${POSTGRES_DB:-detection_center}"

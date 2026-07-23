@@ -61,8 +61,8 @@ func main() {
 	}
 	processor := services.NewResourceEventService(db, debouncer)
 	publisher := services.NewOutboxPublisher(db, broker)
-	writeback := services.NewScheduleWritebackWorker(db, services.HTTPPartnerClient{BaseURL: config.PartnerScheduleURL})
-	notifier := services.NewNotificationDeliveryWorker(db, webhookStub{})
+	writeback := services.NewScheduleWritebackWorker(db, services.HTTPPartnerClient{BaseURL: config.PartnerScheduleURL, Credential: config.PartnerScheduleCredential})
+	notifier := services.NewNotificationDeliveryWorker(db, services.HTTPNotificationChannel{BaseURL: config.NotificationWebhookURL, Credential: config.NotificationWebhookCredential})
 	go publishPendingPeriodically(ctx, publisher, 5*time.Second)
 	go publishScheduleWritebacks(ctx, writeback, 5*time.Second)
 	go consumeNotificationDeliveries(ctx, logger, broker, notificationDeliveries, notifier)
@@ -146,12 +146,6 @@ func notificationRetryCount(delivery amqp091.Delivery) int {
 		return 0
 	}
 }
-
-// webhookStub is a controlled no-op boundary. Production provider integration
-// intentionally remains out of G7, while tests inject a channel that fails or records delivery.
-type webhookStub struct{}
-
-func (webhookStub) Deliver(context.Context, string, json.RawMessage) error { return nil }
 
 type pendingScheduleWriteback interface {
 	PublishPending(context.Context, int) error

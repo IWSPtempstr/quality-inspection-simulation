@@ -170,8 +170,9 @@ func sanitize(body string) string {
 }
 
 type HTTPPartnerClient struct {
-	BaseURL string
-	Client  *http.Client
+	BaseURL    string
+	Credential string
+	Client     *http.Client
 }
 
 func (c HTTPPartnerClient) PutSchedule(ctx context.Context, center string, target int64, payload []byte, key string, base int64) (int, string, error) {
@@ -182,6 +183,9 @@ func (c HTTPPartnerClient) PutSchedule(ctx context.Context, center string, targe
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", key)
 	req.Header.Set("If-Match", fmt.Sprintf("%d", base))
+	if credential := strings.TrimSpace(c.Credential); credential != "" {
+		req.Header.Set("Authorization", "Bearer "+credential)
+	}
 	client := c.Client
 	if client == nil {
 		client = http.DefaultClient

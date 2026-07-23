@@ -266,14 +266,22 @@ func (h g4Handler) listEmployees(c *gin.Context) {
 }
 func (h g4Handler) listShifts(c *gin.Context) {
 	actor, _ := ActorFromContext(c)
-	var items []models.Shift
-	if err := h.db.Where("center_id = ? AND active", actor.CenterID).Find(&items).Error; err != nil {
+	// PostgreSQL TIME is returned by pgx as a string. Scanning it into
+	// time.Time is driver-dependent and failed in the live stack, so this
+	// read model deliberately retains the database representation.
+	var items []struct {
+		ID        string
+		Name      string
+		StartTime string
+		EndTime   string
+	}
+	if err := h.db.Table("shifts").Select("id, name, start_time::text AS start_time, end_time::text AS end_time").Where("center_id = ? AND active", actor.CenterID).Scan(&items).Error; err != nil {
 		writeG4Error(c, err)
 		return
 	}
 	out := make([]generated.Shift, 0, len(items))
 	for _, item := range items {
-		out = append(out, generated.Shift{Id: item.ID, Name: item.Name, StartTime: item.StartTime.Format("15:04:05"), EndTime: item.EndTime.Format("15:04:05")})
+		out = append(out, generated.Shift{Id: item.ID, Name: item.Name, StartTime: item.StartTime, EndTime: item.EndTime})
 	}
 	c.JSON(http.StatusOK, out)
 }

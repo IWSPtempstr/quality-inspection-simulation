@@ -15,6 +15,9 @@ import (
 
 type DefaultAPI interface {
 
+	// AcknowledgeEvent Post /api/v1/events/:event_id/acknowledge
+	AcknowledgeEvent(c *gin.Context)
+
 	// AnalyzeKnowledgeImpact Post /api/v1/knowledge/impact-analysis
 	AnalyzeKnowledgeImpact(c *gin.Context)
 
@@ -26,6 +29,9 @@ type DefaultAPI interface {
 
 	// CloseEvent Post /api/v1/events/:event_id/close
 	CloseEvent(c *gin.Context)
+
+	// CompleteLogin Get /api/v1/auth/callback
+	CompleteLogin(c *gin.Context)
 
 	// CompleteScheduleStep Patch /api/v1/schedule-steps/:step_id/complete
 	CompleteScheduleStep(c *gin.Context)
@@ -50,6 +56,9 @@ type DefaultAPI interface {
 
 	// ExplainSchedulePreview Post /api/v1/schedule-previews/:preview_id/explanation
 	ExplainSchedulePreview(c *gin.Context)
+
+	// GetCsrfToken Get /api/v1/auth/csrf
+	GetCsrfToken(c *gin.Context)
 
 	// GetCurrentSchedule Get /api/v1/schedules/current
 	GetCurrentSchedule(c *gin.Context)
@@ -99,6 +108,9 @@ type DefaultAPI interface {
 	// ListUnavailability Get /api/v1/resources/unavailability
 	ListUnavailability(c *gin.Context)
 
+	// Logout Post /api/v1/auth/logout
+	Logout(c *gin.Context)
+
 	// PauseOrder Post /api/v1/orders/:order_id/pause
 	PauseOrder(c *gin.Context)
 
@@ -119,6 +131,9 @@ type DefaultAPI interface {
 
 	// SendNotificationDraft Post /api/v1/notification-drafts/:draft_id/send
 	SendNotificationDraft(c *gin.Context)
+
+	// StartLogin Get /api/v1/auth/login
+	StartLogin(c *gin.Context)
 
 	// StartScheduleStep Patch /api/v1/schedule-steps/:step_id/start
 	StartScheduleStep(c *gin.Context)

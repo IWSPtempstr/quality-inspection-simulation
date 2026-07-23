@@ -1195,6 +1195,169 @@ not send without the normal authorized action.
 | I4 | Performance, security, backup/restore, outage, and concurrency acceptance. | `tests/e2e/**`, `docs/migration/**`, `spec.md` |
 | I5 | Delete legacy runtime only after cutover rollback window ends. | exact legacy files listed in a human-approved I5 DEV_SPEC amendment, `spec.md` |
 | I6 | Final cleanup audit. | `docs/audits/**`, `spec.md` |
+| I7 | Production deployment readiness and browser OIDC/BFF login. This task extends I1-I6 without changing G4-G8, S1-S5, or A1-A8 business behavior. | `DEV_SPEC.md`, `deploy/**`, `contracts/openapi/public-v1.yaml`, `apps/web/src/{app,auth,api,components/ui}/**`, relevant `apps/web` tests, `services/api-go/{cmd/{api,worker}/**,internal/api/{auth.go,auth_test.go,g4.go,router.go,security.go,security_test.go,router_test.go,generated/**},internal/clients/{oidc/**,redis/**},internal/conf/**,internal/services/{authorization.go,authentication.go,authentication_test.go,external_delivery_test.go,notification_delivery.go,schedule_writeback.go},tests/**}`, and `spec.md` |
+
+### I7 production deployment and OIDC/BFF login contract
+
+I7 is the production-readiness task after I1-I6. It establishes a single
+Linux-server deployment using Docker Compose, Nginx-managed Let's Encrypt TLS,
+a React static build, and private Go/Python/dependency containers. Identity
+may be supplied by an enterprise OIDC provider or self-hosted Keycloak, but
+both use the same OIDC and claim-mapping contract. I7 must not add a scheduler
+algorithm, change scheduling semantics, bypass the G5 Inbox/Outbox boundary,
+or expand the G8/AI capability surface.
+
+#### Browser authentication and authorization
+
+- Browser authentication uses an opaque, Redis-backed BFF session. The sole
+  browser cookie is `__Host-public_session`, whose value is an unpredictable
+  server-generated session identifier, never a JWT, access token, refresh
+  token, role list, or serialized actor. It must be `Secure`, `HttpOnly`,
+  `SameSite=Lax`, and `Path=/`; it has no `Domain` attribute and is never read
+  by React. Redis stores the server-side actor, center, mapped roles,
+  expiration, and session-bound CSRF value. Expired or revoked sessions are
+  removed and authenticate as unauthenticated.
+- `GET /api/v1/auth/login?return_to=<relative-path>` accepts only a non-empty
+  same-origin relative path beginning with one `/`, rejects absolute URLs,
+  protocol-relative paths, control characters, and `//` forms, then creates
+  single-use Redis state and PKCE verifier/challenge data before redirecting to
+  the configured OIDC authorization endpoint. The stored state binds the
+  return path, nonce where the provider flow requires one, and PKCE verifier;
+  it is consumed exactly once.
+- `GET /api/v1/auth/callback` requires a valid, unexpired, single-use state
+  and authorization code. It exchanges the code with the configured provider,
+  verifies the ID token issuer, audience/client ID, signature through trusted
+  provider keys, expiration, nonce when supplied, and required subject,
+  center, and roles claims. It maps only `admin`, `scheduler`, `operator`, and
+  `viewer` roles and rejects an absent/invalid center or an identity with no
+  supported role. On success it creates the opaque session and redirects only
+  to the validated stored return path. State, code-exchange, token-validation,
+  and claim failures create no session, expose no token/provider body, and
+  return the documented sanitized authentication failure response.
+- `GET /api/v1/auth/csrf` requires a valid session and returns its current
+  session-bound CSRF value. All unsafe browser API methods (`POST`, `PUT`,
+  `PATCH`, and `DELETE`) require that value in `X-CSRF-Token`; missing,
+  malformed, expired, or mismatched values are rejected before application
+  service invocation. Internal service-authenticated routes are exempt only
+  when they do not use a browser session; no public unsafe route is exempt.
+- `POST /api/v1/auth/logout` requires the valid session and CSRF value,
+  deletes the Redis session, expires `__Host-public_session` with matching
+  cookie attributes, and returns `204`. A subsequent request with the removed
+  session is unauthenticated and must never recreate session state or leak its
+  former actor, center, roles, or tokens.
+- `GET /api/v1/session/me` resolves the opaque Redis session and returns only
+  the existing public `Session` representation. A missing, expired, or revoked
+  session returns `401`; Redis unavailability returns a sanitized `503` and
+  must never be converted to a login redirect, a synthetic anonymous session,
+  or authorization success. Existing capability checks continue to derive the
+  actor solely from the resolved center-scoped session.
+- The public OpenAPI contract must declare the four authentication endpoints,
+  their redirect/cookie behavior where OpenAPI can express it, CSRF header,
+  sanitized `401`/`400`/`503` problem responses, and session result. Generated
+  Go transport bindings are regenerated only through the existing approved
+  generator script; generated files are not hand-edited.
+
+#### React login and session behavior
+
+- Add a public `/login` route outside `SessionGate`. It uses the existing
+  bright industrial application register and has exactly one primary command:
+  `使用企业账号登录`. The command navigates to `/api/v1/auth/login` with a
+  validated current local target. It has no password form, role selector,
+  token field, local identity form, or production authentication bypass.
+- Login and session UX must represent checking-session, unauthenticated,
+  expired-session, callback-failure, authentication-service-unavailable, and
+  retry states. It must be keyboard operable, preserve focus and readable
+  status messaging, and honor existing responsive/accessibility conventions.
+- `SessionGate` redirects only confirmed `401` results from `/session/me` to
+  `/login`, carrying the current safe local path. It renders explicit in-app
+  `403`, network, and `503` states with retry rather than redirecting or
+  claiming successful authentication. The CSRF value is retained only in
+  in-memory frontend state and is fetched after session establishment for
+  unsafe requests; it is never placed in local storage, session storage,
+  query strings, or logs.
+- MSW role switching and fixture authentication remain available only in the
+  documented development/demo configuration. The production frontend build
+  must exclude the selector and cannot fall back to MSW after a real session
+  failure.
+
+#### Mandatory configuration and production topology
+
+- Production configuration requires `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`,
+  `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, `OIDC_CENTER_CLAIM`,
+  `OIDC_ROLES_CLAIM`, allowed scopes, session TTL, and public application URL.
+  The configured issuer must supply the mapped center and at least one
+  supported role. Configuration also requires `PARTNER_SCHEDULE_URL` plus its
+  production credential, and `NOTIFICATION_WEBHOOK_URL` plus its production
+  credential. `NOTIFICATION_WEBHOOK_STUB_URL` is removed from production
+  configuration and code; a controlled production notification adapter may
+  implement the named real endpoint but must obey the existing G7 delivery
+  lifecycle.
+- In `APP_ENV=production`, startup fails before serving requests when a
+  required value is absent; an external URL is non-HTTPS; an OIDC, partner, or
+  notification host is `localhost`, loopback, or `ops-stub`; or a configured
+  secret is a known placeholder such as `change-me-before-production`. Runtime
+  secrets are supplied as root-owned Docker secret files and read at startup;
+  they are never committed, written into Compose literals, or emitted by logs,
+  health, errors, traces, or API responses.
+- Add `deploy/compose/compose.prod.yaml` and a production frontend image
+  build. Its only public container is Nginx. Nginx serves the React static
+  build, proxies `/api/` to `api-go`, provides a React SPA fallback for
+  non-API paths, redirects port 80 to TLS port 443 except ACME challenges, and
+  configures certificate paths, bounded request body/timeouts, and security
+  headers. The deployed static application uses the same-origin `/api/v1`
+  base URL.
+- The production Compose profile excludes `ops-stub`, E2E-only services,
+  development OIDC fixtures, and all public internal/management ports.
+  PostgreSQL, RabbitMQ, Redis, Chroma, `api-go`, API worker, AI, and scheduler
+  share only private Docker networks. RabbitMQ administration is reachable
+  only through the server's private access path such as VPN or SSH tunneling,
+  never a public Compose port.
+- Persistent PostgreSQL, RabbitMQ, Redis, and Chroma data reside under
+  `/srv/detection-center/data` with host-controlled ownership, capacity, and
+  backup policy. Goose migrations run as an explicit, successful one-shot
+  deployment job before application rollout; application startup must not
+  execute DDL or migrations.
+- Production services define restart policies, bounded resource limits, and
+  health/readiness checks. They emit structured stdout logs with configured
+  retention. Operations documents an owner and response target for alerts,
+  durable PostgreSQL and Chroma backup schedules, RabbitMQ durable-data
+  protection, backup retention, a tested restore drill, and an explicit
+  deployment rollback procedure. None of these operational artifacts may
+  contain secrets or raw partner payloads.
+
+#### I7 verification and completion gate
+
+- Go tests prove PKCE/state creation and one-time replay rejection; OIDC
+  callback issuer/audience/signature/claim rejection; valid center/role mapping;
+  session expiry and revocation; logout; CSRF rejection before a mutation;
+  center isolation; Redis outage `503`; and that cookies, responses, logs, and
+  errors contain no raw access or refresh token. Tests use controlled OIDC and
+  Redis doubles or Testcontainers without weakening signature/JWKS validation.
+- React tests prove safe return-path handling, login navigation, callback
+  failure, session-expiry redirect, unavailable retry, keyboard access, and
+  absence of the demo role selector from a production build. Browser acceptance
+  checks exercise the TLS-enabled frontend with a real OIDC-compatible test
+  realm and verify session establishment, mutation CSRF forwarding, logout,
+  and `/resources/shifts` real-API success.
+- Deployment validation renders both development and production Compose files,
+  verifies that the production render has no `ops-stub`, `guest`, placeholder
+  token, or public internal/management port, validates Nginx configuration and
+  the static frontend build, and runs the documented migration job separately.
+  The previous live PostgreSQL `resources/shifts` scan error (string scanned
+  into `time.Time`) must be fixed and covered by a real PostgreSQL smoke test
+  before I7 is complete.
+- Required delivery checks are OpenAPI/Spectral validation; Go
+  `go test -count=1 ./...`, `go vet ./...`, and
+  `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run`;
+  frontend lint, typecheck, test, and production build through the committed
+  toolchain wrapper; and relevant browser checks. A failed required check
+  blocks completion and may not be bypassed by disabling Testcontainers,
+  OIDC/JWKS verification, TLS, or production configuration validation.
+- Operations must provide DNS, certificate contact, selected issuer and
+  registered redirect URI, center/role claim mapping, partner URL and
+  credential, notification URL and credential, root-owned secret files,
+  firewall rules, backup destination, and a named rollback owner before an I7
+  deployment. Missing any item blocks production launch.
 
 ### I5 approved legacy runtime deletion scope
 

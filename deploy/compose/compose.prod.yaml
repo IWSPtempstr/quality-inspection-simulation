@@ -1,0 +1,415 @@
+name: detection-center
+
+x-logging: &default-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "10"
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks: [application]
+  logging: *default-logging
+
+services:
+  nginx:
+    <<: *service-defaults
+    build:
+      context: ../..
+      dockerfile: deploy/compose/web.Dockerfile
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?set PUBLIC_HOSTNAME in the Compose environment file}
+      NGINX_ENVSUBST_FILTER: PUBLIC_HOSTNAME
+    depends_on:
+      api-go:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - type: bind
+        source: ${CERTS_DIR:?set CERTS_DIR in the Compose environment file}
+        target: /etc/letsencrypt
+        read_only: true
+      - type: bind
+        source: ${ACME_WEBROOT_DIR:?set ACME_WEBROOT_DIR in the Compose environment file}
+        target: /var/www/certbot
+        read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fk https://127.0.0.1/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.50"
+
+  api-go:
+    <<: *service-defaults
+    build:
+      context: ../..
+      dockerfile: deploy/compose/api-go.Dockerfile
+      target: api-runtime
+    env_file:
+      - ${API_GO_ENV_FILE:?set API_GO_ENV_FILE in the Compose environment file}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    expose: ["8080"]
+    secrets:
+      - api_database_url
+      - api_rabbitmq_url
+      - api_redis_url
+      - internal_service_token
+      - oidc_client_secret
+      - scheduler_service_bearer_token
+      - scheduler_callback_service_token
+      - partner_schedule_credential
+      - notification_webhook_credential
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "1.00"
+
+  api-worker:
+    <<: *service-defaults
+    build:
+      context: ../..
+      dockerfile: deploy/compose/api-go.Dockerfile
+      target: worker-runtime
+    env_file:
+      - ${API_GO_ENV_FILE:?set API_GO_ENV_FILE in the Compose environment file}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    secrets:
+      - api_database_url
+      - api_rabbitmq_url
+      - api_redis_url
+      - internal_service_token
+      - oidc_client_secret
+      - scheduler_service_bearer_token
+      - partner_schedule_credential
+      - notification_webhook_credential
+    healthcheck:
+      test: ["CMD-SHELL", "pidof api-worker >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.00"
+
+  ai-service:
+    <<: *service-defaults
+    build:
+      context: ../..
+      dockerfile: deploy/compose/ai-py.Dockerfile
+    env_file:
+      - ${AI_SERVICE_ENV_FILE:?set AI_SERVICE_ENV_FILE in the Compose environment file}
+    entrypoint: ["/bin/sh", "/bootstrap/ai-entrypoint.sh"]
+    expose: ["8080"]
+    secrets:
+      - internal_service_token
+    volumes:
+      - ./scripts:/bootstrap:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.50"
+
+  scheduler:
+    <<: *service-defaults
+    build:
+      context: ../..
+      dockerfile: deploy/compose/scheduler-py.Dockerfile
+    env_file:
+      - ${SCHEDULER_ENV_FILE:?set SCHEDULER_ENV_FILE in the Compose environment file}
+    entrypoint: ["/bin/sh", "/bootstrap/scheduler-entrypoint.sh"]
+    depends_on:
+      api-go:
+        condition: service_healthy
+    expose: ["8080"]
+    secrets:
+      - scheduler_service_bearer_token
+      - scheduler_callback_service_token
+    volumes:
+      - ./scripts:/bootstrap:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.00"
+
+  postgres:
+    <<: *service-defaults
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    env_file:
+      - ${POSTGRES_ENV_FILE:?set POSTGRES_ENV_FILE in the Compose environment file}
+    secrets:
+      - postgres_password
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/postgres
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.00"
+
+  rabbitmq:
+    <<: *service-defaults
+    image: ${RABBITMQ_IMAGE:-rabbitmq:4-management-alpine}
+    env_file:
+      - ${RABBITMQ_ENV_FILE:?set RABBITMQ_ENV_FILE in the Compose environment file}
+    entrypoint: ["/bin/sh", "/bootstrap/rabbitmq-entrypoint.sh"]
+    secrets:
+      - rabbitmq_default_password
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/rabbitmq
+        target: /var/lib/rabbitmq
+      - ./scripts:/bootstrap:ro
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.00"
+
+  redis:
+    <<: *service-defaults
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    command:
+      - /bin/sh
+      - -ec
+      - exec redis-server --appendonly yes --save 60 1 --requirepass "$$(cat /run/secrets/redis_password)"
+    secrets:
+      - redis_password
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/redis
+        target: /data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$(cat /run/secrets/redis_password)\" ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.50"
+
+  chroma:
+    <<: *service-defaults
+    image: ${CHROMA_IMAGE:-chromadb/chroma:0.5.23}
+    env_file:
+      - ${CHROMA_ENV_FILE:?set CHROMA_ENV_FILE in the Compose environment file}
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/chroma
+        target: /chroma/chroma
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys, urllib.request; urls=('http://127.0.0.1:8000/api/v2/heartbeat','http://127.0.0.1:8000/api/v1/heartbeat'); [urllib.request.urlopen(url, timeout=2) for url in urls[:1]]\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.00"
+
+  migrate:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    profiles: ["migration"]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/scripts/apply-goose-sql.sh"]
+    env_file:
+      - ${POSTGRES_ENV_FILE:?set POSTGRES_ENV_FILE in the Compose environment file}
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - postgres_password
+    volumes:
+      - ../../services/api-go/migrations:/migrations:ro
+      - ./scripts:/scripts:ro
+    networks: [application]
+    logging: *default-logging
+
+  certbot:
+    image: ${CERTBOT_IMAGE:-certbot/certbot:v2.11.0}
+    profiles: ["acme"]
+    restart: "no"
+    volumes:
+      - type: bind
+        source: ${CERTS_DIR:?set CERTS_DIR in the Compose environment file}
+        target: /etc/letsencrypt
+      - type: bind
+        source: ${ACME_WEBROOT_DIR:?set ACME_WEBROOT_DIR in the Compose environment file}
+        target: /var/www/certbot
+    networks: [application]
+    logging: *default-logging
+
+  postgres-backup:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    profiles: ["ops"]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/scripts/backup-postgres.sh"]
+    env_file:
+      - ${POSTGRES_ENV_FILE:?set POSTGRES_ENV_FILE in the Compose environment file}
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - postgres_password
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/postgres-backups
+        target: /backups
+      - ./scripts:/scripts:ro
+    networks: [application]
+    logging: *default-logging
+
+  postgres-restore:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    profiles: ["ops"]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/scripts/restore-postgres.sh"]
+    env_file:
+      - ${POSTGRES_ENV_FILE:?set POSTGRES_ENV_FILE in the Compose environment file}
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - postgres_password
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/postgres-backups
+        target: /backups
+        read_only: true
+      - ./scripts:/scripts:ro
+    networks: [application]
+    logging: *default-logging
+
+  chroma-backup:
+    image: alpine:3.20
+    profiles: ["ops"]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/scripts/backup-chroma.sh"]
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/chroma
+        target: /data
+        read_only: true
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/chroma-backups
+        target: /backups
+      - ./scripts:/scripts:ro
+    networks: [application]
+    logging: *default-logging
+
+  chroma-restore:
+    image: alpine:3.20
+    profiles: ["ops"]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/scripts/restore-chroma.sh"]
+    volumes:
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/chroma
+        target: /data
+      - type: bind
+        source: ${DATA_DIR:?set DATA_DIR in the Compose environment file}/chroma-backups
+        target: /backups
+        read_only: true
+      - ./scripts:/scripts:ro
+    networks: [application]
+    logging: *default-logging
+
+networks:
+  application:
+    driver: bridge
+
+secrets:
+  postgres_password:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/postgres_password
+  rabbitmq_default_password:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/rabbitmq_default_password
+  redis_password:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/redis_password
+  api_database_url:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/api_database_url
+  api_rabbitmq_url:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/api_rabbitmq_url
+  api_redis_url:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/api_redis_url
+  internal_service_token:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/internal_service_token
+  oidc_client_secret:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/oidc_client_secret
+  partner_schedule_credential:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/partner_schedule_credential
+  notification_webhook_credential:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/notification_webhook_credential
+  scheduler_service_bearer_token:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/scheduler_service_bearer_token
+  scheduler_callback_service_token:
+    file: ${SECRETS_DIR:?set SECRETS_DIR in the Compose environment file}/scheduler_callback_service_token

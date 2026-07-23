@@ -1,9 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -14,6 +18,44 @@ import (
 type NotificationChannel interface {
 	Deliver(context.Context, string, json.RawMessage) error
 }
+
+// HTTPNotificationChannel delivers the immutable Outbox payload to the
+// configured controlled webhook boundary. It intentionally exposes no
+// credential details through returned errors.
+type HTTPNotificationChannel struct {
+	BaseURL    string
+	Credential string
+	Client     *http.Client
+}
+
+func (c HTTPNotificationChannel) Deliver(ctx context.Context, _ string, payload json.RawMessage) error {
+	if strings.TrimSpace(c.BaseURL) == "" {
+		return fmt.Errorf("notification webhook is not configured")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.BaseURL, "/"), bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create notification webhook request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if credential := strings.TrimSpace(c.Credential); credential != "" {
+		req.Header.Set("Authorization", "Bearer "+credential)
+	}
+	client := c.Client
+	if client == nil {
+		client = http.DefaultClient
+	}
+	response, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send notification webhook: %w", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 512))
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("notification webhook returned status %d", response.StatusCode)
+	}
+	return nil
+}
+
 type NotificationDeliveryWorker struct {
 	db      *gorm.DB
 	channel NotificationChannel

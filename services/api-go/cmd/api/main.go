@@ -15,6 +15,7 @@ import (
 	redisclient "github.com/detection-center/scheduling-workbench/services/api-go/internal/clients/redis"
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/conf"
 	"github.com/detection-center/scheduling-workbench/services/api-go/internal/core"
+	"github.com/detection-center/scheduling-workbench/services/api-go/internal/services"
 )
 
 func main() {
@@ -48,20 +49,20 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = broker.Close() }()
-	authenticator, err := oidc.NewVerifier(context.Background(), config.OIDCIssuerURL, config.OIDCClientID)
+	oidcClient, err := oidc.NewClient(context.Background(), config.OIDCIssuerURL, config.OIDCClientID, config.OIDCClientSecret, config.OIDCRedirectURL, config.OIDCCenterClaim, config.OIDCRolesClaim, config.OIDCScopes)
 	if err != nil {
 		logger.Error("initialize OIDC verifier", "error", err)
 		os.Exit(1)
 	}
 	server := &http.Server{
 		Addr: config.HTTPAddress,
-		Handler: api.NewRouterWithG8(logger, db, approvalLocks, config.InternalServiceToken, api.HealthProbes{
+		Handler: api.NewRouterWithG8AndAuthentication(logger, db, approvalLocks, config.InternalServiceToken, api.HealthProbes{
 			Postgres:     api.HealthProbeFunc(func(ctx context.Context) error { return db.WithContext(ctx).Exec("SELECT 1").Error }),
 			RabbitMQ:     api.HealthProbeFunc(broker.Ping),
 			Redis:        api.HealthProbeFunc(approvalLocks.Ping),
 			Partner:      api.HTTPReachabilityProbe{URL: config.PartnerScheduleURL},
-			Notification: api.HTTPReachabilityProbe{URL: config.NotificationWebhookStubURL},
-		}, ai.New(config.AIServiceURL, config.InternalServiceToken), authenticator),
+			Notification: api.HTTPReachabilityProbe{URL: config.NotificationWebhookURL},
+		}, ai.New(config.AIServiceURL, config.InternalServiceToken), services.NewAuthentication(approvalLocks, oidcClient, config.SessionTTL), config.Environment == "production"),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -69,6 +69,12 @@ type ApiHandleFunctions struct {
 func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 	return []Route{
 		{
+			"AcknowledgeEvent",
+			http.MethodPost,
+			"/api/v1/events/:event_id/acknowledge",
+			handleFunctions.DefaultAPI.AcknowledgeEvent,
+		},
+		{
 			"AnalyzeKnowledgeImpact",
 			http.MethodPost,
 			"/api/v1/knowledge/impact-analysis",
@@ -91,6 +97,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			http.MethodPost,
 			"/api/v1/events/:event_id/close",
 			handleFunctions.DefaultAPI.CloseEvent,
+		},
+		{
+			"CompleteLogin",
+			http.MethodGet,
+			"/api/v1/auth/callback",
+			handleFunctions.DefaultAPI.CompleteLogin,
 		},
 		{
 			"CompleteScheduleStep",
@@ -139,6 +151,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			http.MethodPost,
 			"/api/v1/schedule-previews/:preview_id/explanation",
 			handleFunctions.DefaultAPI.ExplainSchedulePreview,
+		},
+		{
+			"GetCsrfToken",
+			http.MethodGet,
+			"/api/v1/auth/csrf",
+			handleFunctions.DefaultAPI.GetCsrfToken,
 		},
 		{
 			"GetCurrentSchedule",
@@ -237,6 +255,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			handleFunctions.DefaultAPI.ListUnavailability,
 		},
 		{
+			"Logout",
+			http.MethodPost,
+			"/api/v1/auth/logout",
+			handleFunctions.DefaultAPI.Logout,
+		},
+		{
 			"PauseOrder",
 			http.MethodPost,
 			"/api/v1/orders/:order_id/pause",
@@ -277,6 +301,12 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			http.MethodPost,
 			"/api/v1/notification-drafts/:draft_id/send",
 			handleFunctions.DefaultAPI.SendNotificationDraft,
+		},
+		{
+			"StartLogin",
+			http.MethodGet,
+			"/api/v1/auth/login",
+			handleFunctions.DefaultAPI.StartLogin,
 		},
 		{
 			"StartScheduleStep",

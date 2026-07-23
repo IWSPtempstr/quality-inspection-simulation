@@ -1,4 +1,6 @@
 const goOwnedPrefixes = [
+  "/auth",
+  "/session",
   "/orders",
   "/resources",
   "/schedules",

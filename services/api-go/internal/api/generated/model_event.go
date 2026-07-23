@@ -18,6 +18,8 @@ type Event struct {
 
 	EventType string `json:"event_type"`
 
+	EntityType string `json:"entity_type"`
+
 	Status string `json:"status"`
 
 	Severity string `json:"severity"`

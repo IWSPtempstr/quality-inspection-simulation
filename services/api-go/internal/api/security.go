@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,10 +41,48 @@ func ActorMiddleware(authenticator Authenticator) gin.HandlerFunc {
 		}
 		actor, err := authenticator.Authenticate(c.Request.Context(), cookie.Value)
 		if err != nil {
+			if errors.Is(err, services.ErrSessionUnavailable) {
+				writeProblem(c, http.StatusServiceUnavailable, "urn:problem:session-unavailable", "服务暂不可用", "登录会话暂时无法验证")
+				return
+			}
 			writeProblem(c, http.StatusUnauthorized, "urn:problem:unauthorized", "未认证", "登录会话无效或已过期")
 			return
 		}
 		c.Set(actorContextKey, actor)
+		c.Next()
+	}
+}
+
+type CSRFValidator interface {
+	ValidateCSRF(context.Context, string, string) error
+}
+
+// CSRFProtection applies only when the configured authenticator owns a BFF
+// session. Legacy injected authenticators remain useful for focused route tests.
+func CSRFProtection(authenticator Authenticator) gin.HandlerFunc {
+	validator, ok := authenticator.(CSRFValidator)
+	if !ok {
+		return func(c *gin.Context) { c.Next() }
+	}
+	return func(c *gin.Context) {
+		switch c.Request.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			c.Next()
+			return
+		}
+		cookie, err := c.Request.Cookie(SessionCookieName)
+		if err != nil || strings.TrimSpace(cookie.Value) == "" {
+			c.Next()
+			return
+		}
+		if err := validator.ValidateCSRF(c.Request.Context(), cookie.Value, c.GetHeader("X-CSRF-Token")); err != nil {
+			if errors.Is(err, services.ErrSessionUnavailable) {
+				writeProblem(c, http.StatusServiceUnavailable, "urn:problem:session-unavailable", "服务暂不可用", "登录会话暂时无法验证")
+				return
+			}
+			writeProblem(c, http.StatusForbidden, "urn:problem:csrf", "请求被拒绝", "CSRF 令牌无效或缺失")
+			return
+		}
 		c.Next()
 	}
 }
