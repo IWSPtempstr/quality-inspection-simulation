@@ -1,299 +1,161 @@
-# 电器产品检测排程管理系统
+# 电器产品检测排程工作台
 
-面向电器产品质量检测中心的订单、资源和排程管理系统。系统围绕检测订单接收、检测项目拆解、设备与人员约束、排程生成、执行回写、异常事件处理、通知提醒和操作审计，提供一套可运行的后端服务与轻量管理后台。
+电器产品检测排程工作台面向检测中心的订单、资源、排程、执行和运营协同。它将检测订单、设备与人员资源、正式排程版本、异常事件、通知和审计记录纳入同一套中心级业务边界，并通过审批后的排程写回连接伙伴系统。
 
-当前代码以可落地的业务闭环为主：核心写操作均通过确定性 API 和权限校验完成；智能能力只用于草稿、推荐、解释和文案辅助，不直接创建订单、修改排程或占用资源。
+系统采用浏览器单页应用与服务端 BFF 会话模式。所有业务写入均经由权限、版本和幂等校验；智能服务只提供检索、解释、诊断和文案辅助，不直接创建订单、确定排程或变更资源。
 
-## 核心能力
+## 功能概览
 
-- **订单管理**：创建、查询、修改、取消检测订单，支持普通、加急、VIP 订单和复检订单。
-- **检测路线**：按认证类型生成默认检测流程，也支持订单级检测路线。
-- **资源排程**：结合设备实例、人员班次、维护窗口、前处理、跨实验室转运、耗材配额和 SLA 生成排程。
-- **策略比较**：支持多种候选排程策略评分，默认以 `sla_guarded_hybrid` 进行步骤级调度。
-- **执行回写**：检测步骤可标记为运行中和完成；运行中步骤会锁定，后续重排不会打断。
-- **事件闭环**：订单变化、设备故障、人员不可用、耗材不足、检测完成等事件进入事件中心，可触发排程心跳和闭环处理。
-- **通知提醒**：生成设备空闲、检测完成、前处理、转运、SLA 风险、人员阻塞等通知，支持 SSE 实时推送。
-- **权限与审计**：提供 `admin/scheduler/operator/viewer` 角色模拟，关键写操作进入审计日志。
-- **业务辅助**：自然语言订单草稿、检测项目推荐、排程解释和异常处理建议均需要人工确认后才能进入确定性业务流程。
+- **订单与复测**：管理检测订单、所选检测项目、暂停与恢复、部分复测及其完整状态流转。
+- **资源管理**：统一展示设备、员工、班次和不可用时段；资源事件按中心、实体与版本有序处理。
+- **排程预览与审批**：创建不可变输入快照，接收候选结果，支持人工审核、批准或驳回；获批版本通过条件写回同步给伙伴系统。
+- **执行与事件**：跟踪正式排程步骤的开始、完成与取消，管理系统事件的确认、关闭及处置记录。
+- **通知与审计**：按订单创建人和同中心调度员生成通知，支持站内与 Webhook 通道；关键动作保留可追溯审计记录。
+- **知识与辅助**：提供受控的知识检索、排程解释、异常诊断、通知草稿和审计筛选建议，并保留引用与人工确认边界。
+- **运行健康**：汇总应用、数据、消息、缓存、伙伴写回和通知通道状态，输出可供运维处理的组件级健康信息。
 
-## 管理后台
-
-启动后访问 `http://127.0.0.1:8002/`。
-
-当前后台页面：
-
-- `/`：检测队列仪表盘
-- `/orders`：订单管理，含自然语言草稿和检测项目推荐
-- `/queue`：队列与排程，含策略对比、甘特图和阻塞原因
-- `/execution`：执行看板，支持开始/完成检测步骤
-- `/events`：事件中心，支持事件筛选、处理建议、事件闭环和排程心跳
-- `/notifications`：员工通知和仿真提醒
-- `/audit`：操作审计日志
-
-后台采用 Jinja2 服务端渲染和原生 JavaScript，不需要 Node、Vue 或 React 构建链。
-
-## 技术栈
-
-- FastAPI
-- SQLite + SQLAlchemy
-- Pydantic
-- Jinja2 + 原生 JavaScript
-- OR-Tools CP-SAT（滚动窗口候选排程）
-- FAISS / numpy fallback（知识检索索引）
-- pytest
-
-可选能力：
-
-- OpenAI 兼容 Chat API：用于异常解释、订单草稿、项目推荐和通知文案增强。
-- OpenAI 兼容 Embedding API：用于知识库向量索引；未配置时使用本地确定性 fallback。
-- MCP 仿真工具入口：用于开发和工具链验证，生产接入真实系统时应替换为明确的外部服务适配器。
-
-## 系统结构
+## 系统架构
 
 ```text
-project/
-├── api/          # FastAPI 路由
-├── agents/       # 业务辅助 Agent 编排
-├── config/       # 环境配置
-├── db/           # SQLAlchemy 模型与仓储
-├── domain/       # Pydantic schema 与枚举
-├── services/     # 排程、事件、通知、审计、监控等服务
-├── rag/          # 知识库检索与索引
-├── web/          # Jinja2 管理后台
-├── tests/        # pytest 测试
-├── data/         # SQLite、合成验证数据和评测样例
-├── app.py        # FastAPI 应用入口
-└── requirements.txt
+React Web 应用
+        |
+        | 同源 /api/v1，OIDC/BFF 会话与 CSRF
+        v
+Go API 与 Worker
+   |            |--------------------> Python 调度服务
+   |            |                         |
+   |            |<---- 候选结果回调 --------|
+   |
+   +--> PostgreSQL 16    业务数据、审计、Inbox、Outbox、排程版本
+   +--> RabbitMQ 4       资源事件、通知投递、重试和死信队列
+   +--> Redis 7          BFF 会话、CSRF、审批锁与重建去抖
+   +--> Python 智能服务 --> Chroma  知识检索、解释与诊断
+   +--> 伙伴系统         已审批排程的条件写回
 ```
 
-## 主要接口
+排程从中心范围内的订单、资源、当前正式版本和冻结步骤创建快照。调度服务提交候选结果后，调度员或管理员进行审核；只有批准并完成伙伴条件写回的候选才会形成新的正式排程版本。资源事件、通知与外部写回通过 Inbox/Outbox 事务边界处理，消息投递使用确认、重试和死信队列保护。
 
-| 模块 | 接口 |
+## 角色与工作台
+
+身份由 OIDC 提供方验证，Go API 根据中心声明与角色声明授权。浏览器只保存不透明会话标识，访问令牌和刷新令牌不会暴露给前端。
+
+| 角色 | 主要职责 |
 | --- | --- |
-| 订单 | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{id}`, `DELETE /api/orders/{id}`, `POST /api/orders/{id}/retest` |
-| 队列排程 | `GET /api/queue`, `POST /api/queue/rebuild`, `GET /api/schedules`, `GET /api/schedules/{run_id}/gantt` |
-| 执行回写 | `PATCH /api/schedules/steps/{step_id}/running`, `PATCH /api/schedules/steps/{step_id}/complete` |
-| 事件 | `GET /api/scheduling/events`, `POST /api/scheduling/events`, `PATCH /api/scheduling/events/{event_id}/resolve`, `POST /api/scheduling/heartbeat` |
-| 通知 | `GET /api/notifications`, `PATCH /api/notifications/{id}/read`, `GET /api/notifications/stream` |
-| 监控审计 | `GET /api/monitor/report`, `GET /api/admin/audit-logs`, `GET /api/admin/users` |
-| 业务辅助 | `POST /api/agent/run` |
+| `admin` | 管理中心级配置、资源、事件处置、审计与排程审批。 |
+| `scheduler` | 创建和审核排程预览，处理资源影响、事件和正式排程。 |
+| `operator` | 查看授权范围内的订单与排程，并登记检测步骤执行状态。 |
+| `viewer` | 查看授权范围内的订单、资源、排程、事件和通知。 |
 
-业务辅助任务包括：
-
-- `draft_order_from_text`：生成订单草稿，不创建订单。
-- `identify_projects`：推荐检测项目，保留确定性必检规则。
-- `explain_schedule`：解释当前排程，不修改排程。
-- `analyze_exception`：分析异常和阻塞，不关闭事件。
-- `generate_notifications`：增强通知文案，不改变通知触发条件。
-- `route_user_query`：返回建议任务，不自动执行任务。
+前端工作台覆盖订单、资源、排程预览、执行、事件、通知、知识查询、审计和系统健康。写操作携带幂等键、版本条件和会话绑定的 CSRF 值；冲突响应用于提示用户刷新并基于最新版本继续处理。
 
 ## 快速开始
 
-确认 Conda 环境：
+### 前置条件
+
+- Docker Engine 与 Docker Compose v2
+- Node.js 22 和 npm（前端开发与验证）
+- Go 1.26.3（Go 服务开发与验证）
+- Python 3.12（调度和智能服务开发与验证）
+
+### 启动本地服务栈
+
+在仓库根目录执行：
 
 ```bash
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python --version
+docker compose -f deploy/compose/compose.yaml up --build
 ```
 
-安装依赖：
+该命令启动 Go API/Worker、Python 调度与智能服务、PostgreSQL、RabbitMQ、Redis、Chroma 以及边缘代理。边缘健康检查地址为 `http://127.0.0.1:8080/healthz`，API 前缀为 `/api/v1`。
+
+### 启动前端开发服务
 
 ```bash
-cd /home/work/workproject2/project
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pip install -r requirements.txt
+cd apps/web
+npm ci
+npm run dev
 ```
 
-复制环境变量文件：
+前端采用 Vite 开发服务器。部署构建使用同源 `/api/v1`；将前端开发服务接入指定 API 时，设置 `VITE_API_BASE_URL` 为该 API 的 `/api/v1` 地址后再启动。
+
+## Docker Compose
+
+开发和受控端到端环境使用：
 
 ```bash
-cp .env.example .env
+docker compose -f deploy/compose/compose.yaml up --build
 ```
 
-启动服务：
+生产环境使用独立的 Compose 文件。先执行显式数据库迁移，再启动完整服务栈：
 
 ```bash
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m uvicorn app:create_app --factory --reload --port 8002
+docker compose --env-file /etc/detection-center/compose.env \
+  -f deploy/compose/compose.prod.yaml --profile migration run --rm migrate
+
+docker compose --env-file /etc/detection-center/compose.env \
+  -f deploy/compose/compose.prod.yaml up --build -d --wait
 ```
 
-访问：
+生产镜像由 Nginx 提供 React 静态资源和 SPA 回退，并将 `/api/` 代理至 Go API。数据库、消息队列、缓存、知识存储和内部服务只在私有 Docker 网络中通信。
 
-- 管理后台：`http://127.0.0.1:8002/`
-- Swagger：`http://127.0.0.1:8002/docs`
-- ReDoc：`http://127.0.0.1:8002/redoc`
+服务器目录、环境文件、Docker secret 文件、TLS 证书申请、备份恢复与回滚步骤见 [部署运行手册](deploy/compose/README.md)。请勿将密钥写入仓库、Compose 字面量或前端环境变量。
 
-## 运行模式
+## 配置说明
 
-默认配置偏生产落地，只启用核心业务路由和管理后台。演示、数据集回放、MCP 仿真和离线评测属于开发/验证能力，可按需开启。
+生产环境以 `/etc/detection-center/compose.env` 为 Compose 配置入口，以根权限管理的 Docker secret 文件保存敏感值。可从 [`deploy/compose/env/`](deploy/compose/env/) 中的示例文件建立服务环境文件。
+
+| 配置类别 | 用途 |
+| --- | --- |
+| OIDC | 配置发行方、客户端、回调地址、允许 scope、中心声明和角色声明。 |
+| 会话与内部服务 | 配置会话有效期、服务间认证令牌和调度回调令牌。 |
+| 数据与消息 | 配置 PostgreSQL、RabbitMQ、Redis 与 Chroma 的内部连接及持久化目录。 |
+| 外部交付 | 配置伙伴排程条件写回地址/凭据和通知通道地址/凭据。 |
+| 边缘与证书 | 配置公开域名、证书联系邮箱、ACME Web 根目录和证书目录。 |
+
+生产启动会校验外部地址、必填密钥和服务配置。OIDC 回调地址应注册为 `https://<域名>/api/v1/auth/callback`，身份提供方需提供中心与角色声明。
+
+## 开发与验证
+
+前端命令均在 `apps/web` 目录执行：
 
 ```bash
-export APP_PROFILE=production
-export ENABLE_WEB_UI=true
+npm run dev
+npm run build
+npm run lint
+npm run typecheck
+npm run test
+npm run test:watch
+npm run test:e2e
 ```
 
-开发演示模式：
+Go 服务验证命令在 `services/api-go` 目录执行：
 
 ```bash
-export APP_PROFILE=demo
+go test -count=1 ./...
+go vet ./...
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 ```
 
-`demo` 模式默认开启：
+Python 服务的依赖和测试入口分别定义在 [`services/scheduler-py/pyproject.toml`](services/scheduler-py/pyproject.toml) 与 [`services/ai-py/pyproject.toml`](services/ai-py/pyproject.toml)。接口契约变更应先更新 OpenAPI 文件，再生成和验证相应服务边界。
 
-- 数据集回放接口 `/api/datasets`
-- 仿真时钟接口 `/api/simulation`
-- MCP 仿真状态接口 `/api/mcp`
-- 离线评测入口 `/api/evaluation/offline/run`
+## 项目结构
 
-常用配置：
-
-```bash
-export DATABASE_URL=sqlite:////home/work/workproject2/project/data/simulation.db
-export SCHEDULER_HEARTBEAT_ENABLED=true
-export SCHEDULER_HEARTBEAT_INTERVAL_SECONDS=30
-export SCHEDULER_DEBOUNCE_SECONDS=30
-export SCHEDULER_IMMEDIATE_SEVERITIES=critical,high
-export SCHEDULER_DEFAULT_STRATEGY=sla_guarded_hybrid
-export CP_SAT_TIME_LIMIT_SECONDS=10
-export CP_SAT_ROLLING_HORIZON_DAYS=7
-export CP_SAT_NUM_WORKERS=4
-export CP_SAT_MAX_ACTIVE_ORDERS=80
+```text
+apps/web/                 React 19 前端与浏览器测试
+services/api-go/          Go API、消息 Worker、迁移、业务服务与集成测试
+services/scheduler-py/    Python 排程服务、候选回调与调度评测
+services/ai-py/           Python 智能服务、知识检索、诊断与辅助能力
+contracts/openapi/        公共 API、调度内部 API 与智能服务内部 API 契约
+deploy/                   Docker Compose、Nginx、监控、备份和恢复脚本
+docs/                     部署、迁移、产品验收和运行文档
+data/                     导入、验证、评测与知识材料
 ```
 
-可选 LLM / Embedding 配置：
+## 文档与契约
 
-```bash
-export LLM_PROVIDER=openai-compatible
-export LLM_API_KEY=your-chat-key
-export LLM_BASE_URL=https://api.example.com/v1
-export LLM_MODEL=qwen-plus
-export LLM_ENABLE_THINKING=false
-
-export EMBEDDING_PROVIDER=openai-compatible
-export EMBEDDING_API_KEY=your-embedding-key
-export EMBEDDING_BASE_URL=https://api.example.com/v1
-export EMBEDDING_MODEL=text-embedding-v3
-```
-
-未配置 API Key 时，系统会使用确定性 fallback，业务接口仍可运行。
-
-## API 示例
-
-创建订单：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "order_type": "vip",
-    "sample_name": "家用电器样品",
-    "sample_quantity": 2,
-    "certification_type": "ccc"
-  }'
-```
-
-重建队列：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/queue/rebuild
-```
-
-查询队列：
-
-```bash
-curl http://127.0.0.1:8002/api/queue
-```
-
-写入突发事件：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/scheduling/events \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event_type": "equipment_fault",
-    "severity": "high",
-    "entity_type": "equipment",
-    "entity_id": "ENV-03",
-    "payload": {"reason": "设备故障"}
-  }'
-```
-
-触发排程心跳：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/scheduling/heartbeat
-```
-
-标记检测步骤运行中与完成：
-
-```bash
-curl -X PATCH http://127.0.0.1:8002/api/schedules/steps/{step_id}/running \
-  -H "Content-Type: application/json" \
-  -H "X-User-Role: operator" \
-  -d '{"note": "开始检测"}'
-
-curl -X PATCH http://127.0.0.1:8002/api/schedules/steps/{step_id}/complete \
-  -H "Content-Type: application/json" \
-  -H "X-User-Role: operator" \
-  -d '{"note": "检测完成"}'
-```
-
-生成订单草稿：
-
-```bash
-curl -X POST http://127.0.0.1:8002/api/agent/run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task_type": "draft_order_from_text",
-    "payload": {"user_text": "客户送检一批加急电磁兼容样品，希望三天内完成"}
-  }'
-```
-
-查询审计日志：
-
-```bash
-curl http://127.0.0.1:8002/api/admin/audit-logs
-```
-
-## 测试
-
-运行全量测试：
-
-```bash
-cd /home/work/workproject2/project
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest -q
-```
-
-常用定向测试：
-
-```bash
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest tests/test_api_and_agents.py -q
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest tests/test_queue_service.py -q
-/root/anaconda3/bin/conda run --no-capture-output -n agent-learning python -m pytest tests/test_mcp_and_web.py -q
-```
-
-## 数据说明
-
-仓库内 `data/` 目录包含用于开发验证的合成数据集和评测样例。它们只用于机制验证、压力测试和演示，不代表任何真实检测中心的设备数量、检测耗时、人员排班、订单到达分布或插队规则。
-
-真实落地时应接入：
-
-- LIMS / 订单系统
-- 设备台账和设备状态服务
-- 检测项目标准库
-- 人员排班、考勤和技能矩阵
-- 历史工时与实际检测结果
-
-## 当前限制
-
-- 当前排程以规则调度、候选策略评分和滚动窗口优化组合为主，不声明全局数学最优。
-- CP-SAT 作为窗口内候选策略，不适合对超大订单量进行全量一次性精排。
-- MCP 目前是仿真工具入口，未接入真实设备或 LIMS。
-- 权限模型为 header 模拟角色，未接入真实登录态和组织权限体系。
-- 合成数据和 fallback 能保证本地运行，但不能替代真实生产数据校准。
-- 智能能力只做辅助输入和解释，所有业务写操作仍由确定性 API 执行。
-
-## 后续落地方向
-
-1. 接入真实订单、设备、人员和检测标准数据源。
-2. 将 header 角色替换为正式登录、组织权限和操作审批。
-3. 基于真实工时数据校准检测耗时、人员配置和排程目标函数。
-4. 补充暂停、返工、复核、报告签发等检测执行闭环。
-5. 增加生产级监控、告警和审计导出。
+- [公共 API 契约](contracts/openapi/public-v1.yaml)：浏览器与 Go API 的 `/api/v1` 接口定义。
+- [调度内部契约](contracts/openapi/scheduler-internal.yaml)：不可变快照、候选结果回调和调度服务接口定义。
+- [智能服务内部契约](contracts/openapi/ai-internal.yaml)：知识检索、解释、诊断和辅助接口定义。
+- [部署运行手册](deploy/compose/README.md)：服务器准备、迁移、TLS、监控、备份、恢复和回滚。
+- [数据导入与核对文档](docs/migration/README.md)：导入范围、字段边界、核对和回滚流程。
+- [前端验收指引](docs/product/frontend-gate.md)：前端构建、测试与浏览器验收记录。
+- [开发规格](DEV_SPEC.md)：领域边界、服务契约、交付阶段和验证要求。
